@@ -100,6 +100,10 @@ export class MainMenuComponent {
 
     contentWrapper.appendChild(titleContainer);
 
+    // 全屏按钮
+    const fullscreenButton = this.createFullscreenButton();
+    contentWrapper.appendChild(fullscreenButton);
+
     // 按钮区域
     const buttonArea = document.createElement('div');
     buttonArea.style.display = 'flex';
@@ -181,6 +185,76 @@ export class MainMenuComponent {
     button.addEventListener('click', onClick);
 
     return button;
+  }
+
+  /**
+   * 创建全屏按钮
+   */
+  private createFullscreenButton(): HTMLButtonElement {
+    const button = document.createElement('button');
+    button.textContent = this.isFullscreen() ? '📴 退出全屏' : '🔳 全屏模式';
+    button.style.fontSize = this.scaled(16);
+    button.style.padding = `${this.scaled(10)} ${this.scaled(24)}`;
+    button.style.marginBottom = this.scaled(20);
+    button.style.background = 'linear-gradient(135deg, #4b5563 0%, #374151 100%)';
+    button.style.color = '#f3f4f6';
+    button.style.border = '2px solid #6b7280';
+    button.style.borderRadius = '8px';
+    button.style.cursor = 'pointer';
+    button.style.transition = 'all 0.2s ease';
+    button.style.display = 'flex';
+    button.style.alignItems = 'center';
+    button.style.gap = '8px';
+
+    // 悬停效果
+    button.addEventListener('mouseenter', () => {
+      button.style.transform = 'scale(1.05)';
+      button.style.boxShadow = '0 0 15px rgba(107, 114, 128, 0.4)';
+      button.style.borderColor = '#9ca3af';
+    });
+
+    button.addEventListener('mouseleave', () => {
+      button.style.transform = 'scale(1)';
+      button.style.boxShadow = 'none';
+      button.style.borderColor = '#6b7280';
+    });
+
+    button.addEventListener('click', () => this.toggleFullscreen(button));
+
+    // 监听全屏状态变化
+    document.addEventListener('fullscreenchange', () => {
+      button.textContent = this.isFullscreen() ? '📴 退出全屏' : '🔳 全屏模式';
+    });
+
+    return button;
+  }
+
+  /**
+   * 检查是否处于全屏模式
+   */
+  private isFullscreen(): boolean {
+    return !!document.fullscreenElement;
+  }
+
+  /**
+   * 切换全屏模式
+   */
+  private toggleFullscreen(button: HTMLButtonElement): void {
+    if (!document.fullscreenElement) {
+      // 进入全屏
+      document.documentElement.requestFullscreen().then(() => {
+        button.textContent = '📴 退出全屏';
+      }).catch(err => {
+        console.error('进入全屏失败:', err);
+      });
+    } else {
+      // 退出全屏
+      document.exitFullscreen().then(() => {
+        button.textContent = '🔳 全屏模式';
+      }).catch(err => {
+        console.error('退出全屏失败:', err);
+      });
+    }
   }
 
   /**
