@@ -92,6 +92,24 @@ class Game {
     rulesBtn.addEventListener('click', () => this.showRules());
     buttonContainer.appendChild(rulesBtn);
 
+    // 全屏按钮
+    const fullscreenBtn = document.createElement('button');
+    fullscreenBtn.style.fontSize = 'clamp(0.875rem, 2.5vw, 1.125rem)';
+    fullscreenBtn.style.padding = 'clamp(8px, 1.8vh, 14px) clamp(16px, 4vw, 28px)';
+    fullscreenBtn.style.marginTop = 'clamp(8px, 2vh, 16px)';
+    fullscreenBtn.className = 'game-btn w-full';
+    fullscreenBtn.style.background = 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)';
+    fullscreenBtn.style.color = '#ffffff';
+    fullscreenBtn.style.border = '2px solid #fbbf24';
+    fullscreenBtn.textContent = document.fullscreenElement ? '📴 退出全屏' : '🔳 全屏模式';
+    fullscreenBtn.addEventListener('click', () => this.toggleFullscreen(fullscreenBtn));
+    buttonContainer.appendChild(fullscreenBtn);
+
+    // 监听全屏状态变化
+    document.addEventListener('fullscreenchange', () => {
+      fullscreenBtn.textContent = document.fullscreenElement ? '📴 退出全屏' : '🔳 全屏模式';
+    });
+
     // 删除存档按钮（如果有存档）
     if (hasSave()) {
       const deleteSaveBtn = document.createElement('button');
@@ -441,6 +459,25 @@ class Game {
   /**
    * 显示游戏规则 - 使用 viewport 单位实现流体式响应布局
    */
+  /**
+   * 切换全屏模式
+   */
+  private toggleFullscreen(button: HTMLButtonElement): void {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().then(() => {
+        button.textContent = '📴 退出全屏';
+      }).catch(err => {
+        console.error('进入全屏失败:', err);
+      });
+    } else {
+      document.exitFullscreen().then(() => {
+        button.textContent = '🔳 全屏模式';
+      }).catch(err => {
+        console.error('退出全屏失败:', err);
+      });
+    }
+  }
+
   private showRules(): void {
     this.container.innerHTML = '';
     // 使用 viewport 单位确保内容适应屏幕大小
