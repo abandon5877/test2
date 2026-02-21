@@ -17,6 +17,7 @@ import {
 import { Toast } from './Toast';
 import { getRandomJoker } from '../../data/jokers';
 import { Storage } from '../../utils/storage';
+import { PokerHandType } from '../../types/pokerHands';
 
 export interface ShopItem {
   id: string;
@@ -992,6 +993,18 @@ ${description}
     console.log('[ShopComponent] use 结果:', result);
 
     if (result.success) {
+      // 处理星球牌升级
+      if (result.handTypeUpgrade) {
+        console.log('[ShopComponent] 升级牌型:', result.handTypeUpgrade);
+        this.gameState.handLevelState.upgradeHand(result.handTypeUpgrade as PokerHandType);
+      }
+
+      // 处理黑洞牌升级所有牌型
+      if (result.upgradeAllHandLevels) {
+        console.log('[ShopComponent] 升级所有牌型');
+        this.gameState.handLevelState.upgradeAll();
+      }
+
       // 从消耗牌槽中移除
       console.log('[ShopComponent] 准备移除消耗牌, index:', index);
       const removed = this.gameState.removeConsumable(index);

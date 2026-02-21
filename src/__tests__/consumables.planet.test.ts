@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { ALL_CONSUMABLE_INSTANCES as CONSUMABLES, getConsumablesByType } from '../data/consumables/index';
 import { ConsumableType } from '../types/consumable';
+import { PokerHandType } from '../types/pokerHands';
 
 describe('Consumables - Planet Cards', () => {
   describe('Planet Card Count', () => {
@@ -175,6 +176,31 @@ describe('Consumables - Planet Cards', () => {
         const result = card!.use({});
         expect(result.message).toContain(`+${chipBonus}筹码`);
         expect(result.message).toContain(`+${multBonus}倍率`);
+      }
+    });
+  });
+
+  describe('Planet Card handTypeUpgrade Field', () => {
+    it('should return correct handTypeUpgrade for each planet card', () => {
+      const testCases = [
+        { id: 'planet_pluto', handType: PokerHandType.HighCard },
+        { id: 'planet_mercury', handType: PokerHandType.OnePair },
+        { id: 'planet_uranus', handType: PokerHandType.TwoPair },
+        { id: 'planet_venus', handType: PokerHandType.ThreeOfAKind },
+        { id: 'planet_saturn', handType: PokerHandType.Straight },
+        { id: 'planet_jupiter', handType: PokerHandType.Flush },
+        { id: 'planet_earth', handType: PokerHandType.FullHouse },
+        { id: 'planet_mars', handType: PokerHandType.FourOfAKind },
+        { id: 'planet_neptune', handType: PokerHandType.StraightFlush },
+        { id: 'planet_planet_x', handType: PokerHandType.FiveOfAKind },
+        { id: 'planet_ceres', handType: PokerHandType.FlushHouse },
+        { id: 'planet_eris', handType: PokerHandType.FlushFive },
+      ];
+
+      for (const { id, handType } of testCases) {
+        const card = CONSUMABLES.find(c => c.id === id);
+        const result = card!.use({});
+        expect(result.handTypeUpgrade).toBe(handType);
       }
     });
   });
