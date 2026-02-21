@@ -193,30 +193,35 @@ export class MainMenuComponent {
   private createFullscreenButton(): HTMLButtonElement {
     const button = document.createElement('button');
     button.textContent = this.isFullscreen() ? '📴 退出全屏' : '🔳 全屏模式';
-    button.style.fontSize = this.scaled(16);
-    button.style.padding = `${this.scaled(10)} ${this.scaled(24)}`;
-    button.style.marginBottom = this.scaled(20);
-    button.style.background = 'linear-gradient(135deg, #4b5563 0%, #374151 100%)';
-    button.style.color = '#f3f4f6';
-    button.style.border = '2px solid #6b7280';
-    button.style.borderRadius = '8px';
+    button.style.fontSize = this.scaled(18);
+    button.style.padding = `${this.scaled(12)} ${this.scaled(32)}`;
+    button.style.marginBottom = this.scaled(24);
+    button.style.marginTop = this.scaled(10);
+    button.style.background = 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)';
+    button.style.color = '#ffffff';
+    button.style.border = '3px solid #fbbf24';
+    button.style.borderRadius = '12px';
     button.style.cursor = 'pointer';
     button.style.transition = 'all 0.2s ease';
-    button.style.display = 'flex';
+    button.style.display = 'inline-flex';
     button.style.alignItems = 'center';
+    button.style.justifyContent = 'center';
     button.style.gap = '8px';
+    button.style.fontWeight = 'bold';
+    button.style.boxShadow = '0 4px 15px rgba(245, 158, 11, 0.4)';
+    button.style.minWidth = this.scaled(160);
 
     // 悬停效果
     button.addEventListener('mouseenter', () => {
-      button.style.transform = 'scale(1.05)';
-      button.style.boxShadow = '0 0 15px rgba(107, 114, 128, 0.4)';
-      button.style.borderColor = '#9ca3af';
+      button.style.transform = 'scale(1.08)';
+      button.style.boxShadow = '0 6px 25px rgba(245, 158, 11, 0.6)';
+      button.style.borderColor = '#fcd34d';
     });
 
     button.addEventListener('mouseleave', () => {
       button.style.transform = 'scale(1)';
-      button.style.boxShadow = 'none';
-      button.style.borderColor = '#6b7280';
+      button.style.boxShadow = '0 4px 15px rgba(245, 158, 11, 0.4)';
+      button.style.borderColor = '#fbbf24';
     });
 
     button.addEventListener('click', () => this.toggleFullscreen(button));
