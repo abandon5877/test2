@@ -23,7 +23,7 @@ export interface ConsumableEffectContext {
   };
   readonly lastUsedConsumable?: { id: string; type: ConsumableType };
   readonly addConsumable?: (consumable: ConsumableConfig) => boolean;
-  readonly jokers?: readonly { sellPrice: number; hasEdition?: boolean }[];
+  readonly jokers?: readonly { edition?: string; hasEdition?: boolean; sellPrice?: number }[];
   readonly addJoker?: (rarity?: 'rare') => boolean;
   readonly canAddJoker?: () => boolean;
   readonly addEditionToRandomJoker?: (edition: string) => boolean;

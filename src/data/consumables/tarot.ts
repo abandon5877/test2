@@ -427,7 +427,7 @@ export const TAROT_CARDS: TarotData[] = [
         };
       }
       
-      const totalSellValue = context.jokers.reduce((sum, joker) => sum + joker.sellPrice, 0);
+      const totalSellValue = context.jokers.reduce((sum, joker) => sum + (joker.sellPrice || 0), 0);
       const moneyGain = Math.min(totalSellValue, 50);
       
       return {

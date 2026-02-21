@@ -6,6 +6,7 @@ import { JokerRarity, JokerTrigger } from '../types/joker';
 import { GameState } from '../models/GameState';
 import { Card } from '../models/Card';
 import { Suit, Rank } from '../types/card';
+import { BlindType } from '../types/game';
 
 describe('ON_CARD_ADDED 触发器测试', () => {
   let jokerSlots: JokerSlots;
@@ -15,7 +16,7 @@ describe('ON_CARD_ADDED 触发器测试', () => {
     jokerSlots = new JokerSlots(5);
     gameState = new GameState();
     gameState.startNewGame();
-    gameState.selectBlind('SMALL_BLIND');
+    gameState.selectBlind(BlindType.SMALL_BLIND);
   });
 
   describe('JokerSystem.processCardAdded', () => {

@@ -16,9 +16,11 @@ import { BossState } from './BossState';
 import { BossSelectionSystem } from '../systems/BossSelectionSystem';
 import { BossSystem } from '../systems/BossSystem';
 import { initializeBlindConfigs, resetBlindConfigs } from '../data/blinds';
+import { ConsumableDataManager } from '../data/ConsumableDataManager';
 import type { JokerInterface } from '../types/joker';
 import type { ConsumableInterface } from '../types/consumable';
 import { CardEnhancement } from '../types/card';
+import { ConsumableType } from '../types/consumable';
 import { createModuleLogger } from '../utils/logger';
 
 const logger = createModuleLogger('GameState');
@@ -183,7 +185,7 @@ export class GameState implements GameStateInterface {
     // 应用盲注选择效果（如额外塔罗牌、星球牌等）
     if (blindSelectResult.tarotBonus > 0) {
       for (let i = 0; i < blindSelectResult.tarotBonus; i++) {
-        this.consumableSlots.addConsumable(ConsumableManager.generateRandomTarot());
+        this.consumableSlots.addConsumable(ConsumableDataManager.getRandomByType(ConsumableType.TAROT));
       }
     }
     if (blindSelectResult.jokerBonus > 0) {

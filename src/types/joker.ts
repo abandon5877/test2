@@ -39,6 +39,7 @@ export enum JokerTrigger {
 }
 
 export interface JokerEffectContext {
+  readonly card?: Card; // 用于 ON_CARD_ADDED 触发器
   readonly scoredCards?: readonly Card[];
   readonly heldCards?: readonly Card[];
   readonly discardedCards?: readonly Card[];

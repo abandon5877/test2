@@ -3,7 +3,7 @@ import { Joker } from '../../models/Joker';
 import { Consumable } from '../../models/Consumable';
 import { CardComponent } from './CardComponent';
 import { HandComponent } from './HandComponent';
-import { HAND_BASE_VALUES } from '../../types/pokerHands';
+import { HAND_BASE_VALUES, PokerHandType } from '../../types/pokerHands';
 import { PokerHandDetector } from '../../systems/PokerHandDetector';
 import { ScoringSystem } from '../../systems/ScoringSystem';
 import type { ScoreResult } from '../../systems/ScoringSystem';
@@ -18,6 +18,7 @@ import { Toast } from './Toast';
 import { Storage } from '../../utils/storage';
 import { getRandomJoker } from '../../data/jokers';
 import { getConsumableById } from '../../data/consumables';
+import { JokerRarity, JokerEdition } from '../../types/joker';
 
 export interface GameBoardCallbacks {
   onPlayHand?: (scoreResult: ScoreResult) => void;
@@ -1147,7 +1148,7 @@ export class GameBoard {
         const joker = getRandomJoker();
         console.log('[GameBoard] 生成的随机小丑牌:', joker.id, joker.name);
         if (rarity) {
-          joker.rarity = rarity;
+          (joker as Joker).rarity = rarity as JokerRarity;
         }
         const success = this.gameState.addJoker(joker);
         console.log('[GameBoard] addJoker 结果:', success);
@@ -1156,7 +1157,7 @@ export class GameBoard {
       addEditionToRandomJoker: (edition: string): boolean => {
         console.log('[GameBoard] addEditionToRandomJoker 被调用, edition:', edition);
         const jokers = this.gameState.jokers;
-        const eligibleJokers = jokers.filter(j => !j.hasEdition);
+        const eligibleJokers = jokers.filter(j => j.edition === JokerEdition.None);
         if (eligibleJokers.length === 0) return false;
         
         const randomIndex = Math.floor(Math.random() * eligibleJokers.length);
@@ -1218,7 +1219,7 @@ export class GameBoard {
       // 处理星球牌升级
       if (result.handTypeUpgrade) {
         console.log('[GameBoard] 升级牌型:', result.handTypeUpgrade);
-        this.gameState.handLevelState.upgrade(result.handTypeUpgrade);
+        this.gameState.handLevelState.upgradeHand(result.handTypeUpgrade as PokerHandType);
       }
 
       // 处理黑洞牌升级所有牌型

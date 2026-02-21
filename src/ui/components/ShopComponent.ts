@@ -2,7 +2,7 @@ import { GameState } from '../../models/GameState';
 import { Joker } from '../../models/Joker';
 import { Consumable } from '../../models/Consumable';
 import { CardComponent } from './CardComponent';
-import { JOKER_RARITY_NAMES } from '../../types/joker';
+import { JOKER_RARITY_NAMES, JokerRarity } from '../../types/joker';
 import { CONSUMABLE_TYPE_NAMES } from '../../types/consumable';
 import { HandRanksModal } from './HandRanksModal';
 import { JokerOrderModal } from './JokerOrderModal';
@@ -965,7 +965,7 @@ ${description}
         const joker = getRandomJoker();
         console.log('[ShopComponent] 生成的随机小丑牌:', joker.id, joker.name);
         if (rarity) {
-          joker.rarity = rarity;
+          (joker as Joker).rarity = rarity as JokerRarity;
         }
         const success = this.gameState.addJoker(joker);
         console.log('[ShopComponent] addJoker 结果:', success);

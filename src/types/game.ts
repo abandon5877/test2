@@ -119,6 +119,7 @@ export interface GameConfig {
   readonly maxDiscardsPerRound: number;
   readonly startingMoney: number;
   readonly startingAnte: number;
+  readonly interestCap: number;
 }
 
 export const DEFAULT_GAME_CONFIG: Readonly<GameConfig> = {
@@ -126,5 +127,6 @@ export const DEFAULT_GAME_CONFIG: Readonly<GameConfig> = {
   maxHandsPerRound: 4,
   maxDiscardsPerRound: 3,
   startingMoney: 4,
-  startingAnte: 1
+  startingAnte: 1,
+  interestCap: 20
 } as const;

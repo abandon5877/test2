@@ -4,6 +4,7 @@ import { JokerSystem } from '../systems/JokerSystem';
 import { Joker } from '../models/Joker';
 import { JokerRarity, JokerTrigger } from '../types/joker';
 import { GameState } from '../models/GameState';
+import { BlindType } from '../types/game';
 
 describe('ON_REROLL 触发器测试', () => {
   let jokerSlots: JokerSlots;
@@ -14,7 +15,7 @@ describe('ON_REROLL 触发器测试', () => {
     gameState = new GameState();
     gameState.startNewGame();
     // 完成一个盲注以进入商店
-    gameState.selectBlind('SMALL_BLIND');
+    gameState.selectBlind(BlindType.SMALL_BLIND);
     // 模拟完成盲注
     (gameState as any).roundScore = 1000; // 确保超过目标分数
     gameState.completeBlind();
