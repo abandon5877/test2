@@ -15,6 +15,7 @@ import { BossSelectionState } from './BossSelectionState';
 import { BossState } from './BossState';
 import { BossSelectionSystem } from '../systems/BossSelectionSystem';
 import { BossSystem } from '../systems/BossSystem';
+import { PokerHandDetector } from '../systems/PokerHandDetector';
 import { initializeBlindConfigs, resetBlindConfigs } from '../data/blinds';
 import { ConsumableDataManager } from '../data/ConsumableDataManager';
 import type { JokerInterface } from '../types/joker';
@@ -402,11 +403,30 @@ export class GameState implements GameStateInterface {
   }
 
   canPlayHand(): boolean {
-    return (
-      this.phase === GamePhase.PLAYING &&
-      this.handsRemaining > 0 &&
-      this.cardPile.hand.getSelectionCount() > 0
-    );
+    if (
+      this.phase !== GamePhase.PLAYING ||
+      this.handsRemaining <= 0 ||
+      this.cardPile.hand.getSelectionCount() <= 0
+    ) {
+      return false;
+    }
+
+    // 检查 Boss 限制
+    const selectedCards = this.cardPile.hand.getSelectedCards();
+    if (selectedCards.length > 0) {
+      const handResult = PokerHandDetector.detect(selectedCards);
+      const bossResult = BossSystem.canPlayHand(this.bossState, handResult.handType);
+      if (bossResult.canPlay === false) {
+        logger.warn('Boss restriction prevents playing hand', {
+          boss: this.bossState.getCurrentBoss(),
+          handType: handResult.handType,
+          message: bossResult.message
+        });
+        return false;
+      }
+    }
+
+    return true;
   }
 
   canDiscard(): boolean {

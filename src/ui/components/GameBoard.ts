@@ -5,6 +5,7 @@ import { CardComponent } from './CardComponent';
 import { HandComponent } from './HandComponent';
 import { HAND_BASE_VALUES, PokerHandType } from '../../types/pokerHands';
 import { PokerHandDetector } from '../../systems/PokerHandDetector';
+import { BossSystem } from '../../systems/BossSystem';
 import { ScoringSystem } from '../../systems/ScoringSystem';
 import type { ScoreResult } from '../../systems/ScoringSystem';
 import { HandRanksModal } from './HandRanksModal';
@@ -1093,6 +1094,21 @@ export class GameBoard {
    * 处理出牌
    */
   private handlePlayHand(): void {
+    // 检查 Boss 限制
+    if (!this.gameState.canPlayHand()) {
+      // 获取 Boss 限制信息
+      const selectedCards = this.gameState.cardPile.hand.getSelectedCards();
+      if (selectedCards.length > 0) {
+        const handResult = PokerHandDetector.detect(selectedCards);
+        const bossResult = BossSystem.canPlayHand(this.gameState.bossState, handResult.handType);
+        if (bossResult.canPlay === false && bossResult.message) {
+          Toast.error(bossResult.message);
+          return;
+        }
+      }
+      return;
+    }
+
     const scoreResult = this.gameState.playHand();
     
     if (scoreResult) {
