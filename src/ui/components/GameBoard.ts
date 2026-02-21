@@ -220,10 +220,16 @@ export class GameBoard {
     // 底注和盲注名称合并显示
     const anteBlindSection = document.createElement('div');
     anteBlindSection.className = 'game-panel';
+    anteBlindSection.style.cursor = 'pointer';
+    anteBlindSection.style.position = 'relative';
     anteBlindSection.innerHTML = `
       <div class="text-gray-400 text-center" style="font-size: ${this.scaled(19)}">底注 ${this.gameState.ante}</div>
       <div class="text-yellow-400 font-bold text-center" style="font-size: ${this.scaled(23)}" id="blind-name">${this.gameState.currentBlind?.name || '选择关卡'}</div>
     `;
+    
+    // 添加长按/悬停显示 Boss 效果
+    this.setupBossTooltip(anteBlindSection);
+    
     panel.appendChild(anteBlindSection);
 
     // 金币
@@ -478,6 +484,98 @@ export class GameBoard {
     panel.appendChild(discardBtn);
 
     return panel;
+  }
+
+  /**
+   * 设置 Boss 盲注提示框
+   * 长按或悬停显示 Boss 详细效果
+   */
+  private setupBossTooltip(element: HTMLElement): void {
+    const currentBoss = this.gameState.bossState.getCurrentBoss();
+    if (!currentBoss) return;
+
+    const bossConfig = BossSystem.getBossConfig(currentBoss);
+    if (!bossConfig) return;
+
+    // 创建提示框
+    const tooltip = document.createElement('div');
+    tooltip.className = 'boss-tooltip';
+    tooltip.style.cssText = `
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      margin-top: 8px;
+      padding: 12px;
+      background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+      border: 2px solid #ef4444;
+      border-radius: 8px;
+      box-shadow: 0 4px 20px rgba(239, 68, 68, 0.4);
+      z-index: 100;
+      display: none;
+      pointer-events: none;
+    `;
+
+    const bossName = document.createElement('div');
+    bossName.textContent = bossConfig.name;
+    bossName.style.cssText = `
+      font-size: ${this.scaled(16)};
+      font-weight: bold;
+      color: #ef4444;
+      margin-bottom: 6px;
+    `;
+
+    const bossDesc = document.createElement('div');
+    bossDesc.textContent = bossConfig.description;
+    bossDesc.style.cssText = `
+      font-size: ${this.scaled(14)};
+      color: #d1d5db;
+      line-height: 1.4;
+    `;
+
+    tooltip.appendChild(bossName);
+    tooltip.appendChild(bossDesc);
+    element.appendChild(tooltip);
+
+    let pressTimer: ReturnType<typeof setTimeout> | null = null;
+    let isShowing = false;
+
+    const showTooltip = () => {
+      if (!isShowing) {
+        tooltip.style.display = 'block';
+        isShowing = true;
+      }
+    };
+
+    const hideTooltip = () => {
+      if (isShowing) {
+        tooltip.style.display = 'none';
+        isShowing = false;
+      }
+      if (pressTimer) {
+        clearTimeout(pressTimer);
+        pressTimer = null;
+      }
+    };
+
+    // 鼠标悬停
+    element.addEventListener('mouseenter', showTooltip);
+    element.addEventListener('mouseleave', hideTooltip);
+
+    // 触摸长按
+    element.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      pressTimer = setTimeout(showTooltip, 300);
+    });
+    element.addEventListener('touchend', hideTooltip);
+    element.addEventListener('touchcancel', hideTooltip);
+
+    // 鼠标长按
+    element.addEventListener('mousedown', () => {
+      pressTimer = setTimeout(showTooltip, 300);
+    });
+    element.addEventListener('mouseup', hideTooltip);
+    element.addEventListener('mouseleave', hideTooltip);
   }
 
   /**
