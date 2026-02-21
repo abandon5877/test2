@@ -1265,6 +1265,155 @@ html, body, #app {
 
 /* 响应式断点 - 适配3840x2048到800x400，右侧栏宽度为原先的0.6倍 */
 
+/* 超宽屏手机横屏 (如 2780x1284, 2.17:1) - 限制高度，优化布局 */
+@media (min-width: 2000px) and (max-height: 1400px) and (min-aspect-ratio: 2/1) {
+  :root {
+    font-size: clamp(16px, 1.2vh + 0.3rem, 20px);
+  }
+
+  .game-layout {
+    grid-template-columns: minmax(100px, 160px) 1fr 320px;
+    grid-template-rows: 1fr auto;
+    gap: clamp(4px, 0.8vh, 12px);
+    padding: clamp(4px, 0.8vh, 12px);
+    height: 100vh;
+    max-height: 100vh;
+    overflow: hidden;
+  }
+
+  /* 左侧栏压缩 */
+  .game-layout-left {
+    max-height: 100vh;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
+  .game-layout-left .game-panel {
+    padding: clamp(4px, 0.8vh, 8px);
+    margin-bottom: clamp(2px, 0.5vh, 6px);
+  }
+
+  /* 中间区域 */
+  .game-layout-center {
+    max-height: calc(100vh - 80px);
+    overflow: hidden;
+  }
+
+  /* 右侧栏 */
+  .game-layout-right {
+    max-height: 100vh;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
+  /* 小丑牌区域 - 更紧凑 */
+  .jokers-area {
+    padding: clamp(2px, 0.5vh, 6px) clamp(4px, 1vw, 10px);
+    min-height: clamp(60px, 15vmin, 90px);
+    max-height: clamp(80px, 18vmin, 110px);
+    flex-wrap: nowrap;
+    overflow: visible;
+  }
+
+  .jokers-area .joker-card {
+    width: clamp(50px, 12vmin, 80px);
+    height: clamp(70px, 16.8vmin, 112px);
+    margin-left: calc(-1 * clamp(25px, 3vw, 35px));
+  }
+
+  .jokers-area .joker-card:first-child {
+    margin-left: 0;
+  }
+
+  /* 消耗牌区域 */
+  .consumables-area {
+    padding: clamp(2px, 0.5vh, 6px) clamp(4px, 1vw, 10px);
+    margin-top: clamp(2px, 0.5vh, 6px);
+    min-height: clamp(60px, 15vmin, 90px);
+    max-height: clamp(80px, 18vmin, 110px);
+    flex-wrap: nowrap;
+    overflow: visible;
+  }
+
+  .consumables-area .consumable-card {
+    width: clamp(55px, 13vmin, 85px);
+    height: clamp(73px, 17.3vmin, 113px);
+    margin-left: calc(-1 * clamp(30px, 4vw, 45px));
+  }
+
+  .consumables-area .consumable-card:first-child {
+    margin-left: 0;
+  }
+
+  /* 手牌区域 - 限制高度 */
+  .hand-container {
+    padding: clamp(2px, 0.8vmin, 12px);
+    min-height: clamp(50px, 15vmin, 120px);
+    max-height: clamp(70px, 18vmin, 140px);
+  }
+
+  .hand-container .card {
+    width: clamp(45px, 10vmin, 75px);
+    height: clamp(63px, 14vmin, 105px);
+    margin-left: calc(-1 * clamp(15px, 3.5vmin, 30px));
+  }
+
+  /* 底部按钮区域 */
+  .game-layout-bottom {
+    min-height: clamp(35px, 6vh, 50px);
+    max-height: clamp(50px, 8vh, 70px);
+  }
+
+  .game-btn {
+    padding: clamp(6px, 1.2vh, 10px) clamp(10px, 1.5vw, 16px);
+    font-size: clamp(14px, 2.2vmin, 18px);
+    min-height: clamp(32px, 5vh, 44px);
+  }
+
+  /* 卡牌样式调整 */
+  .card {
+    width: clamp(45px, 10vmin, 75px);
+    height: clamp(63px, 14vmin, 105px);
+    border-radius: clamp(4px, 1.2vmin, 8px);
+  }
+
+  .card-center {
+    font-size: clamp(20px, 4.5vmin, 32px);
+  }
+
+  .card-corner {
+    font-size: clamp(10px, 2vmin, 14px);
+  }
+
+  /* 游戏面板 */
+  .game-panel {
+    padding: clamp(4px, 0.8vh, 8px) clamp(6px, 1vw, 10px);
+  }
+
+  /* 盲注卡片 */
+  .blind-card {
+    width: clamp(100px, 15vw, 160px);
+    padding: clamp(8px, 1.5vw, 14px);
+  }
+
+  .blind-name {
+    font-size: clamp(14px, 2vw, 20px);
+  }
+
+  .blind-target {
+    font-size: clamp(16px, 2.5vw, 24px);
+  }
+
+  /* 分数显示 */
+  .score-current {
+    font-size: clamp(24px, 4vmin, 32px);
+  }
+
+  .score-target {
+    font-size: clamp(20px, 3.5vmin, 28px);
+  }
+}
+
 /* 大屏幕 1920px+ - 右侧栏470px (5*110-4*35+24+36=470) */
 @media (min-width: 1920px) {
   .game-layout {
