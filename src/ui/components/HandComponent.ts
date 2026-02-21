@@ -101,60 +101,86 @@ export class HandComponent {
     const selectedIndices = this.hand.getSelectedIndices();
     const totalCards = cards.length;
 
-    // 获取中间区域实际宽度（通过查找父元素或游戏布局）
-    const centerPanel = this.container.closest('.game-layout-center');
-    const gameLayout = this.container.closest('.game-layout');
+    // 获取中间区域实际宽度：直接使用手牌容器的父元素（hand-area）宽度
+    const centerPanel = this.container.closest('.game-layout-center') as HTMLElement;
     
-    // 计算中间区域宽度：游戏布局总宽度 - 左右边栏宽度
-    let centerWidth = 800; // 默认值
-    if (gameLayout) {
-      const layoutWidth = gameLayout.clientWidth;
-      // 根据CSS grid比例估算中间区域宽度
-      // grid-template-columns: minmax(70px, 180px) 1fr minmax(120px, 240px)
-      // 中间区域大约占剩余空间
-      const leftWidth = Math.min(180, Math.max(70, layoutWidth * 0.15));
-      const rightWidth = Math.min(240, Math.max(120, layoutWidth * 0.2));
-      centerWidth = layoutWidth - leftWidth - rightWidth - 40; // 40px for gaps/padding
-    } else if (centerPanel) {
+    // 优先使用 hand-area 的实际宽度，其次是 game-layout-center，最后是容器自身
+    let centerWidth = this.container.clientWidth;
+    if (handArea && handArea.clientWidth > 0) {
+      centerWidth = handArea.clientWidth;
+    } else if (centerPanel && centerPanel.clientWidth > 0) {
       centerWidth = centerPanel.clientWidth;
     }
     
-    // 确保最小宽度
-    centerWidth = Math.max(300, centerWidth);
+    // 确保最小宽度（防止计算错误）
+    centerWidth = Math.max(200, centerWidth);
     
     // 记录当前容器宽度
     this.lastContainerWidth = this.container.clientWidth;
 
-    const cardWidth = 100; // 卡牌宽度（像素）
-    const overlap = this.calculateCardOverlap(centerWidth, totalCards, cardWidth);
-
-    cards.forEach((card, index) => {
-      const isSelected = selectedIndices.has(index);
-      const cardElement = CardComponent.renderCard(card, isSelected);
+    // 先渲染第一张卡牌到 DOM，获取实际宽度后再计算重叠量
+    // 这样可以准确获取 CSS 计算后的卡牌尺寸
+    let cardWidth = 70; // 默认估算值
+    let overlap = 0;
+    
+    // 渲染第一张卡牌
+    if (cards.length > 0) {
+      const firstCard = cards[0];
+      const isFirstSelected = selectedIndices.has(0);
+      const firstCardElement = CardComponent.renderCard(firstCard, isFirstSelected);
       
-      // 设置卡牌样式
-      cardElement.style.position = 'relative';
-      cardElement.style.flexShrink = '0';
-      cardElement.style.marginLeft = index === 0 ? '0' : `-${overlap}px`;
-      cardElement.style.zIndex = String(index);
+      // 临时添加到 DOM 以获取实际尺寸
+      firstCardElement.style.position = 'relative';
+      firstCardElement.style.flexShrink = '0';
+      firstCardElement.style.visibility = 'hidden'; // 先隐藏，避免闪烁
+      handArea.appendChild(firstCardElement);
       
-      // 统一设置卡牌视觉状态
-      this.setCardVisualState(cardElement, index, isSelected, totalCards);
+      // 获取实际卡牌宽度
+      const actualWidth = firstCardElement.clientWidth;
+      if (actualWidth > 0) {
+        cardWidth = actualWidth;
+      }
       
-      // 添加点击事件
-      cardElement.addEventListener('click', () => this.handleCardClick(index));
+      // 计算重叠量
+      overlap = this.calculateCardOverlap(centerWidth, totalCards, cardWidth);
       
-      handArea.appendChild(cardElement);
-      this.cardElements.push(cardElement);
-    });
+      // 恢复可见性并设置样式
+      firstCardElement.style.visibility = 'visible';
+      firstCardElement.style.zIndex = '0';
+      this.setCardVisualState(firstCardElement, 0, isFirstSelected, totalCards);
+      firstCardElement.addEventListener('click', () => this.handleCardClick(0));
+      this.cardElements.push(firstCardElement);
+      
+      // 渲染剩余卡牌
+      for (let index = 1; index < cards.length; index++) {
+        const card = cards[index];
+        const isSelected = selectedIndices.has(index);
+        const cardElement = CardComponent.renderCard(card, isSelected);
+        
+        // 设置卡牌样式
+        cardElement.style.position = 'relative';
+        cardElement.style.flexShrink = '0';
+        cardElement.style.marginLeft = `-${overlap}px`;
+        cardElement.style.zIndex = String(index);
+        
+        // 统一设置卡牌视觉状态
+        this.setCardVisualState(cardElement, index, isSelected, totalCards);
+        
+        // 添加点击事件
+        cardElement.addEventListener('click', () => this.handleCardClick(index));
+        
+        handArea.appendChild(cardElement);
+        this.cardElements.push(cardElement);
+      }
+    }
 
     this.container.appendChild(handArea);
   }
 
   /**
    * 计算卡牌重叠量
-   * 根据中间区域宽度和手牌数量动态计算，确保手牌不会越界
-   * 适配3840x2048到800x400分辨率
+   * 根据容器实际尺寸和手牌数量动态计算，确保手牌不会越界
+   * 使用连续函数而非分段预设值，实现平滑自适应
    * @param centerWidth - 中间区域宽度
    * @param totalCards - 手牌总数
    * @param cardWidth - 单张卡牌宽度
@@ -163,9 +189,13 @@ export class HandComponent {
   private calculateCardOverlap(centerWidth: number, totalCards: number, cardWidth: number): number {
     if (totalCards <= 1) return 0;
 
-    // 根据中间区域宽度动态调整边距
-    // 小屏幕时边距更小，给手牌更多空间
-    const padding = centerWidth < 400 ? 10 : Math.max(20, Math.min(60, centerWidth * 0.08));
+    // 获取容器高度，用于在极端比例下调整重叠量
+    const containerHeight = this.container.clientHeight;
+    const aspectRatio = centerWidth / containerHeight;
+    
+    // 动态计算边距：基于容器宽度的连续函数
+    // 使用 clamp 确保边距在合理范围内（10px 到 60px）
+    const padding = Math.max(10, Math.min(60, centerWidth * 0.06));
     const availableWidth = centerWidth - padding;
 
     // 计算需要的总宽度（无重叠时）
@@ -173,32 +203,65 @@ export class HandComponent {
 
     // 如果不需要重叠，返回0
     if (totalWidthNeeded <= availableWidth) {
+      console.log('[HandComponent] 无需重叠', { centerWidth, totalCards, cardWidth, availableWidth, totalWidthNeeded });
       return 0;
     }
 
     // 计算需要的重叠量
     // 总宽度 = cardWidth + (totalCards - 1) * (cardWidth - overlap)
-    // 解方程：overlap = cardWidth - (availableWidth - cardWidth) / (totalCards - 1)
     const calculatedOverlap = cardWidth - (availableWidth - cardWidth) / (totalCards - 1);
 
-    // 根据中间区域宽度确定最大重叠量
-    // 小屏幕时可以重叠更多（保留更少的可见部分）
-    let maxVisibleRatio: number;
-    if (centerWidth > 800) {
-      maxVisibleRatio = 0.5; // 大屏幕保留50%
-    } else if (centerWidth > 500) {
-      maxVisibleRatio = 0.4; // 中等屏幕保留40%
-    } else {
-      maxVisibleRatio = 0.25; // 小屏幕只保留25%，重叠75%
+    // 动态计算最大重叠量：基于容器宽度的连续函数
+    // 使用平滑的插值函数，避免分段跳跃
+    // 目标：容器越宽，保留的可见比例越高（35% ~ 55%）
+    const minVisibleRatio = 0.35;  // 最小可见比例（最拥挤时保留更多）
+    const maxVisibleRatio = 0.55;  // 最大可见比例（最宽松时）
+    const referenceMinWidth = 250;  // 参考最小宽度（降低以适应更小的屏幕）
+    const referenceMaxWidth = 1200; // 参考最大宽度
+    
+    // 使用平滑的插值计算可见比例
+    const widthRatio = Math.max(0, Math.min(1, 
+      (centerWidth - referenceMinWidth) / (referenceMaxWidth - referenceMinWidth)
+    ));
+    let visibleRatio = minVisibleRatio + (maxVisibleRatio - minVisibleRatio) * widthRatio;
+    
+    // 在极端宽高比下增加可见比例，避免卡牌堆叠太紧
+    const idealAspectRatio = 1.78;
+    const aspectRatioDeviation = Math.abs(aspectRatio - idealAspectRatio) / idealAspectRatio;
+    if (aspectRatioDeviation > 0.3) {
+      visibleRatio = Math.min(0.6, visibleRatio + 0.1);
     }
     
-    const maxOverlap = cardWidth * (1 - maxVisibleRatio);
+    const maxOverlap = cardWidth * (1 - visibleRatio);
     
-    // 确保至少重叠一定比例，防止间距过大
-    const minOverlap = centerWidth < 400 ? cardWidth * 0.6 : cardWidth * 0.2;
+    // 动态计算最小重叠量：确保卡牌不会太分散
+    // 基于容器宽度连续变化（10% ~ 40% 的卡牌宽度，降低最小值）
+    const minOverlapRatio = Math.max(0.1, Math.min(0.4, 0.5 - centerWidth / 2500));
+    const minOverlap = cardWidth * minOverlapRatio;
 
-    // 返回计算的重叠量，但限制在合理范围内
-    return Math.min(Math.max(calculatedOverlap, minOverlap), maxOverlap);
+    const finalOverlap = Math.min(Math.max(calculatedOverlap, minOverlap), maxOverlap);
+    
+    // 输出调试日志
+    console.log('[HandComponent] 重叠量计算', {
+      centerWidth,
+      containerHeight,
+      aspectRatio: aspectRatio.toFixed(2),
+      totalCards,
+      cardWidth,
+      padding,
+      availableWidth,
+      calculatedOverlap: calculatedOverlap.toFixed(2),
+      widthRatio: widthRatio.toFixed(2),
+      visibleRatio: visibleRatio.toFixed(2),
+      aspectRatioDeviation: aspectRatioDeviation.toFixed(2),
+      maxOverlap: maxOverlap.toFixed(2),
+      minOverlapRatio: minOverlapRatio.toFixed(2),
+      minOverlap: minOverlap.toFixed(2),
+      finalOverlap: finalOverlap.toFixed(2)
+    });
+
+    // 返回计算的重叠量，限制在合理范围内
+    return finalOverlap;
   }
 
   /**
@@ -269,14 +332,36 @@ export class HandComponent {
 
   /**
    * 计算卡牌的倾斜角度
+   * 使用连续函数基于容器宽高比动态计算，实现平滑自适应
    * @param index - 卡牌索引
    * @param totalCards - 手牌总数
    * @returns 倾斜角度（度）
    */
   private calculateCardRotation(index: number, totalCards: number): number {
+    // 获取容器尺寸
+    const containerWidth = this.container.clientWidth;
+    const containerHeight = this.container.clientHeight;
+    const aspectRatio = containerWidth / containerHeight;
+    
     // 基础角度范围：根据手牌数量动态调整
     // 手牌越多，每张牌的角度越小，保持整体扇形美观
-    const baseAngleRange = Math.min(32, totalCards * 4); // 最大32度范围
+    // 降低最大角度，避免在极端比例下过于分散
+    const maxAngleRange = Math.min(24, totalCards * 3); // 降低最大角度从32到24
+    
+    // 根据宽高比动态调整角度范围
+    // 使用连续函数而非分段判断，实现平滑过渡
+    // 理想宽高比为 16:9 ≈ 1.78
+    const idealAspectRatio = 1.78;
+    const maxDeviation = 1.0; // 降低最大偏离值，使衰减更快
+    
+    // 计算偏离理想比例的程度（0 ~ 1）
+    const deviation = Math.min(1, Math.abs(aspectRatio - idealAspectRatio) / maxDeviation);
+    
+    // 偏离越大，角度范围越小（使用更激进的衰减函数）
+    // 角度范围在 40% ~ 100% 之间连续变化
+    const angleScaleFactor = 1 - (deviation * 0.6); // 0.4 ~ 1.0，更激进的衰减
+    const baseAngleRange = maxAngleRange * angleScaleFactor;
+    
     const angleStep = totalCards > 1 ? baseAngleRange / (totalCards - 1) : 0;
     
     // 从左边开始计算角度

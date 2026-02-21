@@ -178,25 +178,6 @@ export class ResponsiveLayoutManager {
       );
     }
 
-    // 超宽屏检测（宽高比 > 2:1，如 2780x1284）
-    const aspectRatio = containerRect.width / containerRect.height;
-    if (aspectRatio > 2.0 && containerRect.height < 1400) {
-      // 超宽屏手机横屏，根据高度计算推荐缩放
-      const heightBasedScale = Math.min(
-        containerRect.height / 1400, // 基于1400px标准高度
-        0.85 // 最大缩放0.85
-      );
-      metrics.recommendedScale = Math.min(
-        metrics.recommendedScale,
-        Math.max(this.config.minScale, heightBasedScale)
-      );
-      console.log('[ResponsiveLayoutManager] 超宽屏检测:', {
-        aspectRatio: aspectRatio.toFixed(2),
-        height: containerRect.height,
-        recommendedScale: metrics.recommendedScale
-      });
-    }
-
     return metrics;
   }
 

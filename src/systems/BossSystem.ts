@@ -220,6 +220,8 @@ export class BossSystem {
         return card.suit === Suit.Diamonds;
       case BossType.PLANT:
         return card.rank === Rank.Jack || card.rank === Rank.Queen || card.rank === Rank.King;
+      case BossType.PILLAR:
+        return bossState.hasCardBeenPlayed(card);
       default:
         return false;
     }
@@ -319,35 +321,35 @@ export class BossSystem {
     }> = {
       [BossType.HOOK]: {
         name: '钩子',
-        description: '每次出牌后弃掉2张随机手牌',
+        description: '每次出牌后强制弃掉2张手牌',
         minAnte: 1,
         scoreMultiplier: 2,
         reward: 5
       },
       [BossType.MANACLE]: {
         name: '手铐',
-        description: '手牌上限-1',
+        description: '手牌上限减少1张',
         minAnte: 1,
         scoreMultiplier: 2,
         reward: 5
       },
       [BossType.HOUSE]: {
         name: '房子',
-        description: '第一手牌面朝下',
+        description: '第一手牌强制面朝下',
         minAnte: 2,
         scoreMultiplier: 2,
         reward: 5
       },
       [BossType.WALL]: {
         name: '墙壁',
-        description: '4倍基础分数',
+        description: '目标分数变为4倍',
         minAnte: 2,
         scoreMultiplier: 4,
         reward: 5
       },
       [BossType.ARM]: {
         name: '手臂',
-        description: '打出牌型等级-1（最低1级）',
+        description: '每次打出牌型，该牌型等级降低1级',
         minAnte: 2,
         scoreMultiplier: 2,
         reward: 5
@@ -361,14 +363,14 @@ export class BossSystem {
       },
       [BossType.EYE]: {
         name: '眼睛',
-        description: '本回合不能重复牌型',
+        description: '本回合不能重复打出相同牌型',
         minAnte: 3,
         scoreMultiplier: 2,
         reward: 5
       },
       [BossType.AMBER_ACORN]: {
         name: '琥珀橡果',
-        description: '翻转并洗牌所有小丑牌',
+        description: '回合开始时翻转并随机打乱所有小丑牌位置',
         minAnte: 8,
         scoreMultiplier: 2,
         reward: 8
@@ -410,7 +412,7 @@ export class BossSystem {
       },
       [BossType.FLINT]: {
         name: '燧石',
-        description: '基础筹码和倍率减半',
+        description: '最终得分减半',
         minAnte: 2,
         scoreMultiplier: 2,
         reward: 5
@@ -424,7 +426,7 @@ export class BossSystem {
       },
       [BossType.MOUTH]: {
         name: '嘴',
-        description: '本回合只能出一种牌型',
+        description: '本回合只能打出一种牌型',
         minAnte: 2,
         scoreMultiplier: 2,
         reward: 5
@@ -438,63 +440,63 @@ export class BossSystem {
       },
       [BossType.SERPENT]: {
         name: '蛇',
-        description: '出牌/弃牌后只抽3张牌',
+        description: '出牌或弃牌后，只抽3张牌补充手牌',
         minAnte: 5,
         scoreMultiplier: 2,
         reward: 5
       },
       [BossType.PILLAR]: {
         name: '柱子',
-        description: '本底注之前出过的牌失效',
+        description: '本底注中之前出过的牌会失效',
         minAnte: 1,
         scoreMultiplier: 2,
         reward: 5
       },
       [BossType.NEEDLE]: {
         name: '针',
-        description: '只能出1次牌',
+        description: '只能出牌1次',
         minAnte: 2,
         scoreMultiplier: 1,
         reward: 5
       },
       [BossType.OX]: {
         name: '牛',
-        description: '打出最常用牌型时金钱归零',
+        description: '打出本回合最常用牌型时，金钱归零',
         minAnte: 6,
         scoreMultiplier: 2,
         reward: 5
       },
       [BossType.FISH]: {
         name: '鱼',
-        description: '出牌后抽到的牌面朝下',
+        description: '出牌后抽到的补充牌面朝下',
         minAnte: 2,
         scoreMultiplier: 2,
         reward: 5
       },
       [BossType.PSYCHIC]: {
         name: '通灵',
-        description: '必须出5张牌',
+        description: '必须正好打出5张牌',
         minAnte: 1,
         scoreMultiplier: 2,
         reward: 5
       },
       [BossType.WATER]: {
         name: '水',
-        description: '0次弃牌',
+        description: '0次弃牌机会',
         minAnte: 2,
         scoreMultiplier: 2,
         reward: 5
       },
       [BossType.VERDANT_LEAF]: {
         name: '翠绿叶子',
-        description: '所有卡牌失效直到卖出1张小丑牌',
+        description: '所有卡牌失效，直到卖出1张小丑牌',
         minAnte: 8,
         scoreMultiplier: 2,
         reward: 8
       },
       [BossType.VIOLET_VESSEL]: {
         name: '紫色容器',
-        description: '6倍基础分数',
+        description: '目标分数变为6倍',
         minAnte: 8,
         scoreMultiplier: 6,
         reward: 8
@@ -508,7 +510,7 @@ export class BossSystem {
       },
       [BossType.CERULEAN_BELL]: {
         name: '天青铃铛',
-        description: '强制选择1张牌',
+        description: '必须选择1张特定牌',
         minAnte: 8,
         scoreMultiplier: 2,
         reward: 8

@@ -25,3 +25,7 @@ dist-ssr
 
 # Trae
 .trae
+
+# Project documentation (exclude all md files except README)
+*.md
+!README.md

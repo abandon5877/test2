@@ -2,7 +2,7 @@ import { GameState } from '../../models/GameState';
 import { Joker } from '../../models/Joker';
 import { Consumable } from '../../models/Consumable';
 import { CardComponent } from './CardComponent';
-import { JOKER_RARITY_NAMES, JokerRarity } from '../../types/joker';
+import { JOKER_RARITY_NAMES, JokerRarity, JokerEdition } from '../../types/joker';
 import { CONSUMABLE_TYPE_NAMES } from '../../types/consumable';
 import { HandRanksModal } from './HandRanksModal';
 import { JokerOrderModal } from './JokerOrderModal';
@@ -16,6 +16,7 @@ import {
 } from '../../data/consumables';
 import { Toast } from './Toast';
 import { getRandomJoker } from '../../data/jokers';
+import { getConsumableById } from '../../data/consumables';
 import { Storage } from '../../utils/storage';
 import { PokerHandType } from '../../types/pokerHands';
 
@@ -399,7 +400,9 @@ export class ShopComponent {
     panel.style.flexDirection = 'column';
     panel.style.gap = this.scaled(8);
     panel.style.padding = this.scaled(8);
+    panel.style.position = 'relative'; // 添加相对定位，用于开包界面
     panel.className = 'shop-center-panel';
+    panel.id = 'shop-center-panel';
 
     // 商品标题
     const itemsTitle = document.createElement('h2');
@@ -445,6 +448,13 @@ export class ShopComponent {
     }, 0);
 
     return panel;
+  }
+
+  /**
+   * 获取中间商品区域容器（用于开包界面）
+   */
+  getCenterPanel(): HTMLElement | null {
+    return document.getElementById('shop-center-panel');
   }
 
   /**
@@ -961,6 +971,8 @@ ${description}
       },
       selectedCards: this.gameState.cardPile.hand.getSelectedCards(),
       deck: this.gameState.cardPile.deck,
+      jokers: this.gameState.jokers,
+      lastUsedConsumable: this.gameState.lastUsedConsumable ?? undefined,
       addJoker: (rarity?: 'rare'): boolean => {
         console.log('[ShopComponent] addJoker 被调用, rarity:', rarity);
         const joker = getRandomJoker();
@@ -976,6 +988,41 @@ ${description}
         const availableSlots = this.gameState.getJokerSlots().getAvailableSlots();
         console.log('[ShopComponent] canAddJoker 检查, 可用槽位:', availableSlots);
         return availableSlots > 0;
+      },
+      addEditionToRandomJoker: (edition: string): boolean => {
+        console.log('[ShopComponent] addEditionToRandomJoker 被调用, edition:', edition);
+        const jokers = this.gameState.jokers;
+        const eligibleJokers = jokers.filter(j => j.edition === JokerEdition.None);
+        if (eligibleJokers.length === 0) return false;
+        
+        const randomIndex = Math.floor(Math.random() * eligibleJokers.length);
+        const targetJoker = eligibleJokers[randomIndex];
+        const actualIndex = this.gameState.jokers.indexOf(targetJoker);
+        
+        if (actualIndex >= 0) {
+          const joker = this.gameState.jokers[actualIndex] as Joker;
+          joker.edition = edition as JokerEdition;
+          console.log('[ShopComponent] 已为小丑牌添加版本:', joker.name, edition);
+          return true;
+        }
+        return false;
+      },
+      destroyOtherJokers: (): number => {
+        console.log('[ShopComponent] destroyOtherJokers 被调用');
+        const jokers = this.gameState.jokers;
+        if (jokers.length <= 1) return 0;
+        
+        const randomIndex = Math.floor(Math.random() * jokers.length);
+        let destroyedCount = 0;
+        
+        for (let i = jokers.length - 1; i >= 0; i--) {
+          if (i !== randomIndex) {
+            this.gameState.removeJoker(i);
+            destroyedCount++;
+          }
+        }
+        console.log('[ShopComponent] 已销毁小丑牌数量:', destroyedCount);
+        return destroyedCount;
       }
     };
 
@@ -1005,6 +1052,47 @@ ${description}
         this.gameState.handLevelState.upgradeAll();
       }
 
+      // 更新最后使用的消耗牌（用于愚者效果）
+      this.gameState.lastUsedConsumable = { id: consumable.id, type: consumable.type };
+      console.log('[ShopComponent] 更新 lastUsedConsumable:', this.gameState.lastUsedConsumable);
+
+      // 处理新生成的消耗牌（如女祭司生成的星球牌）
+      if (result.newConsumableIds && result.newConsumableIds.length > 0) {
+        console.log('[ShopComponent] 生成新的消耗牌:', result.newConsumableIds);
+        let addedCount = 0;
+        let skippedCount = 0;
+        
+        for (const consumableId of result.newConsumableIds) {
+          // 检查是否还有空槽位
+          if (!this.gameState.hasAvailableConsumableSlot()) {
+            console.log('[ShopComponent] 消耗牌槽位已满，跳过:', consumableId);
+            skippedCount++;
+            continue;
+          }
+          
+          const newConsumable = getConsumableById(consumableId);
+          if (newConsumable) {
+            const success = this.gameState.addConsumable(newConsumable);
+            if (success) {
+              console.log('[ShopComponent] 添加消耗牌成功:', consumableId);
+              addedCount++;
+            } else {
+              console.log('[ShopComponent] 添加消耗牌失败:', consumableId);
+              skippedCount++;
+            }
+          } else {
+            console.warn('[ShopComponent] 找不到消耗牌:', consumableId);
+            skippedCount++;
+          }
+        }
+        
+        if (skippedCount > 0) {
+          Toast.warning(`生成${result.newConsumableIds.length}张消耗牌，成功添加${addedCount}张，${skippedCount}张因槽位已满被跳过`);
+        } else {
+          Toast.success(`成功生成${addedCount}张消耗牌`);
+        }
+      }
+
       // 从消耗牌槽中移除
       console.log('[ShopComponent] 准备移除消耗牌, index:', index);
       const removed = this.gameState.removeConsumable(index);
@@ -1016,7 +1104,7 @@ ${description}
 
       this.render();
 
-      if (result.message) {
+      if (result.message && (!result.newConsumableIds || result.newConsumableIds.length === 0)) {
         Toast.success(result.message);
       }
     } else {

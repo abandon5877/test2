@@ -15,8 +15,9 @@ import { showAlert, showConfirm } from './ui/components/Modal';
 import { ScaleContainer } from './ui/components/ScaleContainer';
 import { Toast } from './ui/components/Toast';
 import { Suit, Rank } from './types/card';
-import { getRandomJokers } from './data/jokers';
-import { getRandomConsumables } from './data/consumables';
+import { getRandomJokers, getRandomJoker } from './data/jokers';
+import { getRandomConsumables, getConsumableById } from './data/consumables';
+import { JokerEdition, JokerRarity } from './types/joker';
 
 class Game {
   private gameState: GameState;
@@ -31,107 +32,172 @@ class Game {
   }
 
   /**
-   * 显示主菜单 - 使用 viewport 单位实现流体式响应布局
+   * 显示主菜单 - 使用 vmin 实现真正的自适应布局
+   * 大屏幕元素大，小屏幕元素小，标题始终比按钮大一圈
    */
   private showMainMenu(): void {
     this.container.innerHTML = '';
-    // 使用 viewport 单位确保内容适应屏幕大小，允许滚动
-    this.container.className = 'casino-bg min-h-screen w-full flex flex-col items-center justify-center p-[2vw] overflow-y-auto';
+    this.container.className = 'casino-bg min-h-screen w-full flex flex-col items-center justify-center p-[2vmin] overflow-hidden';
 
-    // 内容包装器 - 限制最大宽度并居中
+    // 使用 vmin 作为基准单位，确保在任何屏幕比例下都一致
+    const vmin = Math.min(window.innerWidth, window.innerHeight) / 100;
+    
+    // 内容包装器
     const contentWrapper = document.createElement('div');
-    contentWrapper.className = 'flex flex-col items-center w-full max-w-2xl';
+    contentWrapper.className = 'flex flex-col items-center w-full';
+    contentWrapper.style.maxWidth = `${window.innerWidth * 0.9}px`;
 
-    // 标题 - 使用 clamp 限制字体大小范围，防止越界
+    // 标题 - 使用 vmin，大屏幕大，小屏幕小
+    const titleSize = Math.max(vmin * 12, 24); // 最小24px，约12vmin
     const title = document.createElement('h1');
-    title.style.fontSize = 'clamp(1.5rem, 6vw, 3rem)';  // 最小 24px, 动态 6vw, 最大 48px
-    title.className = 'font-bold text-yellow-400 mb-[-2vh] animate-float';
+    title.style.fontSize = `${titleSize}px`;
+    title.style.marginBottom = `${vmin * 2}px`;
+    title.className = 'font-bold text-yellow-400 animate-float';
     title.textContent = '🃏 Balatro';
-    title.style.wordBreak = 'break-word';
     title.style.textAlign = 'center';
     contentWrapper.appendChild(title);
 
+    // 副标题 - 比标题小一些
+    const subtitleSize = Math.max(vmin * 5, 14);
     const subtitle = document.createElement('p');
-    subtitle.style.fontSize = 'clamp(0.875rem, 2.5vw, 1.25rem)';  // 最小 14px, 动态 2.5vw, 最大 20px
-    subtitle.className = 'text-gray-400 mb-[3vh]';
+    subtitle.style.fontSize = `${subtitleSize}px`;
+    subtitle.style.marginBottom = `${vmin * 6}px`;
+    subtitle.className = 'text-gray-400';
     subtitle.textContent = '扑克肉鸽卡牌游戏';
     contentWrapper.appendChild(subtitle);
 
-    // 按钮容器 - 使用 viewport 单位限制宽度
+    // 按钮容器
     const buttonContainer = document.createElement('div');
-    buttonContainer.style.width = 'min(80vw, 320px)';  // 取 80vw 和 320px 中较小值
-    buttonContainer.style.gap = 'clamp(8px, 2vh, 16px)';  // 动态间距
+    buttonContainer.style.width = '100%';
+    buttonContainer.style.maxWidth = `${Math.min(vmin * 80, 320)}px`;
+    buttonContainer.style.gap = `${Math.max(vmin * 2, 6)}px`;
     buttonContainer.className = 'flex flex-col';
+
+    // 按钮尺寸 - 统一大小
+    const btnHeight = Math.max(vmin * 10, 44); // 最小44px，约10vmin
+    const btnFontSize = Math.max(vmin * 3.5, 16); // 最小16px，约3.5vmin
+
+    const createButton = (text: string, className: string, onClick: () => void, isSpecial = false) => {
+      const btn = document.createElement('button');
+      btn.style.height = `${btnHeight}px`;
+      btn.style.fontSize = `${btnFontSize}px`;
+      btn.style.display = 'flex';
+      btn.style.alignItems = 'center';
+      btn.style.justifyContent = 'center';
+      btn.className = `game-btn ${className} w-full`;
+      btn.textContent = text;
+      if (isSpecial) {
+        btn.style.background = 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)';
+        btn.style.color = '#ffffff';
+        btn.style.border = '2px solid #fbbf24';
+      }
+      btn.addEventListener('click', onClick);
+      return btn;
+    };
 
     // 继续游戏按钮（如果有存档）
     if (hasSave()) {
-      const continueBtn = document.createElement('button');
-      continueBtn.style.fontSize = 'clamp(0.875rem, 2.5vw, 1.125rem)';
-      continueBtn.style.padding = 'clamp(8px, 1.8vh, 14px) clamp(16px, 4vw, 28px)';
-      continueBtn.className = 'game-btn game-btn-primary w-full';
-      continueBtn.textContent = '继续游戏';
-      continueBtn.addEventListener('click', () => this.continueGame());
-      buttonContainer.appendChild(continueBtn);
+      buttonContainer.appendChild(createButton('继续游戏', 'game-btn-primary', () => this.continueGame()));
     }
 
     // 开始新游戏按钮
-    const newGameBtn = document.createElement('button');
-    newGameBtn.style.fontSize = 'clamp(0.875rem, 2.5vw, 1.125rem)';
-    newGameBtn.style.padding = 'clamp(8px, 1.8vh, 14px) clamp(16px, 4vw, 28px)';
-    newGameBtn.className = 'game-btn game-btn-secondary w-full';
-    newGameBtn.textContent = '开始新游戏';
-    newGameBtn.addEventListener('click', () => this.startNewGame());
-    buttonContainer.appendChild(newGameBtn);
+    buttonContainer.appendChild(createButton('开始新游戏', 'game-btn-secondary', () => this.startNewGame()));
 
     // 规则说明按钮
-    const rulesBtn = document.createElement('button');
-    rulesBtn.style.fontSize = 'clamp(0.875rem, 2.5vw, 1.125rem)';
-    rulesBtn.style.padding = 'clamp(8px, 1.8vh, 14px) clamp(16px, 4vw, 28px)';
-    rulesBtn.className = 'game-btn game-btn-secondary w-full';
-    rulesBtn.textContent = '规则说明';
-    rulesBtn.addEventListener('click', () => this.showRules());
-    buttonContainer.appendChild(rulesBtn);
-
-    // 全屏按钮
-    const fullscreenBtn = document.createElement('button');
-    fullscreenBtn.style.fontSize = 'clamp(0.875rem, 2.5vw, 1.125rem)';
-    fullscreenBtn.style.padding = 'clamp(8px, 1.8vh, 14px) clamp(16px, 4vw, 28px)';
-    fullscreenBtn.style.marginTop = 'clamp(8px, 2vh, 16px)';
-    fullscreenBtn.className = 'game-btn w-full';
-    fullscreenBtn.style.background = 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)';
-    fullscreenBtn.style.color = '#ffffff';
-    fullscreenBtn.style.border = '2px solid #fbbf24';
-    fullscreenBtn.textContent = document.fullscreenElement ? '📴 退出全屏' : '🔳 全屏模式';
-    fullscreenBtn.addEventListener('click', () => this.toggleFullscreen(fullscreenBtn));
-    buttonContainer.appendChild(fullscreenBtn);
-
-    // 监听全屏状态变化
-    document.addEventListener('fullscreenchange', () => {
-      fullscreenBtn.textContent = document.fullscreenElement ? '📴 退出全屏' : '🔳 全屏模式';
-    });
-
-    // 删除存档按钮（如果有存档）
-    if (hasSave()) {
-      const deleteSaveBtn = document.createElement('button');
-      deleteSaveBtn.style.fontSize = 'clamp(0.75rem, 2vw, 0.875rem)';
-      deleteSaveBtn.style.padding = 'clamp(6px, 1.5vh, 10px) clamp(12px, 3vw, 20px)';
-      deleteSaveBtn.style.marginTop = 'clamp(12px, 3vh, 24px)';
-      deleteSaveBtn.className = 'game-btn game-btn-danger w-full';
-      deleteSaveBtn.textContent = '删除存档';
-      deleteSaveBtn.addEventListener('click', () => this.handleDeleteSave());
-      buttonContainer.appendChild(deleteSaveBtn);
-    }
+    buttonContainer.appendChild(createButton('规则说明', 'game-btn-secondary', () => this.showRules()));
 
     contentWrapper.appendChild(buttonContainer);
 
     // 版本信息
     const version = document.createElement('p');
-    version.style.marginTop = 'clamp(16px, 4vh, 32px)';
-    version.className = 'text-gray-600 text-sm';
+    version.style.marginTop = `${Math.max(vmin * 4, 12)}px`;
+    version.style.fontSize = `${Math.max(vmin * 2.5, 10)}px`;
+    version.className = 'text-gray-600';
     version.textContent = 'v1.0.0';
     contentWrapper.appendChild(version);
 
     this.container.appendChild(contentWrapper);
+
+    // 全屏按钮 - 右下角小按钮
+    const fullscreenBtn = document.createElement('button');
+    const fsBtnSize = Math.max(vmin * 8, 32);
+    fullscreenBtn.style.position = 'fixed';
+    fullscreenBtn.style.right = `${Math.max(vmin * 2, 8)}px`;
+    fullscreenBtn.style.bottom = `${Math.max(vmin * 2, 8)}px`;
+    fullscreenBtn.style.width = `${fsBtnSize}px`;
+    fullscreenBtn.style.height = `${fsBtnSize}px`;
+    fullscreenBtn.style.fontSize = `${Math.max(vmin * 3.5, 14)}px`;
+    fullscreenBtn.style.borderRadius = '50%';
+    fullscreenBtn.style.background = 'rgba(0, 0, 0, 0.6)';
+    fullscreenBtn.style.border = '1px solid rgba(255, 255, 255, 0.3)';
+    fullscreenBtn.style.color = '#fff';
+    fullscreenBtn.style.cursor = 'pointer';
+    fullscreenBtn.style.display = 'flex';
+    fullscreenBtn.style.alignItems = 'center';
+    fullscreenBtn.style.justifyContent = 'center';
+    fullscreenBtn.style.zIndex = '1000';
+    fullscreenBtn.style.transition = 'all 0.2s ease';
+    fullscreenBtn.textContent = document.fullscreenElement ? '⛶' : '⛶';
+    fullscreenBtn.title = document.fullscreenElement ? '退出全屏' : '全屏模式';
+
+    // 悬停效果
+    fullscreenBtn.addEventListener('mouseenter', () => {
+      fullscreenBtn.style.background = 'rgba(0, 0, 0, 0.8)';
+      fullscreenBtn.style.borderColor = 'rgba(255, 255, 255, 0.5)';
+      fullscreenBtn.style.transform = 'scale(1.1)';
+    });
+    fullscreenBtn.addEventListener('mouseleave', () => {
+      fullscreenBtn.style.background = 'rgba(0, 0, 0, 0.6)';
+      fullscreenBtn.style.borderColor = 'rgba(255, 255, 255, 0.3)';
+      fullscreenBtn.style.transform = 'scale(1)';
+    });
+
+    fullscreenBtn.addEventListener('click', () => this.toggleFullscreen(fullscreenBtn));
+    this.container.appendChild(fullscreenBtn);
+
+    // 监听全屏状态变化
+    document.addEventListener('fullscreenchange', () => {
+      fullscreenBtn.title = document.fullscreenElement ? '退出全屏' : '全屏模式';
+    });
+
+    // 删除存档按钮 - 左下角垃圾桶图标（如果有存档）
+    if (hasSave()) {
+      const deleteBtn = document.createElement('button');
+      const delBtnSize = Math.max(vmin * 8, 32);
+      deleteBtn.style.position = 'fixed';
+      deleteBtn.style.left = `${Math.max(vmin * 2, 8)}px`;
+      deleteBtn.style.bottom = `${Math.max(vmin * 2, 8)}px`;
+      deleteBtn.style.width = `${delBtnSize}px`;
+      deleteBtn.style.height = `${delBtnSize}px`;
+      deleteBtn.style.fontSize = `${Math.max(vmin * 3.5, 14)}px`;
+      deleteBtn.style.borderRadius = '50%';
+      deleteBtn.style.background = 'rgba(220, 38, 38, 0.6)';
+      deleteBtn.style.border = '1px solid rgba(255, 255, 255, 0.3)';
+      deleteBtn.style.color = '#fff';
+      deleteBtn.style.cursor = 'pointer';
+      deleteBtn.style.display = 'flex';
+      deleteBtn.style.alignItems = 'center';
+      deleteBtn.style.justifyContent = 'center';
+      deleteBtn.style.zIndex = '1000';
+      deleteBtn.style.transition = 'all 0.2s ease';
+      deleteBtn.textContent = '🗑️';
+      deleteBtn.title = '删除存档';
+
+      // 悬停效果
+      deleteBtn.addEventListener('mouseenter', () => {
+        deleteBtn.style.background = 'rgba(220, 38, 38, 0.8)';
+        deleteBtn.style.borderColor = 'rgba(255, 255, 255, 0.5)';
+        deleteBtn.style.transform = 'scale(1.1)';
+      });
+      deleteBtn.addEventListener('mouseleave', () => {
+        deleteBtn.style.background = 'rgba(220, 38, 38, 0.6)';
+        deleteBtn.style.borderColor = 'rgba(255, 255, 255, 0.3)';
+        deleteBtn.style.transform = 'scale(1)';
+      });
+
+      deleteBtn.addEventListener('click', () => this.handleDeleteSave());
+      this.container.appendChild(deleteBtn);
+    }
   }
 
   /**
@@ -292,7 +358,7 @@ class Game {
   }
 
   /**
-   * 处理购买卡包 - 显示开包界面
+   * 处理购买卡包 - 显示开包界面（内嵌在商店商品区域）
    */
   private handleBuyPack(pack: BoosterPack): void {
     console.log('[Game.handleBuyPack] 开始处理卡包购买', {
@@ -313,16 +379,25 @@ class Game {
     Storage.autoSave(this.gameState);
     console.log('[Game.handleBuyPack] 卡包内容已生成并保存');
 
-    // 创建开包界面
-    console.log('[Game.handleBuyPack] 创建 OpenPackComponent');
-    new OpenPackComponent(this.container, this.gameState, pack, {
+    // 获取商店中间区域作为开包界面的容器
+    const shopCenterPanel = document.getElementById('shop-center-panel');
+    if (!shopCenterPanel) {
+      console.error('[Game.handleBuyPack] 错误：找不到商店中间区域');
+      return;
+    }
+
+    // 创建开包界面（内嵌模式）
+    console.log('[Game.handleBuyPack] 创建 OpenPackComponent（内嵌模式）');
+    new OpenPackComponent(shopCenterPanel, this.gameState, pack, {
       onClose: () => {
         console.log('[Game.handleBuyPack] 开包界面关闭回调');
         // 清除当前卡包状态
         this.gameState.currentPack = null;
         Storage.autoSave(this.gameState);
-        // 关闭开包界面后返回商店
-        this.showShop();
+        // 关闭开包界面后刷新商店（不移除整个商店）
+        if (this.currentComponent instanceof ShopComponent) {
+          this.currentComponent.render();
+        }
       },
       onCardSelected: (card, action) => {
         console.log('[Game.handleBuyPack] 卡牌选择回调', {
@@ -334,8 +409,10 @@ class Game {
         this.handlePackCardSelected(card, action);
         // 清除当前卡包状态
         this.gameState.currentPack = null;
-        // 选择后返回商店
-        this.showShop();
+        // 选择后刷新商店（不移除整个商店）
+        if (this.currentComponent instanceof ShopComponent) {
+          this.currentComponent.render();
+        }
       },
       onSkip: () => {
         console.log('[Game.handleBuyPack] 跳过开包回调');
@@ -343,11 +420,13 @@ class Game {
         this.gameState.currentPack = null;
         // 跳过开包，自动保存（卡包已被消耗）
         Storage.autoSave(this.gameState);
-        // 返回商店
-        this.showShop();
+        // 刷新商店（不移除整个商店）
+        if (this.currentComponent instanceof ShopComponent) {
+          this.currentComponent.render();
+        }
       }
-    }, revealedCards);
-    console.log('[Game.handleBuyPack] OpenPackComponent 创建完成');
+    }, revealedCards, true); // 使用内嵌模式
+    console.log('[Game.handleBuyPack] OpenPackComponent 创建完成（内嵌模式）');
   }
 
   /**
@@ -410,7 +489,60 @@ class Game {
             discards: this.gameState.discardsRemaining
           },
           selectedCards: this.gameState.cardPile.hand.getSelectedCards(),
-          deck: this.gameState.cardPile.deck
+          deck: this.gameState.cardPile.deck,
+          jokers: this.gameState.jokers,
+          lastUsedConsumable: this.gameState.lastUsedConsumable ?? undefined,
+          addJoker: (rarity?: 'rare'): boolean => {
+            console.log('[Game] addJoker 被调用, rarity:', rarity);
+            const joker = getRandomJoker();
+            console.log('[Game] 生成的随机小丑牌:', joker.id, joker.name);
+            if (rarity) {
+              (joker as Joker).rarity = rarity as JokerRarity;
+            }
+            const success = this.gameState.addJoker(joker);
+            console.log('[Game] addJoker 结果:', success);
+            return success;
+          },
+          canAddJoker: (): boolean => {
+            const availableSlots = this.gameState.getJokerSlots().getAvailableSlots();
+            console.log('[Game] canAddJoker 检查, 可用槽位:', availableSlots);
+            return availableSlots > 0;
+          },
+          addEditionToRandomJoker: (edition: string): boolean => {
+            console.log('[Game] addEditionToRandomJoker 被调用, edition:', edition);
+            const jokers = this.gameState.jokers;
+            const eligibleJokers = jokers.filter(j => j.edition === JokerEdition.None);
+            if (eligibleJokers.length === 0) return false;
+            
+            const randomIndex = Math.floor(Math.random() * eligibleJokers.length);
+            const targetJoker = eligibleJokers[randomIndex];
+            const actualIndex = this.gameState.jokers.indexOf(targetJoker);
+            
+            if (actualIndex >= 0) {
+              const joker = this.gameState.jokers[actualIndex] as Joker;
+              joker.edition = edition as JokerEdition;
+              console.log('[Game] 已为小丑牌添加版本:', joker.name, edition);
+              return true;
+            }
+            return false;
+          },
+          destroyOtherJokers: (): number => {
+            console.log('[Game] destroyOtherJokers 被调用');
+            const jokers = this.gameState.jokers;
+            if (jokers.length <= 1) return 0;
+            
+            const randomIndex = Math.floor(Math.random() * jokers.length);
+            let destroyedCount = 0;
+            
+            for (let i = jokers.length - 1; i >= 0; i--) {
+              if (i !== randomIndex) {
+                this.gameState.removeJoker(i);
+                destroyedCount++;
+              }
+            }
+            console.log('[Game] 已销毁小丑牌数量:', destroyedCount);
+            return destroyedCount;
+          }
         };
 
         if (card.canUse(context)) {
@@ -419,6 +551,13 @@ class Game {
             if (result.message) {
               Toast.success(result.message);
             }
+
+            // 更新最后使用的消耗牌（用于愚者效果）
+            this.gameState.lastUsedConsumable = { id: card.id, type: card.type };
+            console.log('[Game] 更新 lastUsedConsumable:', this.gameState.lastUsedConsumable);
+
+            // 统一处理消耗牌结果（包括愚者牌的递归触发）
+            this.handleConsumableResult(result, context, true);
           } else {
             Toast.error(result.message || '使用失败');
             // 使用失败，放入槽位
@@ -465,13 +604,13 @@ class Game {
   private toggleFullscreen(button: HTMLButtonElement): void {
     if (!document.fullscreenElement) {
       document.documentElement.requestFullscreen().then(() => {
-        button.textContent = '📴 退出全屏';
+        button.title = '退出全屏';
       }).catch(err => {
         console.error('进入全屏失败:', err);
       });
     } else {
       document.exitFullscreen().then(() => {
-        button.textContent = '🔳 全屏模式';
+        button.title = '全屏模式';
       }).catch(err => {
         console.error('退出全屏失败:', err);
       });
@@ -750,6 +889,70 @@ class Game {
         this.showMainMenu();
       }
     );
+  }
+
+  /**
+   * 处理消耗牌使用结果
+   * 统一处理各种返回字段，支持愚者牌的递归触发
+   */
+  private handleConsumableResult(
+    result: import('./types/consumable').ConsumableEffectResult,
+    context: import('./types/consumable').ConsumableEffectContext,
+    isFromPack: boolean = false
+  ): void {
+    // 处理金钱变化
+    if (result.moneyChange !== undefined && result.moneyChange !== 0) {
+      if (result.moneyChange > 0) {
+        this.gameState.addMoney(result.moneyChange);
+      } else {
+        this.gameState.spendMoney(-result.moneyChange);
+      }
+    }
+
+    // 处理星球牌升级
+    if (result.handTypeUpgrade) {
+      this.gameState.handLevelState.upgradeHand(result.handTypeUpgrade as import('./types/pokerHands').PokerHandType);
+    }
+
+    // 处理黑洞牌升级所有牌型
+    if (result.upgradeAllHandLevels) {
+      this.gameState.handLevelState.upgradeAll();
+    }
+
+    // 处理新生成的消耗牌
+    if (result.newConsumableIds && result.newConsumableIds.length > 0) {
+      for (const consumableId of result.newConsumableIds) {
+        if (!this.gameState.hasAvailableConsumableSlot()) {
+          Toast.warning('消耗牌槽位已满，部分生成被跳过');
+          break;
+        }
+        const newConsumable = getConsumableById(consumableId);
+        if (newConsumable) {
+          this.gameState.addConsumable(newConsumable);
+        }
+      }
+    }
+
+    // 处理新创建的卡牌
+    if (result.newCards && result.newCards.length > 0) {
+      for (const newCard of result.newCards) {
+        this.gameState.cardPile.deck.addToBottom(newCard);
+      }
+      Toast.success(`添加了 ${result.newCards.length} 张新卡牌到牌库`);
+    }
+
+    // 处理愚者牌：触发上一次使用的消耗牌效果
+    if (result.copiedConsumableId) {
+      const copiedConsumable = getConsumableById(result.copiedConsumableId);
+      if (copiedConsumable) {
+        Toast.success(`愚者触发了 ${copiedConsumable.name} 的效果`);
+        const copiedResult = copiedConsumable.use(context);
+        if (copiedResult.success) {
+          // 递归处理被触发消耗牌的结果
+          this.handleConsumableResult(copiedResult, context, isFromPack);
+        }
+      }
+    }
   }
 }
 

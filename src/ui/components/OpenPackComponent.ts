@@ -27,6 +27,7 @@ export interface OpenPackOptions {
 /**
  * 开包界面组件
  * 显示卡包打开动画，展示卡牌，允许玩家选择
+ * 支持全屏模式和内嵌模式（用于商店内开包）
  */
 export class OpenPackComponent {
   private container: HTMLElement;
@@ -35,23 +36,26 @@ export class OpenPackComponent {
   private callbacks: OpenPackCallbacks;
   private revealedCards: (Card | Joker | Consumable)[] = [];
   private revealedStates: boolean[] = [];
-  private selectedIndex: number | null = null;
+  private selectedIndices: Set<number> = new Set(); // 支持多选
   private longPressTimer: number | null = null;
   private readonly LONG_PRESS_DURATION = 500; // 长按触发时间（毫秒）
   private jokerDetailModal: JokerDetailModal;
   private consumableDetailModal: ConsumableDetailModal;
+  private isEmbedded: boolean; // 是否为内嵌模式（在商店内显示）
 
   constructor(
     container: HTMLElement,
     gameState: GameState,
     pack: BoosterPack,
     callbacks: OpenPackCallbacks,
-    revealedCards?: (Card | Joker | Consumable)[]
+    revealedCards?: (Card | Joker | Consumable)[],
+    isEmbedded: boolean = false
   ) {
     this.container = container;
     this.gameState = gameState;
     this.pack = pack;
     this.callbacks = callbacks;
+    this.isEmbedded = isEmbedded;
     this.jokerDetailModal = JokerDetailModal.getInstance();
     this.consumableDetailModal = ConsumableDetailModal.getInstance();
 
@@ -109,30 +113,25 @@ export class OpenPackComponent {
 
   /**
    * 计算自适应缩放 - 基于屏幕尺寸和卡牌数量
+   * 使用 clamp 实现平滑自适应，避免大屏幕下卡牌过大导致重叠
    */
   private calculateScale(): number {
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
     const cardCount = this.revealedCards.length;
     
-    // 基础缩放
-    const baseScale = Math.min(viewportWidth / 1280, viewportHeight / 720);
+    // 基础缩放：使用 vmin 方式计算，确保在极端比例下也能正常显示
+    const vmin = Math.min(viewportWidth, viewportHeight);
+    const baseScale = vmin / 720; // 以 720px 为基准
     
     // 根据卡牌数量调整缩放
-    // 卡牌少时放大，卡牌多时缩小
-    let cardAdjustment = 1;
-    if (cardCount <= 2) {
-      cardAdjustment = 1.3;
-    } else if (cardCount <= 3) {
-      cardAdjustment = 1.1;
-    } else if (cardCount <= 4) {
-      cardAdjustment = 1.0;
-    } else {
-      cardAdjustment = 0.9;
-    }
+    // 使用连续函数而非分段判断，实现平滑过渡
+    // 卡牌越多，缩放越小
+    const cardAdjustment = Math.max(0.7, 1.3 - (cardCount - 2) * 0.1);
     
-    // 限制缩放范围
-    return Math.max(0.5, Math.min(1.8, baseScale * cardAdjustment));
+    // 限制缩放范围：大屏幕下限制最大缩放，避免卡牌过大重叠
+    // 最小 0.4，最大 1.2（避免大屏幕下卡牌过大）
+    return Math.max(0.4, Math.min(1.2, baseScale * cardAdjustment));
   }
 
   /**
@@ -145,22 +144,50 @@ export class OpenPackComponent {
 
   /**
    * 渲染开包界面
+   * 支持全屏模式和内嵌模式
    */
   render(): void {
     this.container.innerHTML = '';
-    this.container.className = 'casino-bg game-container';
-    this.container.style.position = 'relative';
 
-    // 创建主容器 - 使用 flex 布局，为底部按钮留出空间
+    if (this.isEmbedded) {
+      // 内嵌模式：只覆盖商品网格区域，不影响右侧栏位
+      this.container.className = 'shop-pack-overlay';
+      this.container.style.position = 'absolute';
+      this.container.style.top = '0';
+      this.container.style.left = '0';
+      this.container.style.right = '0';
+      this.container.style.bottom = '0';
+      this.container.style.backgroundColor = 'rgba(0, 0, 0, 0.9)';
+      this.container.style.zIndex = '10';
+      this.container.style.display = 'flex';
+      this.container.style.flexDirection = 'column';
+      this.container.style.padding = `${this.scaled(16)}`;
+      this.container.style.overflow = 'auto';
+      this.container.style.borderRadius = '8px';
+    } else {
+      // 全屏模式
+      this.container.className = 'casino-bg game-container';
+      this.container.style.position = 'relative';
+    }
+
+    // 创建主容器
     const mainContainer = document.createElement('div');
     mainContainer.style.display = 'flex';
     mainContainer.style.flexDirection = 'column';
     mainContainer.style.alignItems = 'center';
     mainContainer.style.justifyContent = 'flex-start';
-    mainContainer.style.minHeight = '100vh';
-    mainContainer.style.padding = `${this.scaled(30)} ${this.scaled(20)} ${this.scaled(120)} ${this.scaled(20)}`; // 底部留出按钮空间
-    mainContainer.style.boxSizing = 'border-box';
-    mainContainer.style.overflow = 'auto';
+    
+    if (this.isEmbedded) {
+      // 内嵌模式：自适应高度，不强制全屏
+      mainContainer.style.flex = '1';
+      mainContainer.style.width = '100%';
+    } else {
+      // 全屏模式
+      mainContainer.style.minHeight = '100vh';
+      mainContainer.style.padding = `${this.scaled(30)} ${this.scaled(20)} ${this.scaled(120)} ${this.scaled(20)}`;
+      mainContainer.style.boxSizing = 'border-box';
+      mainContainer.style.overflow = 'auto';
+    }
 
     // 标题
     const title = document.createElement('h1');
@@ -183,7 +210,8 @@ export class OpenPackComponent {
     cardsContainer.style.flexWrap = 'wrap';
     cardsContainer.style.justifyContent = 'center';
     cardsContainer.style.alignItems = 'center';
-    cardsContainer.style.gap = this.scaled(32);
+    // 所有卡包都使用大间距，禁用重叠
+    cardsContainer.style.gap = this.scaled(48);
     cardsContainer.style.flex = '1';
     cardsContainer.style.width = '100%';
     cardsContainer.style.maxWidth = '90vw';
@@ -195,18 +223,25 @@ export class OpenPackComponent {
 
     mainContainer.appendChild(cardsContainer);
 
-    // 底部固定按钮区域
+    // 底部按钮区域
     const buttonArea = document.createElement('div');
-    buttonArea.style.position = 'fixed';
-    buttonArea.style.bottom = this.scaled(20); // 上移一点，不贴底
-    buttonArea.style.left = '0';
-    buttonArea.style.right = '0';
+    if (this.isEmbedded) {
+      // 内嵌模式：相对定位，不固定
+      buttonArea.style.position = 'relative';
+      buttonArea.style.marginTop = this.scaled(20);
+    } else {
+      // 全屏模式：固定定位
+      buttonArea.style.position = 'fixed';
+      buttonArea.style.bottom = this.scaled(20);
+      buttonArea.style.left = '0';
+      buttonArea.style.right = '0';
+      buttonArea.style.zIndex = '100';
+    }
     buttonArea.style.display = 'flex';
     buttonArea.style.justifyContent = 'center';
     buttonArea.style.alignItems = 'center';
     buttonArea.style.gap = this.scaled(24);
     buttonArea.style.padding = `${this.scaled(12)} ${this.scaled(30)}`;
-    buttonArea.style.zIndex = '100';
 
     // 选择按钮（左侧）- 根据是否选中卡牌显示不同状态
     const selectButton = document.createElement('button');
@@ -214,15 +249,18 @@ export class OpenPackComponent {
     selectButton.style.fontSize = this.scaled(20);
     selectButton.style.padding = `${this.scaled(10)} ${this.scaled(32)}`;
     selectButton.style.minWidth = this.scaled(120);
-    selectButton.style.opacity = this.selectedIndex !== null ? '1' : '0.5';
-    selectButton.style.cursor = this.selectedIndex !== null ? 'pointer' : 'not-allowed';
-    selectButton.textContent = '选择';
+    const selectedCount = this.selectedIndices.size;
+    const maxSelectCount = this.pack.selectCount;
+    selectButton.style.opacity = selectedCount > 0 ? '1' : '0.5';
+    selectButton.style.cursor = selectedCount > 0 ? 'pointer' : 'not-allowed';
+    selectButton.textContent = `选择 (${selectedCount}/${maxSelectCount})`;
     selectButton.addEventListener('click', () => {
-      if (this.selectedIndex !== null) {
-        const card = this.revealedCards[this.selectedIndex];
-        this.handleCardSelect(card);
+      if (selectedCount > 0) {
+        // 处理多选
+        const selectedCards = Array.from(this.selectedIndices).map(index => this.revealedCards[index]);
+        this.handleMultipleCardSelect(selectedCards);
       } else {
-        Toast.warning('请先选择一张卡牌');
+        Toast.warning(`请至少选择 1 张卡牌（最多 ${maxSelectCount} 张）`);
       }
     });
     buttonArea.appendChild(selectButton);
@@ -270,8 +308,10 @@ export class OpenPackComponent {
 
   /**
    * 显示卡牌详情
+   * @param card - 卡牌对象
+   * @param index - 卡牌索引（用于更新选择状态）
    */
-  private showCardDetail(card: Card | Joker | Consumable): void {
+  private showCardDetail(card: Card | Joker | Consumable, index: number): void {
     if (card instanceof Joker) {
       this.jokerDetailModal.show({
         joker: card,
@@ -283,7 +323,10 @@ export class OpenPackComponent {
         consumable: card,
         index: -1,
         onUse: () => {
+          // 使用消耗牌时，将其标记为已选择
+          this.selectedIndices.add(index);
           this.callbacks.onCardSelected(card, 'use');
+          this.render(); // 重新渲染以更新选择状态
         },
         onSell: undefined
       });
@@ -297,7 +340,7 @@ export class OpenPackComponent {
    * 创建卡牌元素
    */
   private createCardElement(card: Card | Joker | Consumable, index: number): HTMLElement {
-    const isSelected = this.selectedIndex === index;
+    const isSelected = this.selectedIndices.has(index);
 
     const wrapper = document.createElement('div');
     wrapper.style.position = 'relative';
@@ -305,6 +348,7 @@ export class OpenPackComponent {
     wrapper.style.display = 'flex';
     wrapper.style.flexDirection = 'column';
     wrapper.style.alignItems = 'center';
+    wrapper.style.gap = `${this.calculateScale() * 8}px`;
 
     // 创建卡牌元素 - 增大尺寸
     let cardElement: HTMLElement;
@@ -332,10 +376,11 @@ export class OpenPackComponent {
     }
 
     // 放大卡牌尺寸
-    const cardScale = this.calculateScale() * 2.0; // 额外放大2.0倍
+    // 所有卡包都使用较小的缩放倍数（1.2倍），禁用重叠
+    const cardScale = this.calculateScale() * 1.2;
     cardElement.style.transform = isSelected ? `scale(${cardScale * 1.1})` : `scale(${cardScale})`;
     cardElement.style.transition = 'transform 0.2s ease, box-shadow 0.2s ease';
-    
+
     // 选中状态添加发光效果
     if (isSelected) {
       cardElement.style.boxShadow = '0 0 30px #fbbf24, 0 0 60px rgba(251, 191, 36, 0.5)';
@@ -344,10 +389,105 @@ export class OpenPackComponent {
 
     wrapper.appendChild(cardElement);
 
-    // 添加长按和点击事件
-    this.setupCardInteractions(wrapper, card, index);
+    // 为消耗牌添加直接操作按钮
+    if (card instanceof Consumable) {
+      const buttonContainer = this.createConsumableButtons(card, index);
+      wrapper.appendChild(buttonContainer);
+    } else {
+      // 其他卡牌使用原来的交互方式
+      this.setupCardInteractions(wrapper, card, index);
+    }
 
     return wrapper;
+  }
+
+  /**
+   * 创建消耗牌操作按钮
+   */
+  private createConsumableButtons(consumable: Consumable, index: number): HTMLElement {
+    const buttonContainer = document.createElement('div');
+    buttonContainer.style.display = 'flex';
+    buttonContainer.style.flexDirection = 'column';
+    buttonContainer.style.gap = `${this.calculateScale() * 4}px`;
+    buttonContainer.style.marginTop = `${this.calculateScale() * 4}px`;
+    buttonContainer.style.width = '100%';
+
+    const buttonScale = this.calculateScale();
+    const buttonStyle = {
+      padding: `${buttonScale * 4}px ${buttonScale * 8}px`,
+      fontSize: `${buttonScale * 12}px`,
+      borderRadius: `${buttonScale * 4}px`,
+      border: 'none',
+      cursor: 'pointer',
+      fontWeight: 'bold',
+      transition: 'all 0.2s ease',
+      width: '100%'
+    };
+
+    // 使用按钮
+    const useButton = document.createElement('button');
+    useButton.textContent = '使用';
+    Object.assign(useButton.style, buttonStyle);
+    useButton.style.background = 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)';
+    useButton.style.color = '#fff';
+    useButton.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.selectedIndices.add(index);
+      this.callbacks.onCardSelected(consumable, 'use');
+    });
+    useButton.addEventListener('mouseenter', () => {
+      useButton.style.transform = 'scale(1.05)';
+      useButton.style.boxShadow = '0 4px 12px rgba(34, 197, 94, 0.4)';
+    });
+    useButton.addEventListener('mouseleave', () => {
+      useButton.style.transform = 'scale(1)';
+      useButton.style.boxShadow = 'none';
+    });
+
+    // 保留按钮
+    const keepButton = document.createElement('button');
+    keepButton.textContent = '保留';
+    Object.assign(keepButton.style, buttonStyle);
+    keepButton.style.background = 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)';
+    keepButton.style.color = '#fff';
+    keepButton.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.selectedIndices.add(index);
+      this.callbacks.onCardSelected(consumable, 'keep');
+    });
+    keepButton.addEventListener('mouseenter', () => {
+      keepButton.style.transform = 'scale(1.05)';
+      keepButton.style.boxShadow = '0 4px 12px rgba(59, 130, 246, 0.4)';
+    });
+    keepButton.addEventListener('mouseleave', () => {
+      keepButton.style.transform = 'scale(1)';
+      keepButton.style.boxShadow = 'none';
+    });
+
+    // 详情按钮（长按或点击查看）
+    const detailButton = document.createElement('button');
+    detailButton.textContent = '详情';
+    Object.assign(detailButton.style, buttonStyle);
+    detailButton.style.background = 'linear-gradient(135deg, #6b7280 0%, #4b5563 100%)';
+    detailButton.style.color = '#fff';
+    detailButton.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.showCardDetail(consumable, index);
+    });
+    detailButton.addEventListener('mouseenter', () => {
+      detailButton.style.transform = 'scale(1.05)';
+      detailButton.style.boxShadow = '0 4px 12px rgba(107, 114, 128, 0.4)';
+    });
+    detailButton.addEventListener('mouseleave', () => {
+      detailButton.style.transform = 'scale(1)';
+      detailButton.style.boxShadow = 'none';
+    });
+
+    buttonContainer.appendChild(useButton);
+    buttonContainer.appendChild(keepButton);
+    buttonContainer.appendChild(detailButton);
+
+    return buttonContainer;
   }
 
   /**
@@ -367,7 +507,7 @@ export class OpenPackComponent {
 
       this.longPressTimer = window.setTimeout(() => {
         isLongPress = true;
-        this.showCardDetail(card);
+        this.showCardDetail(card, index);
       }, this.LONG_PRESS_DURATION);
     };
 
@@ -417,27 +557,56 @@ export class OpenPackComponent {
     // 悬停效果
     wrapper.addEventListener('mouseenter', () => {
       const cardElement = wrapper.firstElementChild as HTMLElement;
-      if (cardElement && this.selectedIndex !== index) {
-        const cardScale = this.calculateScale() * 2.0;
+      if (cardElement && !this.selectedIndices.has(index)) {
+        const cardScale = this.calculateScale() * 1.2;
         cardElement.style.transform = `scale(${cardScale * 1.05})`;
       }
     });
 
     wrapper.addEventListener('mouseleave', () => {
       const cardElement = wrapper.firstElementChild as HTMLElement;
-      if (cardElement && this.selectedIndex !== index) {
-        const cardScale = this.calculateScale() * 2.0;
+      if (cardElement && !this.selectedIndices.has(index)) {
+        const cardScale = this.calculateScale() * 1.2;
         cardElement.style.transform = `scale(${cardScale})`;
       }
     });
   }
 
   /**
-   * 选择卡牌
+   * 选择/取消选择卡牌
+   * 支持多选，最多选择 pack.selectCount 张
    */
   private selectCard(index: number): void {
-    this.selectedIndex = index;
+    const requiredCount = this.pack.selectCount;
+    
+    if (this.selectedIndices.has(index)) {
+      // 已选中，取消选择
+      this.selectedIndices.delete(index);
+    } else {
+      // 未选中，检查是否已达上限
+      if (this.selectedIndices.size >= requiredCount) {
+        // 已达上限，移除最早选择的（或提示用户）
+        const firstSelected = this.selectedIndices.values().next().value;
+        if (firstSelected !== undefined) {
+          this.selectedIndices.delete(firstSelected);
+        }
+      }
+      this.selectedIndices.add(index);
+    }
+    
     this.render(); // 重新渲染以更新选中状态
+  }
+
+  /**
+   * 处理多选卡牌
+   */
+  private handleMultipleCardSelect(cards: (Card | Joker | Consumable)[]): void {
+    // 依次处理每张选中的卡牌
+    cards.forEach((card, index) => {
+      setTimeout(() => {
+        this.handleCardSelect(card);
+      }, index * 100); // 延迟处理，避免冲突
+    });
   }
 
   /**

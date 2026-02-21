@@ -39,33 +39,36 @@ export class BlindSelect {
    */
   render(): void {
     this.container.innerHTML = '';
-    // 使用 viewport 单位确保内容适应屏幕大小，上下留出空隙，允许内容区域滚动
-    this.container.className = 'casino-bg min-h-screen w-full flex flex-col items-center py-[3vh] px-[2vw] overflow-y-auto';
+    // 使用 viewport 单位确保内容适应屏幕大小，优先保证按钮在屏幕内
+    this.container.className = 'casino-bg min-h-screen w-full flex flex-col';
 
     const currentBlindType = this.getCurrentBlindType();
 
-    // 内容包装器 - 限制最大宽度并居中
-    const contentWrapper = document.createElement('div');
-    contentWrapper.className = 'flex flex-col items-center w-full max-w-6xl';
+    // 顶部区域 - 标题和底注
+    const headerArea = document.createElement('div');
+    headerArea.className = 'flex flex-col items-center w-full pt-[2vh] pb-[1vh] px-[2vw]';
 
     // 标题
     const title = document.createElement('h1');
     title.style.fontSize = 'clamp(1.5rem, 4vw, 2.5rem)';
     title.className = 'font-bold text-yellow-400 mb-[1vh] animate-float';
     title.textContent = '';
-    contentWrapper.appendChild(title);
+    headerArea.appendChild(title);
 
     // 底注显示
     const anteDisplay = document.createElement('div');
-    anteDisplay.style.fontSize = 'clamp(0.875rem, 2.5vw, 1.25rem)';
-    anteDisplay.className = 'text-gray-400 mb-[2vh]';
+    anteDisplay.style.fontSize = 'clamp(1rem, 3vw, 2rem)';
+    anteDisplay.className = 'text-gray-400';
     anteDisplay.textContent = `底注 ${this.gameState.ante}`;
-    contentWrapper.appendChild(anteDisplay);
+    headerArea.appendChild(anteDisplay);
 
-    // 关卡卡片容器 - 使用 viewport 单位控制间距
+    this.container.appendChild(headerArea);
+
+    // 关卡卡片容器 - 占据中间所有剩余空间
     const cardsContainer = document.createElement('div');
     cardsContainer.style.gap = 'clamp(8px, 2vw, 24px)';
-    cardsContainer.className = 'flex flex-wrap justify-center mb-[2vh]';
+    cardsContainer.style.padding = '0 clamp(8px, 2vw, 24px)';
+    cardsContainer.className = 'flex-1 flex justify-center items-stretch min-h-0';
 
     // 创建三个关卡卡片，当前盲注高亮显示
     const smallBlind = this.createBlindCard(BlindType.SMALL_BLIND, '小盲注', currentBlindType === BlindType.SMALL_BLIND);
@@ -76,18 +79,23 @@ export class BlindSelect {
     cardsContainer.appendChild(bigBlind);
     cardsContainer.appendChild(bossBlind);
 
-    contentWrapper.appendChild(cardsContainer);
+    this.container.appendChild(cardsContainer);
 
-    // 按钮区域
+    // 按钮区域 - 固定在底部，优先保证可见
     const buttonArea = document.createElement('div');
-    buttonArea.style.gap = 'clamp(8px, 2vw, 16px)';
-    buttonArea.className = 'flex flex-wrap justify-center';
+    buttonArea.style.gap = 'clamp(16px, 4vw, 32px)';
+    buttonArea.style.padding = 'clamp(16px, 3vh, 24px) clamp(16px, 4vw, 32px)';
+    buttonArea.className = 'flex justify-center w-full shrink-0';
 
     // 跳过按钮（小盲注和大盲注可跳过）
     const skipButton = document.createElement('button');
-    skipButton.style.fontSize = 'clamp(0.75rem, 2vw, 1rem)';
-    skipButton.style.padding = 'clamp(6px, 1.2vh, 10px) clamp(12px, 2.5vw, 20px)';
-    skipButton.className = 'game-btn game-btn-secondary';
+    skipButton.style.fontSize = 'clamp(1rem, 2.5vw, 1.25rem)';
+    skipButton.style.height = 'clamp(48px, 9vh, 60px)';
+    skipButton.style.minWidth = 'clamp(120px, 25vw, 160px)';
+    skipButton.style.display = 'flex';
+    skipButton.style.alignItems = 'center';
+    skipButton.style.justifyContent = 'center';
+    skipButton.className = 'game-btn game-btn-secondary px-[clamp(20px,4vw,32px)]';
     const currentBlind = Blind.create(this.gameState.ante, currentBlindType);
     const canSkip = currentBlind?.canSkipBlind() ?? false;
     const skipReward = currentBlind?.getSkipReward() ?? 0;
@@ -97,17 +105,20 @@ export class BlindSelect {
 
     // 开始按钮 - 只能开始当前盲注
     const startButton = document.createElement('button');
-    startButton.style.fontSize = 'clamp(0.75rem, 2vw, 1rem)';
-    startButton.style.padding = 'clamp(6px, 1.2vh, 10px) clamp(12px, 2.5vw, 20px)';
-    startButton.className = 'game-btn game-btn-primary';
+    startButton.style.fontSize = 'clamp(1rem, 2.5vw, 1.25rem)';
+    startButton.style.height = 'clamp(48px, 9vh, 60px)';
+    startButton.style.minWidth = 'clamp(120px, 25vw, 160px)';
+    startButton.style.display = 'flex';
+    startButton.style.alignItems = 'center';
+    startButton.style.justifyContent = 'center';
+    startButton.className = 'game-btn game-btn-primary px-[clamp(20px,4vw,32px)]';
     startButton.textContent = `开始 ${this.getBlindLabel(currentBlindType)}`;
     startButton.addEventListener('click', () => this.handleStart());
 
     buttonArea.appendChild(skipButton);
     buttonArea.appendChild(startButton);
 
-    contentWrapper.appendChild(buttonArea);
-    this.container.appendChild(contentWrapper);
+    this.container.appendChild(buttonArea);
   }
 
   /**
@@ -145,57 +156,83 @@ export class BlindSelect {
     // 当前盲注高亮显示，非当前盲注变暗
     card.className = `blind-card ${isBoss ? 'boss' : ''} ${isCurrent ? 'selected' : 'opacity-50'}`;
     card.dataset.blindType = blindType;
+    card.style.display = 'flex';
+    card.style.flexDirection = 'column';
+    card.style.justifyContent = 'space-between';
+    card.style.overflow = 'hidden';
 
-    // 标签
-    const labelEl = document.createElement('div');
-    labelEl.className = 'text-gray-400 text-sm mb-2';
-    labelEl.textContent = label;
+    // 标题区域 - 顶部对齐
+    const headerSection = document.createElement('div');
+    headerSection.style.display = 'flex';
+    headerSection.style.flexDirection = 'column';
+    headerSection.style.alignItems = 'center';
+    headerSection.style.marginBottom = '8px';
 
     // 名称
     const nameEl = document.createElement('div');
     nameEl.className = 'blind-name';
+    nameEl.style.fontSize = 'clamp(16px, 4vw, 32px)';
+    nameEl.style.lineHeight = '1.2';
+    nameEl.style.textAlign = 'center';
     nameEl.textContent = blind.name;
 
-    // Boss效果描述
-    let effectEl: HTMLElement | null = null;
+    headerSection.appendChild(nameEl);
+
+    // 中间区域 - Boss效果描述（仅Boss盲注）
+    const middleSection = document.createElement('div');
+    middleSection.style.display = 'flex';
+    middleSection.style.flexDirection = 'column';
+    middleSection.style.alignItems = 'center';
+    middleSection.style.justifyContent = 'center';
+    middleSection.style.flex = '1';
+    middleSection.style.minHeight = '0';
+    middleSection.style.overflow = 'hidden';
+    middleSection.style.padding = '4px 0';
+
     if (isBoss && blind.description) {
-      effectEl = document.createElement('div');
-      effectEl.className = 'text-red-400 text-xs mt-2 mb-2 px-2';
+      const effectEl = document.createElement('div');
+      effectEl.className = 'text-red-400';
+      effectEl.style.fontSize = 'clamp(12px, 2.5vw, 24px)';
+      effectEl.style.textAlign = 'center';
+      effectEl.style.lineHeight = '1.4';
+      effectEl.style.maxHeight = '100%';
+      effectEl.style.overflow = 'hidden';
+      effectEl.style.display = '-webkit-box';
+      effectEl.style.webkitLineClamp = '3';
+      effectEl.style.webkitBoxOrient = 'vertical';
+      effectEl.style.width = '100%';
+      effectEl.style.wordBreak = 'break-word';
       effectEl.textContent = blind.description;
+      middleSection.appendChild(effectEl);
     }
+
+    // 底部区域 - 目标分数和奖励
+    const bottomSection = document.createElement('div');
+    bottomSection.style.display = 'flex';
+    bottomSection.style.flexDirection = 'column';
+    bottomSection.style.alignItems = 'center';
+    bottomSection.style.marginTop = '8px';
 
     // 目标分数
     const targetEl = document.createElement('div');
     targetEl.className = 'blind-target';
+    targetEl.style.fontSize = 'clamp(20px, 4.5vw, 48px)';
+    targetEl.style.lineHeight = '1.2';
+    targetEl.style.marginBottom = '4px';
     targetEl.textContent = blind.targetScore.toLocaleString();
 
     // 奖励
     const rewardEl = document.createElement('div');
     rewardEl.className = 'blind-reward';
-    rewardEl.innerHTML = `奖励: $${blind.reward}`;
+    rewardEl.style.fontSize = 'clamp(12px, 3vw, 28px)';
+    rewardEl.textContent = `奖励: $${blind.reward}`;
 
-    // 跳过奖励（小盲注和大盲注�?
-    let skipRewardEl: HTMLElement | null = null;
-    if (blind.canSkipBlind() && blind.getSkipReward() > 0) {
-      skipRewardEl = document.createElement('div');
-      skipRewardEl.className = 'text-blue-400 text-sm mt-2';
-      skipRewardEl.textContent = `跳过奖励: $${blind.getSkipReward()}`;
-    }
+    bottomSection.appendChild(targetEl);
+    bottomSection.appendChild(rewardEl);
 
-    // 当前盲注指示�?
-    if (isCurrent) {
-      const currentIndicator = document.createElement('div');
-      currentIndicator.className = 'text-yellow-400 text-sm font-bold mt-2';
-      currentIndicator.textContent = '当前';
-      card.appendChild(currentIndicator);
-    }
-
-    card.appendChild(labelEl);
-    card.appendChild(nameEl);
-    if (effectEl) card.appendChild(effectEl);
-    card.appendChild(targetEl);
-    card.appendChild(rewardEl);
-    if (skipRewardEl) card.appendChild(skipRewardEl);
+    card.appendChild(headerSection);
+    card.appendChild(middleSection);
+    card.appendChild(bottomSection);
 
     return card;
   }

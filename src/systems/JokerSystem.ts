@@ -319,6 +319,21 @@ export class JokerSystem {
         jokerSlots.removeJoker(i);
       }
 
+      // 处理摧毁右侧小丑
+      if (result.destroyRightJoker && i < jokers.length - 1) {
+        const rightIndex = i + 1;
+        destroyedJokers.push(rightIndex);
+        jokerSlots.removeJoker(rightIndex);
+      }
+
+      // 处理摧毁随机小丑（不包括自己）
+      if (result.destroyRandomJoker && jokers.length > 1) {
+        const otherIndices = jokers.map((_, idx) => idx).filter(idx => idx !== i);
+        const randomIndex = otherIndices[Math.floor(Math.random() * otherIndices.length)];
+        destroyedJokers.push(randomIndex);
+        jokerSlots.removeJoker(randomIndex);
+      }
+
       if (result.moneyBonus || result.message) {
         totalMoneyBonus += result.moneyBonus || 0;
 

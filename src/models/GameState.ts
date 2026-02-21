@@ -67,6 +67,7 @@ export class GameState implements GameStateInterface {
     totalDiscardsUsed: number;
   };
   private extraHandSizeFromVouchers: number = 0;
+  lastUsedConsumable: { id: string; type: ConsumableType } | null = null;
 
   constructor(config: Partial<GameConfig> = {}) {
     this.config = { ...DEFAULT_GAME_CONFIG, ...config };

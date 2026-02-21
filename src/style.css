@@ -329,7 +329,7 @@ body {
 }
 
 .hand-container .card {
-  margin-left: calc(-1 * clamp(20px, 5vmin, 40px));
+  /* margin-left 由 JavaScript 动态计算设置，不在 CSS 中固定 */
   transition: all 0.2s ease;
 }
 
@@ -338,7 +338,7 @@ body {
 }
 
 .hand-container .card:hover {
-  transform: translateY(-10px) scale(1.1);
+  /* transform 由 JavaScript 控制，这里只设置 z-index */
   z-index: 10;
 }
 
@@ -567,20 +567,23 @@ body {
 .hand-area {
   display: flex;
   justify-content: center;
-  gap: 8px;
+  align-items: flex-end;
+  /* gap 由 JavaScript 通过 margin-left 控制，这里设为 0 */
+  gap: 0;
   padding: 20px;
   perspective: 1000px;
 }
 
 .hand-area .card {
   transform-origin: bottom center;
+  /* margin-left 由 JavaScript 动态计算 */
 }
 
 /* 卡牌倾斜角度由 JavaScript 动态计算 */
 
 .hand-area .card:hover {
-  transform: rotate(0deg) translateY(-16px) scale(1.1);
-  z-index: 10;
+  /* transform 由 JavaScript 控制，hover 只提升 z-index */
+  z-index: 100;
 }
 
 .hand-area .card.selected {
@@ -602,7 +605,9 @@ body {
 
 /* 盲注选择卡片 - 响应式 */
 .blind-card {
-  width: clamp(120px, 18vw, 200px);
+  flex: 0.8;
+  min-width: clamp(100px, 12vw, 150px);
+  max-width: 100%;
   padding: clamp(12px, 2vw, 20px);
   border-radius: 12px;
   background: linear-gradient(145deg, #1e3a5f 0%, #0d1b2a 100%);
@@ -625,6 +630,10 @@ body {
 }
 
 .blind-card.boss {
+  flex: 1.4;
+  min-width: clamp(180px, 30vw, 350px);
+  max-width: 100%;
+  padding: clamp(12px, 2vw, 20px);
   border-color: #e74c3c;
   background: linear-gradient(145deg, #3a1a1a 0%, #1a0a0a 100%);
 }
@@ -634,21 +643,16 @@ body {
 }
 
 .blind-name {
-  font-size: clamp(16px, 2.5vw, 25px);
   font-weight: bold;
   color: #ffd700;
-  margin-bottom: 8px;
 }
 
 .blind-target {
-  font-size: clamp(18px, 3vw, 29px);
   color: #ff6b6b;
   font-weight: bold;
-  margin: 12px 0;
 }
 
 .blind-reward {
-  font-size: clamp(14px, 2vw, 21px);
   color: #2ecc71;
 }
 
@@ -880,7 +884,7 @@ body {
   }
   
   .hand-area {
-    gap: 4px;
+    gap: 0;
     padding: 10px;
   }
   
@@ -919,7 +923,7 @@ body {
   }
   
   .hand-area {
-    gap: 2px;
+    gap: 0;
     padding: 5px;
   }
   
@@ -1151,9 +1155,11 @@ html, body, #app {
   grid-column: 2;
   grid-row: 2;
   display: flex;
+  flex-direction: row; /* 强制水平排列 */
   justify-content: center;
   align-items: center;
   min-height: clamp(40px, 8vh, 60px);
+  max-height: clamp(60px, 12vh, 80px);
 }
 
 /* 面板列样式 */
@@ -1365,13 +1371,21 @@ html, body, #app {
   }
 
   .game-layout-bottom {
-    flex-direction: column;
+    flex-direction: row;
+    flex-wrap: nowrap; /* 禁止换行，保持水平 */
     gap: 4px;
-    align-items: stretch;
+    align-items: center;
+    max-height: clamp(60px, 12vh, 80px);
   }
 
-  .game-layout-bottom > div {
-    justify-content: center;
+  .game-layout-bottom > button {
+    flex: 1 1 0;
+    min-width: 0;
+    font-size: clamp(11px, 2.5vw, 14px);
+    padding: 6px 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 }
 

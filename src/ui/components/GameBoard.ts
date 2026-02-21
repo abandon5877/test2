@@ -74,6 +74,7 @@ export class GameBoard {
     this.updateHandPreview();
     this.updateJokers();
     this.updateConsumables();
+    this.updateActionButtons();
 
     if (this.handComponent) {
       this.handComponent.setHand(this.gameState.cardPile.hand);
@@ -81,6 +82,22 @@ export class GameBoard {
         this.gameState.handsRemaining,
         this.gameState.discardsRemaining
       );
+    }
+  }
+
+  /**
+   * 更新出牌/弃牌按钮文本
+   */
+  private updateActionButtons(): void {
+    const playBtn = document.getElementById('play-hand-btn');
+    const discardBtn = document.getElementById('discard-btn');
+    
+    if (playBtn) {
+      playBtn.innerHTML = `出牌 (${this.gameState.handsRemaining})`;
+    }
+    
+    if (discardBtn) {
+      discardBtn.innerHTML = `弃牌 (${this.gameState.discardsRemaining})`;
     }
   }
 
@@ -1257,6 +1274,7 @@ export class GameBoard {
       handCards: this.gameState.cardPile.hand.getCards(),
       money: this.gameState.money,
       jokers: this.gameState.jokers,
+      lastUsedConsumable: this.gameState.lastUsedConsumable ?? undefined,
       addJoker: (rarity?: 'rare'): boolean => {
         console.log('[GameBoard] addJoker 被调用, rarity:', rarity);
         const joker = getRandomJoker();
@@ -1267,6 +1285,11 @@ export class GameBoard {
         const success = this.gameState.addJoker(joker);
         console.log('[GameBoard] addJoker 结果:', success);
         return success;
+      },
+      canAddJoker: (): boolean => {
+        const availableSlots = this.gameState.getJokerSlots().getAvailableSlots();
+        console.log('[GameBoard] canAddJoker 检查, 可用槽位:', availableSlots);
+        return availableSlots > 0;
       },
       addEditionToRandomJoker: (edition: string): boolean => {
         console.log('[GameBoard] addEditionToRandomJoker 被调用, edition:', edition);
@@ -1341,6 +1364,10 @@ export class GameBoard {
         console.log('[GameBoard] 升级所有牌型');
         this.gameState.handLevelState.upgradeAll();
       }
+
+      // 更新最后使用的消耗牌（用于愚者效果）
+      this.gameState.lastUsedConsumable = { id: consumable.id, type: consumable.type };
+      console.log('[GameBoard] 更新 lastUsedConsumable:', this.gameState.lastUsedConsumable);
 
       // 从消耗牌槽中移除
       console.log('[GameBoard] 准备移除消耗牌, index:', index);

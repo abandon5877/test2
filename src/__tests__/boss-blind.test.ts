@@ -31,7 +31,7 @@ describe('Boss盲注系统', () => {
       expect(config).toBeDefined();
       expect(config?.bossType).toBe(BossType.HOOK);
       expect(config?.name).toBe('Boss: 钩子');
-      expect(config?.description).toBe('每次出牌后弃掉2张随机手牌');
+      expect(config?.description).toBe('每次出牌后强制弃掉2张手牌');
       expect(config?.scoreMultiplier).toBe(2);
     });
 
@@ -43,7 +43,7 @@ describe('Boss盲注系统', () => {
       expect(config).toBeDefined();
       expect(config?.bossType).toBe(BossType.MANACLE);
       expect(config?.name).toBe('Boss: 手铐');
-      expect(config?.description).toBe('手牌上限-1');
+      expect(config?.description).toBe('手牌上限减少1张');
     });
 
     it('房子Boss配置正确', () => {
@@ -54,7 +54,7 @@ describe('Boss盲注系统', () => {
       expect(config).toBeDefined();
       expect(config?.bossType).toBe(BossType.HOUSE);
       expect(config?.name).toBe('Boss: 房子');
-      expect(config?.description).toBe('第一手牌面朝下');
+      expect(config?.description).toBe('第一手牌强制面朝下');
     });
 
     it('墙壁Boss配置正确', () => {
@@ -65,7 +65,7 @@ describe('Boss盲注系统', () => {
       expect(config).toBeDefined();
       expect(config?.bossType).toBe(BossType.WALL);
       expect(config?.name).toBe('Boss: 墙壁');
-      expect(config?.description).toBe('4倍基础分数');
+      expect(config?.description).toBe('目标分数变为4倍');
       expect(config?.scoreMultiplier).toBe(4);
     });
 
@@ -77,7 +77,7 @@ describe('Boss盲注系统', () => {
       expect(config).toBeDefined();
       expect(config?.bossType).toBe(BossType.ARM);
       expect(config?.name).toBe('Boss: 手臂');
-      expect(config?.description).toBe('打出牌型等级-1（最低1级）');
+      expect(config?.description).toBe('每次打出牌型，该牌型等级降低1级');
     });
 
     it('牙齿Boss配置正确', () => {
@@ -99,7 +99,7 @@ describe('Boss盲注系统', () => {
       expect(config).toBeDefined();
       expect(config?.bossType).toBe(BossType.EYE);
       expect(config?.name).toBe('Boss: 眼睛');
-      expect(config?.description).toBe('本回合不能重复牌型');
+      expect(config?.description).toBe('本回合不能重复打出相同牌型');
     });
 
     it('琥珀橡果Boss配置正确（原琥珀色酸液）', () => {
@@ -110,7 +110,7 @@ describe('Boss盲注系统', () => {
       expect(config).toBeDefined();
       expect(config?.bossType).toBe(BossType.AMBER_ACORN);
       expect(config?.name).toBe('Boss: 琥珀橡果');
-      expect(config?.description).toBe('翻转并洗牌所有小丑牌');
+      expect(config?.description).toBe('回合开始时翻转并随机打乱所有小丑牌位置');
       expect(config?.reward).toBe(8);
     });
   });
@@ -402,7 +402,7 @@ describe('Boss盲注系统', () => {
       const config = BossSystem.getBossConfig(BossType.HOOK);
       
       expect(config.name).toBe('钩子');
-      expect(config.description).toBe('每次出牌后弃掉2张随机手牌');
+      expect(config.description).toBe('每次出牌后强制弃掉2张手牌');
       expect(config.minAnte).toBe(1);
       expect(config.scoreMultiplier).toBe(2);
       expect(config.reward).toBe(5);
@@ -499,12 +499,46 @@ describe('Boss盲注系统', () => {
 
     it('标记Boss应该使人头牌面朝下', () => {
       BossSystem.setBoss(bossState, BossType.MARK);
-      
+
       const jack = new Card(Suit.Spades, Rank.Jack);
       const ten = new Card(Suit.Spades, Rank.Ten);
-      
+
       expect(BossSystem.isCardFaceDown(bossState, jack, false)).toBe(true);
       expect(BossSystem.isCardFaceDown(bossState, ten, false)).toBe(false);
+    });
+
+    it('柱子Boss应该使本底注出过的牌失效', () => {
+      BossSystem.setBoss(bossState, BossType.PILLAR);
+
+      const card1 = new Card(Suit.Spades, Rank.Ace);
+      const card2 = new Card(Suit.Hearts, Rank.King);
+
+      // 初始状态下，牌没有出过，不应该失效
+      expect(BossSystem.isCardDebuffed(bossState, card1)).toBe(false);
+      expect(BossSystem.isCardDebuffed(bossState, card2)).toBe(false);
+
+      // 记录card1被出过
+      bossState.recordCardPlayed(card1);
+
+      // 现在card1应该失效，card2仍然有效
+      expect(BossSystem.isCardDebuffed(bossState, card1)).toBe(true);
+      expect(BossSystem.isCardDebuffed(bossState, card2)).toBe(false);
+    });
+
+    it('柱子Boss在新底注后应该重置', () => {
+      BossSystem.setBoss(bossState, BossType.PILLAR);
+
+      const card = new Card(Suit.Spades, Rank.Ace);
+
+      // 出牌并记录
+      bossState.recordCardPlayed(card);
+      expect(BossSystem.isCardDebuffed(bossState, card)).toBe(true);
+
+      // 新底注重置
+      bossState.onNewAnte();
+
+      // 牌应该重新生效
+      expect(BossSystem.isCardDebuffed(bossState, card)).toBe(false);
     });
   });
 });
