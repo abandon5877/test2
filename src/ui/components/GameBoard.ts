@@ -1,0 +1,1303 @@
+import { GameState } from '../../models/GameState';
+import { Joker } from '../../models/Joker';
+import { Consumable } from '../../models/Consumable';
+import { CardComponent } from './CardComponent';
+import { HandComponent } from './HandComponent';
+import { HAND_BASE_VALUES } from '../../types/pokerHands';
+import { PokerHandDetector } from '../../systems/PokerHandDetector';
+import { ScoringSystem } from '../../systems/ScoringSystem';
+import type { ScoreResult } from '../../systems/ScoringSystem';
+import { HandRanksModal } from './HandRanksModal';
+import { JokerOrderModal } from './JokerOrderModal';
+import { DeckOverviewModal } from './DeckOverviewModal';
+import { CONSUMABLE_TYPE_NAMES } from '../../types/consumable';
+import { ResponsiveLayoutManager } from '../../utils/ResponsiveLayoutManager';
+import { JokerDetailModal } from './JokerDetailModal';
+import { ConsumableDetailModal } from './ConsumableDetailModal';
+import { Toast } from './Toast';
+import { Storage } from '../../utils/storage';
+import { getRandomJoker } from '../../data/jokers';
+import { getConsumableById } from '../../data/consumables';
+
+export interface GameBoardCallbacks {
+  onPlayHand?: (scoreResult: ScoreResult) => void;
+  onDiscard?: () => void;
+  onSortByRank?: () => void;
+  onSortBySuit?: () => void;
+  onEnterShop?: () => void;
+  onEndRound?: () => void;
+}
+
+export class GameBoard {
+  private container: HTMLElement;
+  private gameState: GameState;
+  private callbacks: GameBoardCallbacks;
+  private handComponent: HandComponent | null = null;
+  private handPreviewArea: HTMLElement | null = null;
+  private jokersArea: HTMLElement | null = null;
+  private scorePopup: HTMLElement | null = null;
+  private handRanksModal: HandRanksModal;
+  private jokerOrderModal: JokerOrderModal;
+  private deckOverviewModal: DeckOverviewModal;
+  private jokerDetailModal: JokerDetailModal;
+  private consumableDetailModal: ConsumableDetailModal;
+  private layoutManager: ResponsiveLayoutManager | null = null;
+
+  constructor(container: HTMLElement, gameState: GameState, callbacks: GameBoardCallbacks = {}) {
+    this.container = container;
+    this.gameState = gameState;
+    this.callbacks = callbacks;
+    this.deckOverviewModal = new DeckOverviewModal(gameState);
+    this.handRanksModal = new HandRanksModal(gameState.handLevelState);
+    this.jokerOrderModal = new JokerOrderModal(gameState, () => this.refresh());
+    this.jokerDetailModal = JokerDetailModal.getInstance();
+    this.consumableDetailModal = ConsumableDetailModal.getInstance();
+    this.render();
+  }
+
+  /**
+   * 更新游戏状态
+   */
+  setGameState(gameState: GameState): void {
+    this.gameState = gameState;
+    this.render();
+  }
+
+  /**
+   * 刷新显示（不重新渲染整个结构）
+   */
+  refresh(): void {
+    this.updateTopBar();
+    this.updateProgressBar();
+    this.updateHandPreview();
+    this.updateJokers();
+    this.updateConsumables();
+
+    if (this.handComponent) {
+      this.handComponent.setHand(this.gameState.cardPile.hand);
+      this.handComponent.setRemaining(
+        this.gameState.handsRemaining,
+        this.gameState.discardsRemaining
+      );
+    }
+  }
+
+  /**
+   * 计算小丑牌区域所需宽度
+   * 5张牌 = 1张完整 + 4张重叠部分 + 右侧空隙 + 内边距
+   * 适配3840x2048到800x400分辨率
+   */
+  private calculateJokerAreaWidth(): number {
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    const minDimension = Math.min(viewportWidth, viewportHeight);
+    
+    // 根据屏幕尺寸动态计算卡牌宽度和重叠度
+    // 大屏幕：卡牌更大，重叠更少
+    // 小屏幕：卡牌更小，重叠更多
+    const scale = Math.max(0.6, Math.min(1.5, minDimension / 720));
+    
+    const cardWidth = Math.round(110 * scale);  // 66px - 165px
+    const overlap = Math.round(55 * scale);     // 33px - 82px
+    const gap = Math.round(16 * scale);         // 10px - 24px
+    const padding = Math.round(24 * scale);     // 14px - 36px
+    
+    // 5张牌 = 1张完整 + 4张重叠部分 + 空隙 + 内边距
+    return cardWidth + (4 * overlap) + gap + padding;
+  }
+
+  /**
+   * 根据屏幕尺寸计算动态缩放值
+   * 适配3840x2048到800x400分辨率
+   * 小屏幕时缩小到0.3，防止手牌出界
+   */
+  private scaled(value: number): string {
+    const baseScale = Math.min(window.innerWidth / 1280, window.innerHeight / 720);
+    // 扩展缩放范围到0.3 - 2.0，小屏幕可以更小
+    const scale = Math.max(0.3, Math.min(2.0, baseScale));
+    return `${Math.round(value * scale)}px`;
+  }
+
+  /**
+   * 计算按钮动态尺寸
+   * 适配3840x2048到800x400分辨率
+   */
+  private calculateButtonScale(): { padding: string; fontSize: string; gap: string } {
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    const minDimension = Math.min(viewportWidth, viewportHeight);
+
+    // 基础尺寸 - 按钮字体放大
+    const basePaddingX = 12;
+    const basePaddingY = 8;
+    const baseFontSize = 24;
+    const baseGap = 8;
+
+    // 根据最小边缩放 (0.5 - 2.0 范围，适配800x400�?840x2048)
+    // 基准: 720px = 1.0
+    // 最�? 400px = 0.55
+    // 最�? 2048px = 2.84，但限制�?.0
+    const scale = Math.max(0.5, Math.min(2.0, minDimension / 720));
+
+    return {
+      padding: `${Math.round(basePaddingY * scale)}px ${Math.round(basePaddingX * scale)}px`,
+      fontSize: `${Math.round(baseFontSize * scale)}px`,
+      gap: `${Math.round(baseGap * scale)}px`
+    };
+  }
+
+  /**
+   * 渲染游戏主界面 - 响应式布局
+   * 
+   * 布局结构:
+   * ┌─────────────────────────────────────────────────────────────┐
+   * │ [左侧信息栏]  │     [中间区域]       │ [右侧小丑牌区域]   │
+   * │  固定宽度     │     flex-1          │   固定宽度        │
+   * │ 140-160px    │  占据剩余空间        │  280-320px       │
+   * └─────────────────────────────────────────────────────────────┘
+   * 
+   * 底部按钮:
+   * ┌─────────────────────────────────────────────────────────────┐
+   * │[按点数] [按花色] [出牌] [弃牌]          [📋 牌型] [🃏 卡组] │
+   * │    左侧按钮(动态缩放)                右下角按钮           │
+   * └─────────────────────────────────────────────────────────────┘
+   */
+  render(): void {
+    this.container.innerHTML = '';
+    this.container.className = 'casino-bg game-container';
+
+    const buttonScale = this.calculateButtonScale();
+
+    // 创建主布局容器 - 使用CSS Grid
+    // 右侧栏宽度已在CSS中写死，根据响应式断点自动调整
+    const mainLayout = document.createElement('div');
+    mainLayout.className = 'game-layout';
+
+    // ===== 1. 左侧信息栏 =====
+    const leftPanel = this.createLeftPanel();
+    leftPanel.className = 'game-layout-left';
+    mainLayout.appendChild(leftPanel);
+
+    // ===== 2. 中间区域 =====
+    const centerPanel = this.createCenterPanel();
+    centerPanel.className = 'game-layout-center';
+    mainLayout.appendChild(centerPanel);
+
+    // ===== 3. 右侧小丑牌区域 =====
+    const rightPanel = this.createRightPanel();
+    rightPanel.className = 'game-layout-right';
+    mainLayout.appendChild(rightPanel);
+
+    // ===== 4. 底部按钮区域 =====
+    const bottomPanel = this.createBottomPanel();
+    bottomPanel.className = 'game-layout-bottom';
+    mainLayout.appendChild(bottomPanel);
+
+    this.container.appendChild(mainLayout);
+
+    // 分数弹出框
+    this.scorePopup = this.createScorePopup();
+    this.container.appendChild(this.scorePopup);
+
+    // 初始化响应式布局管理器
+    this.setupResponsiveLayout();
+
+    this.refresh();
+  }
+
+  /**
+   * 创建左侧信息栏
+   * 字体整体-2px，宽度减小，进度条改为分数显示
+   */
+  private createLeftPanel(): HTMLElement {
+    const panel = document.createElement('div');
+    panel.className = 'game-panel-column';
+    panel.style.padding = this.scaled(6);
+    panel.style.gap = this.scaled(6);
+
+    // 底注和盲注名称合并显示
+    const anteBlindSection = document.createElement('div');
+    anteBlindSection.className = 'game-panel';
+    anteBlindSection.innerHTML = `
+      <div class="text-gray-400 text-center" style="font-size: ${this.scaled(19)}">底注 ${this.gameState.ante}</div>
+      <div class="text-yellow-400 font-bold text-center" style="font-size: ${this.scaled(23)}" id="blind-name">${this.gameState.currentBlind?.name || '选择关卡'}</div>
+    `;
+    panel.appendChild(anteBlindSection);
+
+    // 金币
+    const moneySection = document.createElement('div');
+    moneySection.className = 'game-panel';
+    moneySection.id = 'money-section';
+    moneySection.innerHTML = `
+      <div class="text-gray-400 text-center" style="font-size: ${this.scaled(19)}">金币</div>
+      <div class="text-yellow-400 font-bold text-center" style="font-size: ${this.scaled(29)}">$${this.gameState.money}</div>
+    `;
+    panel.appendChild(moneySection);
+
+    // 当前分数 - 单独一行
+    const currentScoreSection = document.createElement('div');
+    currentScoreSection.className = 'game-panel';
+    currentScoreSection.id = 'current-score-section';
+    currentScoreSection.innerHTML = `
+      <div class="text-gray-400 text-center" style="font-size: ${this.scaled(19)}">当前分数</div>
+      <div class="text-green-400 font-bold text-center" style="font-size: ${this.scaled(27)}" id="current-score">${this.gameState.roundScore}</div>
+    `;
+    panel.appendChild(currentScoreSection);
+
+    // 目标分数 - 单独一行
+    const targetScoreSection = document.createElement('div');
+    targetScoreSection.className = 'game-panel';
+    targetScoreSection.id = 'target-score-section';
+    targetScoreSection.innerHTML = `
+      <div class="text-gray-400 text-center" style="font-size: ${this.scaled(19)}">目标分数</div>
+      <div class="text-yellow-400 font-bold text-center" style="font-size: ${this.scaled(23)}" id="target-score">${this.gameState.currentBlind?.targetScore || 0}</div>
+    `;
+    panel.appendChild(targetScoreSection);
+
+    // 牌组剩余卡牌数量
+    const deckSection = document.createElement('div');
+    deckSection.className = 'game-panel';
+    deckSection.id = 'deck-section';
+    const remainingCards = this.gameState.cardPile.deck?.remaining() ?? 52;
+    deckSection.innerHTML = `
+      <div class="text-gray-400 text-center" style="font-size: ${this.scaled(19)}">牌组剩余</div>
+      <div class="text-blue-400 font-bold text-center" style="font-size: ${this.scaled(27)}" id="deck-count">${remainingCards}</div>
+    `;
+    panel.appendChild(deckSection);
+
+    // 利息提示
+    const interestSection = document.createElement('div');
+    interestSection.className = 'game-panel';
+    interestSection.id = 'interest-section';
+    const interestCap = this.gameState.getInterestCap?.() ?? 5;
+    const currentInterest = Math.min(Math.floor(this.gameState.money / 5), interestCap);
+    interestSection.innerHTML = `
+      <div class="text-gray-400 text-center" style="font-size: ${this.scaled(19)}">利息</div>
+      <div class="text-green-400 font-bold text-center" style="font-size: ${this.scaled(23)}" id="interest-info">+$${currentInterest} (上限$${interestCap})</div>
+    `;
+    panel.appendChild(interestSection);
+
+    return panel;
+  }
+
+  /**
+   * 创建中间区域
+   */
+  private createCenterPanel(): HTMLElement {
+    const panel = document.createElement('div');
+    panel.style.display = 'flex';
+    panel.style.flexDirection = 'column';
+    panel.style.gap = this.scaled(8);
+    panel.style.padding = this.scaled(8);
+
+    // 牌型预览区域 - 占据中间区域的顶部，宽高自适应
+    this.handPreviewArea = this.createHandPreviewArea();
+    this.handPreviewArea.style.flex = '1';
+    this.handPreviewArea.style.minHeight = 'clamp(80px, 15vh, 150px)';
+    this.handPreviewArea.style.maxHeight = 'clamp(150px, 25vh, 200px)';
+    panel.appendChild(this.handPreviewArea);
+
+    // 手牌区域 - 自适应高度
+    const handContainer = document.createElement('div');
+    handContainer.className = 'hand-container';
+    handContainer.style.minHeight = 'clamp(100px, 20vh, 160px)';
+    handContainer.style.marginTop = 'auto';
+    
+    this.handComponent = new HandComponent(handContainer, this.gameState.cardPile.hand, {
+      onCardSelect: () => this.handleCardSelect(),
+      onPlayHand: () => this.handlePlayHand(),
+      onDiscard: () => this.handleDiscard(),
+      onSortByRank: () => this.callbacks.onSortByRank?.(),
+      onSortBySuit: () => this.callbacks.onSortBySuit?.()
+    });
+    this.handComponent.setRemaining(
+      this.gameState.handsRemaining,
+      this.gameState.discardsRemaining
+    );
+    panel.appendChild(handContainer);
+
+    return panel;
+  }
+
+  /**
+   * 创建右侧小丑牌区�?
+   */
+  private createRightPanel(): HTMLElement {
+    const panel = document.createElement('div');
+    panel.className = 'game-panel-column';
+    panel.style.padding = `${this.scaled(8)} ${this.scaled(16)} ${this.scaled(8)} ${this.scaled(8)}`;
+    panel.style.gap = this.scaled(8);
+
+    // 小丑牌区�?
+    const jokersSection = document.createElement('div');
+    jokersSection.style.flex = '0 0 auto';
+    jokersSection.style.display = 'flex';
+    jokersSection.style.flexDirection = 'column';
+
+    const jokersTitle = document.createElement('h3');
+    jokersTitle.style.fontSize = this.scaled(19);
+    jokersTitle.className = 'text-yellow-400 font-bold mb-2 text-center';
+    jokersTitle.textContent = `🤡 小丑牌 (${this.gameState.getJokerCount()}/5)`;
+    jokersSection.appendChild(jokersTitle);
+
+    this.jokersArea = document.createElement('div');
+    this.jokersArea.className = 'jokers-area';
+    this.jokersArea.id = 'jokers-area';
+    jokersSection.appendChild(this.jokersArea);
+    panel.appendChild(jokersSection);
+
+    // 消耗牌区域 - 紧跟小丑牌
+    const consumablesSection = document.createElement('div');
+    consumablesSection.style.flex = '0 0 auto';
+    consumablesSection.style.marginTop = this.scaled(8);
+
+    const consumablesTitle = document.createElement('h3');
+    consumablesTitle.style.fontSize = this.scaled(19);
+    consumablesTitle.className = 'text-purple-400 font-bold mb-2 text-center';
+    consumablesTitle.textContent = `🎴 消耗牌 (${this.gameState.getConsumableCount()}/${this.gameState.getMaxConsumableSlots()})`;
+    consumablesSection.appendChild(consumablesTitle);
+
+    const consumablesArea = document.createElement('div');
+    consumablesArea.className = 'consumables-area';
+    consumablesArea.id = 'consumables-area';
+    consumablesSection.appendChild(consumablesArea);
+    panel.appendChild(consumablesSection);
+
+    // 右侧按钮组：牌型和卡组（放在消耗牌下面）水平排列
+    const rightButtonsSection = document.createElement('div');
+    rightButtonsSection.style.flex = '1';
+    rightButtonsSection.style.display = 'flex';
+    rightButtonsSection.style.flexDirection = 'row';
+    rightButtonsSection.style.justifyContent = 'center';
+    rightButtonsSection.style.alignItems = 'flex-end';
+    rightButtonsSection.style.padding = `${this.scaled(8)} 0`;
+    rightButtonsSection.style.gap = this.scaled(8);
+
+    const buttonScale = this.calculateButtonScale();
+
+    // 牌型按钮
+    const handRanksBtn = document.createElement('button');
+    handRanksBtn.className = 'game-btn game-btn-secondary';
+    handRanksBtn.style.fontSize = buttonScale.fontSize;
+    handRanksBtn.style.padding = buttonScale.padding;
+    handRanksBtn.style.flex = '1';
+    handRanksBtn.innerHTML = '📋 牌型';
+    handRanksBtn.addEventListener('click', () => this.handRanksModal.show());
+    rightButtonsSection.appendChild(handRanksBtn);
+
+    // 卡组按钮
+    const deckOverviewBtn = document.createElement('button');
+    deckOverviewBtn.className = 'game-btn game-btn-secondary';
+    deckOverviewBtn.style.fontSize = buttonScale.fontSize;
+    deckOverviewBtn.style.padding = buttonScale.padding;
+    deckOverviewBtn.style.flex = '1';
+    deckOverviewBtn.innerHTML = '🃏 卡组';
+    deckOverviewBtn.addEventListener('click', () => this.deckOverviewModal.show());
+    rightButtonsSection.appendChild(deckOverviewBtn);
+
+    panel.appendChild(rightButtonsSection);
+
+    return panel;
+  }
+
+  /**
+   * 创建底部按钮区域
+   * 只包含排序和出牌弃牌按钮，均匀分布，四个按钮一样宽
+   * 按钮宽度根据中间栏宽度自适应
+   */
+  private createBottomPanel(): HTMLElement {
+    const panel = document.createElement('div');
+    panel.style.display = 'flex';
+    panel.style.justifyContent = 'space-evenly';
+    panel.style.alignItems = 'center';
+    panel.style.padding = `${this.scaled(8)} ${this.scaled(16)}`;
+    panel.style.gap = this.scaled(16);
+    panel.style.width = '100%';
+    panel.style.boxSizing = 'border-box';
+
+    const buttonScale = this.calculateButtonScale();
+
+    // 按点数排序按钮
+    const sortRankBtn = document.createElement('button');
+    sortRankBtn.className = 'game-btn game-btn-secondary';
+    sortRankBtn.style.fontSize = buttonScale.fontSize;
+    sortRankBtn.style.padding = `${this.scaled(10)} ${this.scaled(8)}`;
+    sortRankBtn.style.flex = '1 1 0';
+    sortRankBtn.style.minWidth = '0';
+    sortRankBtn.style.whiteSpace = 'nowrap';
+    sortRankBtn.style.overflow = 'hidden';
+    sortRankBtn.style.textOverflow = 'ellipsis';
+    sortRankBtn.textContent = '按点数';
+    sortRankBtn.addEventListener('click', () => this.callbacks.onSortByRank?.());
+    panel.appendChild(sortRankBtn);
+
+    // 按花色排序按钮
+    const sortSuitBtn = document.createElement('button');
+    sortSuitBtn.className = 'game-btn game-btn-secondary';
+    sortSuitBtn.style.fontSize = buttonScale.fontSize;
+    sortSuitBtn.style.padding = `${this.scaled(10)} ${this.scaled(8)}`;
+    sortSuitBtn.style.flex = '1 1 0';
+    sortSuitBtn.style.minWidth = '0';
+    sortSuitBtn.style.whiteSpace = 'nowrap';
+    sortSuitBtn.style.overflow = 'hidden';
+    sortSuitBtn.style.textOverflow = 'ellipsis';
+    sortSuitBtn.textContent = '按花色';
+    sortSuitBtn.addEventListener('click', () => this.callbacks.onSortBySuit?.());
+    panel.appendChild(sortSuitBtn);
+
+    // 出牌按钮
+    const playBtn = document.createElement('button');
+    playBtn.className = 'game-btn game-btn-primary';
+    playBtn.id = 'play-hand-btn';
+    playBtn.style.fontSize = buttonScale.fontSize;
+    playBtn.style.padding = `${this.scaled(10)} ${this.scaled(8)}`;
+    playBtn.style.flex = '1 1 0';
+    playBtn.style.minWidth = '0';
+    playBtn.style.whiteSpace = 'nowrap';
+    playBtn.style.overflow = 'hidden';
+    playBtn.style.textOverflow = 'ellipsis';
+    playBtn.innerHTML = `出牌 (${this.gameState.handsRemaining})`;
+    playBtn.addEventListener('click', () => this.handlePlayHand());
+    panel.appendChild(playBtn);
+
+    // 弃牌按钮
+    const discardBtn = document.createElement('button');
+    discardBtn.className = 'game-btn game-btn-danger';
+    discardBtn.id = 'discard-btn';
+    discardBtn.style.fontSize = buttonScale.fontSize;
+    discardBtn.style.padding = `${this.scaled(10)} ${this.scaled(8)}`;
+    discardBtn.style.flex = '1 1 0';
+    discardBtn.style.minWidth = '0';
+    discardBtn.style.whiteSpace = 'nowrap';
+    discardBtn.style.overflow = 'hidden';
+    discardBtn.style.textOverflow = 'ellipsis';
+    discardBtn.innerHTML = `弃牌 (${this.gameState.discardsRemaining})`;
+    discardBtn.addEventListener('click', () => this.handleDiscard());
+    panel.appendChild(discardBtn);
+
+    return panel;
+  }
+
+  /**
+   * 设置响应式布局管理器
+   * 屏幕大小变化时只刷新手牌布局，避免重复渲染
+   */
+  private setupResponsiveLayout(): void {
+    // 清理旧的管理器
+    if (this.layoutManager) {
+      this.layoutManager.destroy();
+    }
+
+    // 创建新的管理器
+    this.layoutManager = new ResponsiveLayoutManager(this.container, {
+      minScale: 0.25,
+      maxScale: 2.5,
+      scaleStep: 0.05,
+      overflowTolerance: 2,
+      autoScale: true
+    });
+
+    // 初始检查
+    setTimeout(() => {
+      this.layoutManager?.checkAndAdjustLayout();
+    }, 300);
+
+    // 窗口大小改变时只刷新手牌，不重新渲染整个布局
+    // 手牌组件有自己的 ResizeObserver，这里只需要处理布局缩放
+    window.addEventListener('resize', () => {
+      // 由 ResponsiveLayoutManager 处理缩放调整
+      setTimeout(() => {
+        this.layoutManager?.checkAndAdjustLayout();
+      }, 100);
+    });
+  }
+
+  /**
+   * 创建牌型预览区域
+   */
+  private createHandPreviewArea(): HTMLElement {
+    const area = document.createElement('div');
+    area.className = 'hand-preview';
+    area.id = 'hand-preview-area';
+    area.style.fontSize = 'clamp(0.625rem, 1.8vmin, 0.875rem)';
+    area.style.display = 'flex';
+    area.style.flexDirection = 'column';
+    area.style.justifyContent = 'center';
+    area.style.alignItems = 'center';
+    area.style.padding = 'clamp(8px, 2vh, 16px)';
+    area.style.margin = 'clamp(4px, 1vh, 8px)';
+
+    area.innerHTML = `
+      <div class="hand-preview-name" id="preview-hand-type" style="font-size: clamp(0.875rem, 2.5vmin, 1.25rem); margin-bottom: 4px;">-</div>
+      <div class="hand-preview-score" id="preview-hand-score" style="font-size: clamp(0.625rem, 1.8vmin, 0.875rem);">选择卡牌查看牌型</div>
+      <div class="hand-preview-selected" id="preview-selected-count" style="font-size: clamp(0.5rem, 1.5vmin, 0.75rem); color: #9ca3af; margin-top: 4px;">已选择 0 张卡牌</div>
+    `;
+
+    return area;
+  }
+
+  /**
+   * 创建分数弹出框
+   */
+  private createScorePopup(): HTMLElement {
+    const popup = document.createElement('div');
+    popup.id = 'score-popup';
+    popup.className = 'fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none z-50 hidden';
+    popup.innerHTML = `
+      <div class="text-center">
+        <div class="text-6xl font-bold text-yellow-400 drop-shadow-lg" id="popup-score">0</div>
+        <div class="text-2xl text-white mt-2" id="popup-hand-type"></div>
+      </div>
+    `;
+    return popup;
+  }
+
+  /**
+   * 更新左侧信息栏
+   */
+  private updateTopBar(): void {
+    // 更新底注和盲注名称（合并在一个格子中）
+    const blindName = document.getElementById('blind-name');
+    if (blindName) {
+      blindName.textContent = this.gameState.currentBlind?.name || '选择关卡';
+      // 更新底注值（在父元素的第一个子元素中）
+      const anteLabel = blindName.parentElement?.querySelector('.text-gray-400');
+      if (anteLabel) {
+        anteLabel.textContent = `底注 ${this.gameState.ante}`;
+      }
+    }
+
+    // 更新金币
+    const moneySection = document.getElementById('money-section');
+    if (moneySection) {
+      const valueDiv = moneySection.querySelector('.text-yellow-400');
+      if (valueDiv) {
+        valueDiv.textContent = `$${this.gameState.money}`;
+      }
+    }
+
+    // 更新当前得分
+    const currentScore = document.getElementById('current-score');
+    if (currentScore) {
+      currentScore.textContent = String(this.gameState.roundScore);
+    }
+
+    // 更新目标分数
+    const targetScore = document.getElementById('target-score');
+    if (targetScore) {
+      targetScore.textContent = String(this.gameState.currentBlind?.targetScore || 0);
+    }
+
+    // 更新牌组剩余数量
+    const deckCount = document.getElementById('deck-count');
+    if (deckCount) {
+      const remainingCards = this.gameState.cardPile.deck?.remaining() ?? 52;
+      deckCount.textContent = String(remainingCards);
+    }
+  }
+
+  /**
+   * 更新进度条
+   */
+  private updateProgressBar(): void {
+    const progressFill = document.getElementById('progress-fill') as HTMLElement;
+    if (progressFill) {
+      const progress = this.gameState.getProgress();
+      progressFill.style.width = `${progress.percentage}%`;
+
+      progressFill.classList.remove('warning', 'danger');
+      if (progress.percentage >= 100) {
+        progressFill.style.background = 'linear-gradient(90deg, #2ecc71 0%, #27ae60 100%)';
+      } else if (progress.percentage >= 70) {
+        progressFill.classList.add('warning');
+      } else if (progress.percentage >= 40) {
+        progressFill.classList.add('danger');
+      }
+    }
+  }
+
+  /**
+   * 更新牌型预览
+   */
+  private updateHandPreview(): void {
+    const handTypeEl = document.getElementById('preview-hand-type');
+    const handScoreEl = document.getElementById('preview-hand-score');
+    const selectedCountEl = document.getElementById('preview-selected-count');
+
+    if (!handTypeEl || !handScoreEl) return;
+
+    const selectedCards = this.gameState.cardPile.hand.getSelectedCards();
+
+    // 更新已选择卡牌数量
+    if (selectedCountEl) {
+      selectedCountEl.textContent = `已选择 ${selectedCards.length} 张卡牌`;
+    }
+
+    if (selectedCards.length === 0) {
+      handTypeEl.textContent = '-';
+      handScoreEl.textContent = '选择卡牌查看牌型';
+      return;
+    }
+
+    // 检查是否有四指效果并设置配�?
+    const jokers = this.gameState.getJokerSlots().getJokers();
+    const fourFingers = jokers.some(j => j.effect?.({}).fourFingers);
+    PokerHandDetector.setConfig({ fourFingers });
+
+    const detectionResult = PokerHandDetector.detect(selectedCards);
+
+    // 清除配置
+    PokerHandDetector.clearConfig();
+
+    if (detectionResult) {
+      const baseValue = HAND_BASE_VALUES[detectionResult.handType];
+
+      // 使用ScoringSystem计算完整分数
+      const gameState = {
+        money: this.gameState.money,
+        interestCap: this.gameState.getInterestCap(),
+        hands: this.gameState.handsRemaining,
+        discards: this.gameState.discardsRemaining
+      };
+
+      // 获取手持卡牌（未选中的手牌）用于计算Steel效果
+      const handCards = this.gameState.cardPile.hand.getCards();
+      const selectedIndices = this.gameState.cardPile.hand.getSelectedIndices();
+      const heldCards = handCards.filter((_, index) => !selectedIndices.has(index));
+
+      const scoreResult = ScoringSystem.calculate(selectedCards, detectionResult.handType, gameState, heldCards, this.gameState.getJokerSlots());
+
+      // 计算卡牌筹码加成
+      const cardChipBonus = scoreResult.chipBonus;
+
+      handTypeEl.textContent = baseValue.displayName;
+      handScoreEl.innerHTML = `
+        <div class="text-sm text-gray-400">
+          基础: ${scoreResult.baseChips} 筹码 × ${scoreResult.baseMultiplier} 倍率
+        </div>
+        ${cardChipBonus > 0 ? `<div class="text-sm text-blue-400">+ 卡牌筹码: ${cardChipBonus}</div>` : ''}
+        ${scoreResult.multBonus > 0 ? `<div class="text-sm text-purple-400">+ 倍率加成: ${scoreResult.multBonus}</div>` : ''}
+        <div class="text-lg text-yellow-400 font-bold mt-1">
+          预计: ${scoreResult.totalChips} × ${scoreResult.totalMultiplier} = ${scoreResult.totalScore}
+        </div>
+      `;
+    } else {
+      handTypeEl.textContent = '无效牌型';
+      handScoreEl.textContent = '请选择有效的扑克牌型';
+    }
+  }
+
+  /**
+   * 创建小丑牌区域 - 水平重叠排列，支持点击展开
+   */
+  private updateJokers(): void {
+    if (!this.jokersArea) return;
+    this.jokersArea.innerHTML = '';
+
+    const jokers = this.gameState.jokers as Joker[];
+
+    if (jokers.length === 0) {
+      const emptyMsg = document.createElement('div');
+      emptyMsg.className = 'text-gray-500 text-center';
+      emptyMsg.style.fontSize = 'clamp(0.625rem, 1.5vw, 0.875rem)';
+      emptyMsg.textContent = '暂无小丑牌';
+      this.jokersArea.appendChild(emptyMsg);
+      return;
+    }
+
+    jokers.forEach((joker, index) => {
+      const jokerCard = CardComponent.renderJokerCard({
+        id: joker.id,
+        name: joker.name,
+        description: joker.description,
+        rarity: joker.rarity,
+        cost: joker.cost
+      });
+      
+      jokerCard.draggable = jokers.length > 1;
+      jokerCard.style.cursor = jokers.length > 1 ? 'grab' : 'pointer';
+      jokerCard.dataset.index = String(index);
+
+      // 位置标签
+      if (index === 0 || index === jokers.length - 1) {
+        const positionLabel = document.createElement('div');
+        positionLabel.className = 'absolute -top-2 left-1/2 transform -translate-x-1/2 z-10';
+        positionLabel.style.pointerEvents = 'none';
+        const labelText = index === 0 ? '最左' : '最右';
+        positionLabel.innerHTML = `<span class="bg-blue-500 text-white px-1 py-0.5 rounded font-bold" style="font-size: clamp(8px, 1.5vmin, 12px);">${labelText}</span>`;
+        jokerCard.appendChild(positionLabel);
+      }
+
+      // 点击显示详情弹窗（Board界面不带卖出按钮）
+      jokerCard.addEventListener('click', (e) => {
+        // 如果正在拖拽，不触发点击
+        if (this.draggedJokerIndex !== null) return;
+        this.jokerDetailModal.show({
+          joker,
+          index,
+          showSellButton: false
+        });
+      });
+
+      // 拖拽事件（桌面端）
+      if (jokers.length > 1) {
+        jokerCard.addEventListener('dragstart', (e) => this.handleJokerDragStart(e, index));
+        jokerCard.addEventListener('dragend', (e) => this.handleJokerDragEnd(e));
+        jokerCard.addEventListener('dragover', (e) => this.handleJokerDragOver(e));
+        jokerCard.addEventListener('drop', (e) => this.handleJokerDrop(e, index));
+        jokerCard.addEventListener('dragenter', (e) => this.handleJokerDragEnter(e));
+        jokerCard.addEventListener('dragleave', (e) => this.handleJokerDragLeave(e));
+
+        // 触摸事件（移动端支持）
+        jokerCard.addEventListener('touchstart', (e) => this.handleJokerTouchStart(e, index), { passive: true });
+        jokerCard.addEventListener('touchmove', (e) => this.handleJokerTouchMove(e), { passive: false });
+        jokerCard.addEventListener('touchend', (e) => this.handleJokerTouchEnd(e, joker, index));
+        jokerCard.addEventListener('touchcancel', (e) => this.handleJokerTouchEnd(e, joker, index));
+      }
+
+      this.jokersArea!.appendChild(jokerCard);
+    });
+  }
+
+  private draggedJokerIndex: number | null = null;
+
+  // 触摸事件相关状态
+  private touchStartX: number = 0;
+  private touchStartY: number = 0;
+  private touchCurrentIndex: number | null = null;
+  private isTouchDragging: boolean = false;
+  private hasTouchMoved: boolean = false;
+  private readonly TOUCH_MOVE_THRESHOLD = 10; // 移动超过10px认为是拖拽
+
+  private handleJokerDragStart(e: DragEvent, index: number): void {
+    console.log('[Joker Drag] DragStart - index:', index);
+    this.draggedJokerIndex = index;
+    const target = e.currentTarget as HTMLElement;
+    target.style.opacity = '0.5';
+    target.style.cursor = 'grabbing';
+    if (e.dataTransfer) {
+      e.dataTransfer.effectAllowed = 'move';
+    }
+  }
+
+  private handleJokerDragEnd(e: DragEvent): void {
+    console.log('[Joker Drag] DragEnd');
+    const target = e.currentTarget as HTMLElement;
+    target.style.opacity = '1';
+    target.style.cursor = 'grab';
+    this.draggedJokerIndex = null;
+    document.querySelectorAll('[data-index]').forEach(el => {
+      (el as HTMLElement).style.transform = '';
+      (el as HTMLElement).style.border = '';
+    });
+  }
+
+  private handleJokerDragOver(e: DragEvent): void {
+    e.preventDefault();
+    if (e.dataTransfer) {
+      e.dataTransfer.dropEffect = 'move';
+    }
+  }
+
+  private handleJokerDragEnter(e: DragEvent): void {
+    e.preventDefault();
+    const target = e.currentTarget as HTMLElement;
+    if (this.draggedJokerIndex !== null && this.draggedJokerIndex !== Number(target.dataset.index)) {
+      target.style.transform = 'scale(1.02)';
+      target.style.border = '2px solid #fbbf24';
+    }
+  }
+
+  private handleJokerDragLeave(e: DragEvent): void {
+    const target = e.currentTarget as HTMLElement;
+    target.style.transform = '';
+    target.style.border = '';
+  }
+
+  private handleJokerDrop(e: DragEvent, targetIndex: number): void {
+    e.preventDefault();
+    const fromIndex = this.draggedJokerIndex;
+    console.log('[Joker Drag] Drop - from:', fromIndex, 'to:', targetIndex);
+    if (fromIndex === null || fromIndex === targetIndex) return;
+
+    const success = this.gameState.getJokerSlots().swapJokers(fromIndex, targetIndex);
+    console.log('[Joker Drag] Swap result:', success);
+    if (success) {
+      this.refresh();
+      // 修复：交换小丑牌后自动保存
+      this.autoSave();
+    }
+
+    const target = e.currentTarget as HTMLElement;
+    target.style.transform = '';
+    target.style.border = '';
+  }
+
+  // 触摸事件处理（移动端支持）
+  private handleJokerTouchStart(e: TouchEvent, index: number): void {
+    console.log('[Joker Touch] TouchStart - index:', index);
+    // 不要阻止默认行为，让点击事件能正常触发
+    // e.preventDefault();
+    // e.stopPropagation();
+
+    const touch = e.touches[0];
+    this.touchStartX = touch.clientX;
+    this.touchStartY = touch.clientY;
+    this.touchCurrentIndex = index;
+    this.draggedJokerIndex = index;
+    this.isTouchDragging = true;
+    this.hasTouchMoved = false;
+
+    console.log('[Joker Touch] TouchStart completed');
+  }
+
+  private handleJokerTouchMove(e: TouchEvent): void {
+    if (!this.isTouchDragging || this.draggedJokerIndex === null) {
+      console.log('[Joker Touch] TouchMove ignored - not dragging');
+      return;
+    }
+
+    const touch = e.touches[0];
+    const deltaX = touch.clientX - this.touchStartX;
+    const deltaY = touch.clientY - this.touchStartY;
+    const moveDistance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+
+    // 如果移动距离超过阈值，认为是拖�?
+    if (moveDistance > this.TOUCH_MOVE_THRESHOLD) {
+      if (!this.hasTouchMoved) {
+        console.log('[Joker Touch] TouchMove - start dragging, distance:', moveDistance);
+        this.hasTouchMoved = true;
+
+        // 开始拖动视觉效果
+        const target = document.querySelector(`#jokers-area [data-index="${this.draggedJokerIndex}"]`) as HTMLElement;
+        if (target) {
+          target.style.opacity = '0.7';
+          target.style.transform = 'scale(1.05)';
+          target.style.zIndex = '100';
+          target.style.transition = 'none';
+          target.style.cursor = 'grabbing';
+        }
+      }
+
+      // 检查事件是否可取消，避免 passive 事件警告
+      if (e.cancelable) {
+        e.preventDefault();
+      }
+      e.stopPropagation();
+
+      // 移动被拖拽的元素跟随手指
+      const target = document.querySelector(`#jokers-area [data-index="${this.draggedJokerIndex}"]`) as HTMLElement;
+      if (target) {
+        target.style.transform = `translate(${deltaX}px, ${deltaY}px) scale(1.05)`;
+        // 临时隐藏被拖动的元素，以�?elementFromPoint 能检测到下方的元�?
+        target.style.pointerEvents = 'none';
+      }
+
+      // 检测下方的元素（在隐藏被拖动元素后）
+      const element = document.elementFromPoint(touch.clientX, touch.clientY);
+      const wrapper = element?.closest('#jokers-area [data-index]') as HTMLElement;
+
+      if (wrapper) {
+        const index = Number(wrapper.dataset.index);
+        if (index !== this.draggedJokerIndex) {
+          // 高亮目标
+          document.querySelectorAll('#jokers-area [data-index]').forEach(el => {
+            if (Number((el as HTMLElement).dataset.index) !== this.draggedJokerIndex) {
+              (el as HTMLElement).style.border = '';
+            }
+          });
+          wrapper.style.border = '3px solid #fbbf24';
+          wrapper.style.borderRadius = '8px';
+          this.touchCurrentIndex = index;
+          console.log('[Joker Touch] TouchMove - over index:', index);
+        }
+      }
+
+      // 恢复被拖动元素的 pointerEvents
+      if (target) {
+        target.style.pointerEvents = '';
+      }
+    }
+  }
+
+  private handleJokerTouchEnd(e: TouchEvent, joker: Joker, index: number): void {
+    console.log('[Joker Touch] TouchEnd - draggedIndex:', this.draggedJokerIndex, 'currentIndex:', this.touchCurrentIndex, 'hasMoved:', this.hasTouchMoved);
+
+    // 如果没有移动（只是点击），不阻止事件，让 click 事件处理
+    if (!this.hasTouchMoved) {
+      console.log('[Joker Touch] TouchEnd - was a click, not drag');
+      this.resetTouchState();
+      return;
+    }
+
+    // 是拖动，阻止默认行为
+    if (e.cancelable) {
+      e.preventDefault();
+    }
+    e.stopPropagation();
+    console.log('[Joker Touch] TouchEnd - processing drag end');
+
+    const target = document.querySelector(`#jokers-area [data-index="${this.draggedJokerIndex}"]`) as HTMLElement;
+    if (target) {
+      target.style.opacity = '1';
+      target.style.transform = '';
+      target.style.zIndex = '';
+      target.style.transition = 'transform 0.2s ease';
+      target.style.cursor = 'grab';
+    }
+
+    // 清除所有高亮
+    document.querySelectorAll('#jokers-area [data-index]').forEach(el => {
+      (el as HTMLElement).style.border = '';
+    });
+
+    // 如果移动到了新位置，交换
+    console.log('[Joker Touch] Checking swap condition - currentIndex:', this.touchCurrentIndex, 'draggedIndex:', this.draggedJokerIndex);
+    if (this.touchCurrentIndex !== null && this.touchCurrentIndex !== this.draggedJokerIndex && this.draggedJokerIndex !== null) {
+      console.log('[Joker Touch] Swapping - from:', this.draggedJokerIndex, 'to:', this.touchCurrentIndex);
+      const success = this.gameState.getJokerSlots().swapJokers(this.draggedJokerIndex, this.touchCurrentIndex);
+      console.log('[Joker Touch] Swap result:', success);
+      if (success) {
+        console.log('[Joker Touch] Swap successful, calling refresh and autoSave');
+        this.refresh();
+        // 修复：交换小丑牌后自动保存
+        this.autoSave();
+      } else {
+        console.log('[Joker Touch] Swap failed, not calling autoSave');
+      }
+    } else {
+      console.log('[Joker Touch] Swap condition not met, skipping swap');
+    }
+
+    this.resetTouchState();
+  }
+
+  private resetTouchState(): void {
+    this.draggedJokerIndex = null;
+    this.touchCurrentIndex = null;
+    this.isTouchDragging = false;
+    this.hasTouchMoved = false;
+  }
+
+  /**
+   * 自动保存游戏
+   */
+  private autoSave(): void {
+    console.log('[GameBoard] autoSave called');
+    try {
+      Storage.autoSave(this.gameState);
+      console.log('[GameBoard] autoSave success');
+    } catch (error) {
+      console.error('[GameBoard] autoSave failed:', error);
+    }
+  }
+
+  /**
+   * 更新消耗牌区域
+   */
+  private updateConsumables(): void {
+    const consumablesArea = document.getElementById('consumables-area');
+    if (!consumablesArea) return;
+
+    consumablesArea.innerHTML = '';
+
+    const consumables = this.gameState.consumables as Consumable[];
+
+    if (consumables.length === 0) {
+      const emptyMsg = document.createElement('div');
+      emptyMsg.className = 'text-gray-500 text-center';
+      emptyMsg.style.fontSize = 'clamp(0.625rem, 1.5vw, 0.875rem)';
+      emptyMsg.textContent = '暂无消耗牌';
+      consumablesArea.appendChild(emptyMsg);
+      return;
+    }
+
+    // 添加点击展开/收起功能
+    const toggleExpand = (clickedElement: HTMLElement) => {
+      const allCards = consumablesArea.querySelectorAll('.consumable-card-wrapper');
+      const isExpanded = clickedElement.classList.contains('expanded');
+      
+      // 先收起所有卡牌
+      allCards.forEach(card => {
+        card.classList.remove('expanded');
+      });
+
+      // 如果点击的卡片之前没有展开，则展开它
+      if (!isExpanded) {
+        clickedElement.classList.add('expanded');
+      }
+    };
+
+    consumables.forEach((consumable, index) => {
+      const consumableCard = CardComponent.renderConsumableCard({
+        id: consumable.id,
+        name: consumable.name,
+        description: consumable.description,
+        type: consumable.type,
+        cost: consumable.cost
+      });
+      
+      consumableCard.style.cursor = 'pointer';
+      consumableCard.dataset.index = String(index);
+
+      // 点击显示详情弹窗
+      consumableCard.addEventListener('click', () => {
+        this.consumableDetailModal.show({
+          consumable,
+          index,
+          onUse: (idx) => this.handleUseConsumable(idx),
+          onSell: (idx) => this.handleSellConsumable(idx)
+        });
+      });
+
+      consumablesArea.appendChild(consumableCard);
+    });
+
+    // 更新标题中的数量
+    const consumablesTitle = consumablesArea.parentElement?.querySelector('h3');
+    if (consumablesTitle) {
+      consumablesTitle.textContent = `🎴 消耗牌 (${this.gameState.getConsumableCount()}/${this.gameState.getMaxConsumableSlots()})`;
+    }
+  }
+
+  /**
+   * 处理卡牌选择
+   */
+  private handleCardSelect(): void {
+    this.updateHandPreview();
+    this.updateButtonStates();
+  }
+
+  /**
+   * 更新按钮状态
+   */
+  private updateButtonStates(): void {
+    const hasSelection = this.gameState.cardPile.hand.getSelectionCount() > 0;
+
+    const playBtn = document.getElementById('play-hand-btn') as HTMLButtonElement;
+    const discardBtn = document.getElementById('discard-btn') as HTMLButtonElement;
+
+    if (playBtn) {
+      playBtn.disabled = !hasSelection || this.gameState.handsRemaining <= 0;
+      playBtn.innerHTML = `出牌 (${this.gameState.handsRemaining})`;
+    }
+
+    if (discardBtn) {
+      discardBtn.disabled = !hasSelection || this.gameState.discardsRemaining <= 0;
+      discardBtn.innerHTML = `弃牌 (${this.gameState.discardsRemaining})`;
+    }
+  }
+
+  /**
+   * 处理出牌
+   */
+  private handlePlayHand(): void {
+    const scoreResult = this.gameState.playHand();
+    
+    if (scoreResult) {
+      // 显示分数动画
+      this.showScorePopup(scoreResult);
+      
+      // 回调
+      this.callbacks.onPlayHand?.(scoreResult);
+      
+      // 刷新显示
+      setTimeout(() => {
+        this.refresh();
+      }, 500);
+    }
+  }
+
+  /**
+   * 处理弃牌
+   */
+  private handleDiscard(): void {
+    const discarded = this.gameState.discardCards();
+
+    if (discarded) {
+      this.callbacks.onDiscard?.();
+      this.refresh();
+    }
+  }
+
+  /**
+   * 处理使用消耗牌
+   */
+  private handleUseConsumable(index: number): void {
+    const consumables = this.gameState.consumables;
+    if (index < 0 || index >= consumables.length) return;
+
+    const consumable = consumables[index];
+    console.log('[GameBoard] 使用消耗牌:', consumable.id, consumable.name);
+
+    // 创建使用上下文
+    const context = {
+      gameState: {
+        money: this.gameState.money,
+        hands: this.gameState.handsRemaining,
+        discards: this.gameState.discardsRemaining
+      },
+      selectedCards: this.gameState.cardPile.hand.getSelectedCards(),
+      deck: this.gameState.cardPile.deck,
+      handCards: this.gameState.cardPile.hand.getCards(),
+      money: this.gameState.money,
+      jokers: this.gameState.jokers,
+      addJoker: (rarity?: 'rare'): boolean => {
+        console.log('[GameBoard] addJoker 被调用, rarity:', rarity);
+        const joker = getRandomJoker();
+        console.log('[GameBoard] 生成的随机小丑牌:', joker.id, joker.name);
+        if (rarity) {
+          joker.rarity = rarity;
+        }
+        const success = this.gameState.addJoker(joker);
+        console.log('[GameBoard] addJoker 结果:', success);
+        return success;
+      },
+      addEditionToRandomJoker: (edition: string): boolean => {
+        console.log('[GameBoard] addEditionToRandomJoker 被调用, edition:', edition);
+        const jokers = this.gameState.jokers;
+        const eligibleJokers = jokers.filter(j => !j.hasEdition);
+        if (eligibleJokers.length === 0) return false;
+        
+        const randomIndex = Math.floor(Math.random() * eligibleJokers.length);
+        const targetJoker = eligibleJokers[randomIndex];
+        const actualIndex = this.gameState.jokers.indexOf(targetJoker);
+        
+        if (actualIndex >= 0) {
+          const joker = this.gameState.jokers[actualIndex] as Joker;
+          joker.edition = edition as any;
+          console.log('[GameBoard] 给小丑添加版本:', joker.name, edition);
+          return true;
+        }
+        return false;
+      },
+      destroyOtherJokers: (): number => {
+        console.log('[GameBoard] destroyOtherJokers 被调用');
+        const jokers = this.gameState.jokers;
+        if (jokers.length <= 1) return 0;
+        
+        const randomIndex = Math.floor(Math.random() * jokers.length);
+        let destroyedCount = 0;
+        
+        for (let i = jokers.length - 1; i >= 0; i--) {
+          if (i !== randomIndex) {
+            this.gameState.removeJoker(i);
+            destroyedCount++;
+          }
+        }
+        console.log('[GameBoard] 摧毁了', destroyedCount, '张小丑');
+        return destroyedCount;
+      }
+    };
+
+    // 检查是否可以使用
+    const canUse = consumable.canUse(context);
+    console.log('[GameBoard] canUse 结果:', canUse);
+    if (!canUse) {
+      Toast.warning('当前条件不满足，无法使用此消耗牌');
+      return;
+    }
+
+    // 使用消耗牌
+    console.log('[GameBoard] 调用 consumable.use()');
+    const result = consumable.use(context);
+    console.log('[GameBoard] use 结果:', result);
+
+    if (result.success) {
+      // 处理金钱变化
+      if (result.moneyChange !== undefined && result.moneyChange !== 0) {
+        if (result.moneyChange > 0) {
+          this.gameState.addMoney(result.moneyChange);
+          console.log('[GameBoard] 增加资金:', result.moneyChange);
+        } else {
+          this.gameState.spendMoney(-result.moneyChange);
+          console.log('[GameBoard] 减少资金:', -result.moneyChange);
+        }
+      }
+
+      // 处理星球牌升级
+      if (result.handTypeUpgrade) {
+        console.log('[GameBoard] 升级牌型:', result.handTypeUpgrade);
+        this.gameState.handLevelState.upgrade(result.handTypeUpgrade);
+      }
+
+      // 处理黑洞牌升级所有牌型
+      if (result.upgradeAllHandLevels) {
+        console.log('[GameBoard] 升级所有牌型');
+        this.gameState.handLevelState.upgradeAll();
+      }
+
+      // 从消耗牌槽中移除
+      console.log('[GameBoard] 准备移除消耗牌, index:', index);
+      const removed = this.gameState.removeConsumable(index);
+      console.log('[GameBoard] 移除消耗牌结果:', removed);
+
+      // 自动保存
+      Storage.autoSave(this.gameState);
+      console.log('[GameBoard] 使用消耗牌后自动保存完成');
+
+      this.refresh();
+
+      if (result.message) {
+        Toast.success(result.message);
+      }
+    } else {
+      Toast.error(result.message || '使用失败');
+    }
+  }
+
+  /**
+   * 处理卖出消耗牌
+   */
+  private handleSellConsumable(index: number): void {
+    const result = this.gameState.sellConsumable(index);
+    
+    if (result.success) {
+      this.refresh();
+      Toast.success(`消耗牌已卖出，获得 $${result.sellPrice}！`);
+    } else {
+      Toast.error(result.error || '卖出失败');
+    }
+  }
+
+  /**
+   * 显示分数弹出动画
+   */
+  private showScorePopup(scoreResult: ScoreResult): void {
+    if (!this.scorePopup) return;
+
+    const scoreEl = document.getElementById('popup-score');
+    const handTypeEl = document.getElementById('popup-hand-type');
+    
+    if (scoreEl) scoreEl.textContent = scoreResult.totalScore.toString();
+    if (handTypeEl) {
+      const baseValue = HAND_BASE_VALUES[scoreResult.handType];
+      handTypeEl.textContent = baseValue.displayName;
+    }
+
+    this.scorePopup.classList.remove('hidden');
+    this.scorePopup.classList.add('animate-score');
+
+    setTimeout(() => {
+      this.scorePopup?.classList.add('hidden');
+      this.scorePopup?.classList.remove('animate-score');
+    }, 1500);
+  }
+
+  /**
+   * 获取手牌组件
+   */
+  getHandComponent(): HandComponent | null {
+    return this.handComponent;
+  }
+
+  /**
+   * 销毁组件
+   */
+  destroy(): void {
+    if (this.layoutManager) {
+      this.layoutManager.destroy();
+      this.layoutManager = null;
+    }
+  }
+}

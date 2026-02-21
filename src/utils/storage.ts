@@ -1,0 +1,563 @@
+import { GameState } from '../models/GameState';
+import { Card } from '../models/Card';
+import { Joker } from '../models/Joker';
+import { Consumable } from '../models/Consumable';
+import { Blind } from '../models/Blind';
+import { Deck } from '../models/Deck';
+import { Hand } from '../models/Hand';
+import { DiscardPile } from '../models/DiscardPile';
+import { CardPile } from '../models/CardPile';
+import { Shop, ShopItem } from '../models/Shop';
+import { BOOSTER_PACKS, VOUCHERS, type BoosterPack } from '../data/consumables/index';
+import { ScoringSystem } from '../systems/ScoringSystem';
+import { GamePhase } from '../types/game';
+import type { BlindType } from '../types/game';
+import type { Suit, Rank, CardEnhancement, SealType } from '../types/card';
+import { getJokerById } from '../data/jokers';
+import { getConsumableById } from '../data/consumables/index';
+import { HandLevel } from '../models/HandLevelState';
+import { PokerHandType } from '../types/pokerHands';
+import { CardManager } from '../systems/CardManager';
+import { ConsumableManager } from '../systems/ConsumableManager';
+import { createModuleLogger } from '../utils/logger';
+
+const logger = createModuleLogger('Storage');
+
+const SAVE_KEY = 'balatro_game_save';
+
+export interface SaveData {
+  version: string;
+  timestamp: number;
+  gameState: {
+    phase: GamePhase;
+    ante: number;
+    money: number;
+    handsRemaining: number;
+    discardsRemaining: number;
+    currentScore: number;
+    roundScore: number;
+    currentBlind: {
+      type: BlindType;
+      ante: number;
+    } | null;
+    currentBlindPosition: BlindType;
+    // 卡牌按位置分开存储
+    cards: {
+      deck: SerializedCard[];      // 发牌堆
+      hand: SerializedCard[];      // 手牌
+      discard: SerializedCard[];   // 弃牌堆
+      handSelectedIndices: number[]; // 手牌中选中的索引
+    };
+    jokers: SerializedJoker[];
+    consumables: SerializedConsumable[];
+    maxConsumableSlots: number; // 消耗牌槽位数量
+    maxJokerSlots: number; // 小丑牌槽位数量
+    handLevels: Record<PokerHandType, HandLevel>;
+    // 修复2: 补充缺失的游戏状态字段
+    skippedBlinds: string[]; // 已跳过的盲注
+    playedHandTypes: string[]; // 本回合已出的牌型
+    lastPlayScore: number; // 上次出牌分数
+    roundStats: {
+      handsPlayed: number;
+      discardsUsed: number;
+      cardsPlayed: number;
+      cardsDiscarded: number;
+      highestHandScore: number;
+    };
+    // 修复4: 全局计数器（用于超新星、约里克等小丑牌）
+    globalCounters: {
+      totalHandsPlayed: number; // 总出牌次数
+      totalDiscardsUsed: number; // 总弃牌次数
+    };
+    config: {
+      maxHandSize: number;
+      maxHandsPerRound: number;
+      maxDiscardsPerRound: number;
+      startingMoney: number;
+      startingAnte: number;
+    };
+  };
+  // 修复1: 商店信息存档
+  shop?: SerializedShop;
+}
+
+interface SerializedCard {
+  suit: Suit;
+  rank: Rank;
+  enhancement: CardEnhancement;
+  seal: SealType;
+}
+
+interface SerializedJoker {
+  id: string;
+  // 修复3: 补充小丑牌完整信息
+  sticker: string; // 贴纸类型
+  edition: string; // 版本
+  perishableRounds: number; // 易腐剩余回合
+  state: Record<string, any>; // 状态数据
+}
+
+interface SerializedConsumable {
+  id: string;
+}
+
+// 修复1: 商店序列化接口
+export interface SerializedShop {
+  items: SerializedShopItem[];
+  rerollCost: number;
+  baseRerollCost: number;
+  rerollCount: number;
+  vouchersUsed: string[];
+  isFirstShopVisit: boolean;
+  itemIdCounter: number;
+}
+
+export interface SerializedShopItem {
+  id: string;
+  type: 'joker' | 'consumable' | 'pack' | 'voucher';
+  itemId: string;
+  basePrice: number;
+  currentPrice: number;
+  sold: boolean;
+}
+
+export class Storage {
+  private static readonly CURRENT_VERSION = '1.0.0';
+
+  static save(gameState: GameState): boolean {
+    try {
+      const saveData: SaveData = {
+        version: this.CURRENT_VERSION,
+        timestamp: Date.now(),
+        gameState: this.serializeGameState(gameState),
+        // 修复1: 保存商店信息
+        shop: gameState.shop ? this.serializeShop(gameState.shop) : undefined
+      };
+
+      localStorage.setItem(SAVE_KEY, JSON.stringify(saveData));
+      return true;
+    } catch (error) {
+      console.error('保存游戏失败:', error);
+      return false;
+    }
+  }
+
+  /**
+   * 序列化游戏状态（用于测试，不依赖 localStorage）
+   */
+  static serialize(gameState: GameState): SaveData {
+    return {
+      version: this.CURRENT_VERSION,
+      timestamp: Date.now(),
+      gameState: this.serializeGameState(gameState),
+      // 修复1: 保存商店信息
+      shop: gameState.shop ? this.serializeShop(gameState.shop) : undefined
+    };
+  }
+
+  static load(): SaveData | null {
+    try {
+      const saveString = localStorage.getItem(SAVE_KEY);
+      if (!saveString) {
+        return null;
+      }
+
+      const saveData: SaveData = JSON.parse(saveString);
+
+      if (saveData.version !== this.CURRENT_VERSION) {
+        console.warn(`存档版本不匹配: ${saveData.version} vs ${this.CURRENT_VERSION}`);
+      }
+
+      return saveData;
+    } catch (error) {
+      console.error('加载游戏失败:', error);
+      return null;
+    }
+  }
+
+  static restoreGameState(saveData: SaveData): GameState {
+    const gameState = new GameState();
+    const data = saveData.gameState;
+
+    gameState.phase = data.phase;
+    gameState.ante = data.ante;
+    gameState.money = data.money;
+    gameState.handsRemaining = data.handsRemaining;
+    gameState.discardsRemaining = data.discardsRemaining;
+    gameState.currentScore = data.currentScore;
+    gameState.roundScore = data.roundScore;
+
+    // 恢复当前盲注位置
+    (gameState as any).currentBlindPosition = data.currentBlindPosition;
+
+    if (data.currentBlind) {
+      gameState.currentBlind = Blind.create(data.currentBlind.ante, data.currentBlind.type);
+    }
+
+    // 先恢复小丑牌，这样 getMaxHandSize() 才能正确计算
+    // 修复3: 恢复小丑牌完整信息（贴纸、版本、状态等）
+    const restoredJokers = data.jokers
+      .map(jokerData => {
+        const joker = getJokerById(jokerData.id);
+        if (joker) {
+          // 恢复贴纸
+          if (jokerData.sticker) {
+            joker.setSticker(jokerData.sticker as any);
+          }
+          // 恢复版本
+          if (jokerData.edition) {
+            joker.setEdition(jokerData.edition as any);
+          }
+          // 恢复易腐回合数
+          if (jokerData.perishableRounds !== undefined) {
+            (joker as any).perishableRounds = jokerData.perishableRounds;
+          }
+          // 恢复状态
+          if (jokerData.state) {
+            joker.updateState(jokerData.state);
+          }
+        }
+        return joker;
+      })
+      .filter((joker): joker is Joker => joker !== undefined);
+
+    for (const joker of restoredJokers) {
+      gameState.getJokerSlots().addJoker(joker);
+    }
+
+    // 恢复卡牌数据（包括选牌状态）
+    // 使用 CardPile 反序列化
+    if (data.cards) {
+      gameState.cardPile.deserialize({
+        deck: data.cards.deck,
+        hand: data.cards.hand,
+        discard: data.cards.discard,
+        handSelectedIndices: data.cards.handSelectedIndices
+      }, gameState.getMaxHandSize());
+    } else {
+      // 如果没有卡牌数据，重新初始化 CardPile
+      gameState.cardPile = new CardPile(gameState.getMaxHandSize());
+    }
+
+    // 重新计算出牌次数（考虑小丑牌效果）
+    const maxHands = gameState.getMaxHandsPerRound();
+    // 如果存档中的出牌次数大于最大值，则使用最大值
+    gameState.handsRemaining = Math.min(data.handsRemaining, maxHands);
+
+    // 恢复消耗牌槽位数量
+    const maxConsumableSlots = data.maxConsumableSlots ?? 2;
+    const consumableSlots = gameState.getConsumableSlots();
+    // 增加槽位到存档中的数量
+    const currentSlots = consumableSlots.getMaxSlots();
+    if (maxConsumableSlots > currentSlots) {
+      consumableSlots.increaseMaxSlots(maxConsumableSlots - currentSlots);
+    }
+
+    // 修复4: 恢复小丑牌槽位数量
+    const maxJokerSlots = data.maxJokerSlots ?? 5;
+    const jokerSlots = gameState.getJokerSlots();
+    const currentJokerSlots = jokerSlots.getAvailableSlots() + jokerSlots.getJokerCount();
+    if (maxJokerSlots > currentJokerSlots) {
+      jokerSlots.increaseMaxSlots(maxJokerSlots - currentJokerSlots);
+    }
+
+    // 恢复消耗牌
+    const restoredConsumables = data.consumables
+      .map(consumableData => getConsumableById(consumableData.id))
+      .filter((consumable): consumable is Consumable => consumable !== undefined);
+    
+    for (const consumable of restoredConsumables) {
+      gameState.addConsumable(consumable);
+    }
+
+    // 恢复牌型等级
+    if (data.handLevels) {
+      gameState.handLevelState.restoreState({ handLevels: data.handLevels });
+    }
+
+    // 修复1: 恢复商店信息
+    if (saveData.shop) {
+      gameState.shop = this.deserializeShop(saveData.shop);
+    }
+
+    // 修复2: 恢复缺失的游戏状态字段
+    // 恢复已跳过的盲注
+    if (data.skippedBlinds) {
+      (gameState as any).skippedBlinds = new Set(data.skippedBlinds);
+    }
+    // 恢复已出的牌型
+    if (data.playedHandTypes) {
+      (gameState as any).playedHandTypes = new Set(data.playedHandTypes);
+    }
+    // 恢复上次出牌分数
+    if (data.lastPlayScore !== undefined) {
+      (gameState as any).lastPlayScore = data.lastPlayScore;
+    }
+    // 恢复回合统计
+    if (data.roundStats) {
+      (gameState as any).roundStats = { ...data.roundStats };
+    }
+    // 恢复游戏配置
+    if (data.config) {
+      (gameState as any).config = { ...data.config };
+    }
+
+    // 修复4: 恢复全局计数器
+    if (data.globalCounters) {
+      (gameState as any).globalCounters = { ...data.globalCounters };
+    }
+
+    return gameState;
+  }
+
+  static hasSave(): boolean {
+    return localStorage.getItem(SAVE_KEY) !== null;
+  }
+
+  static deleteSave(): boolean {
+    try {
+      localStorage.removeItem(SAVE_KEY);
+      return true;
+    } catch (error) {
+      console.error('删除存档失败:', error);
+      return false;
+    }
+  }
+
+  static getSaveInfo(): { exists: boolean; timestamp?: number; version?: string } {
+    const saveString = localStorage.getItem(SAVE_KEY);
+    if (!saveString) {
+      return { exists: false };
+    }
+
+    try {
+      const saveData: SaveData = JSON.parse(saveString);
+      return {
+        exists: true,
+        timestamp: saveData.timestamp,
+        version: saveData.version
+      };
+    } catch {
+      return { exists: false };
+    }
+  }
+
+  static autoSave(gameState: GameState): void {
+    if (gameState.phase === GamePhase.PLAYING ||
+        gameState.phase === GamePhase.SHOP ||
+        gameState.phase === GamePhase.BLIND_SELECT) {
+      this.save(gameState);
+    }
+  }
+
+  private static serializeGameState(gameState: GameState): SaveData['gameState'] {
+    // 使用 CardManager 序列化卡牌位置
+    const serializedCards = CardManager.serialize(gameState.cardPile.deck, gameState.cardPile.hand, gameState.cardPile.discard);
+
+    return {
+      phase: gameState.phase,
+      ante: gameState.ante,
+      money: gameState.money,
+      handsRemaining: gameState.handsRemaining,
+      discardsRemaining: gameState.discardsRemaining,
+      currentScore: gameState.currentScore,
+      roundScore: gameState.roundScore,
+      currentBlind: gameState.currentBlind ? {
+        type: gameState.currentBlind.type,
+        ante: gameState.currentBlind.ante
+      } : null,
+      currentBlindPosition: gameState.getCurrentBlindPosition(),
+      // 使用 CardManager 的序列化数据
+      cards: {
+        deck: serializedCards.deck,
+        hand: serializedCards.hand,
+        discard: serializedCards.discard,
+        handSelectedIndices: serializedCards.handSelectedIndices
+      },
+      jokers: (gameState.jokers as unknown as Joker[]).map(joker => this.serializeJoker(joker)),
+      consumables: (gameState.consumables as unknown as Consumable[]).map(consumable =>
+        this.serializeConsumable(consumable)
+      ),
+      maxConsumableSlots: gameState.getMaxConsumableSlots(), // 保存消耗牌槽位数量
+      maxJokerSlots: gameState.getJokerSlots().getAvailableSlots() + gameState.getJokerCount(), // 保存小丑牌槽位数量
+      handLevels: gameState.handLevelState.getState().handLevels,
+      // 修复2: 补充缺失的游戏状态字段
+      skippedBlinds: (gameState as any).skippedBlinds ? Array.from((gameState as any).skippedBlinds) : [],
+      playedHandTypes: (gameState as any).playedHandTypes ? Array.from((gameState as any).playedHandTypes) : [],
+      lastPlayScore: (gameState as any).lastPlayScore || 0,
+      roundStats: gameState.getRoundStats(),
+      // 修复4: 保存全局计数器
+      globalCounters: {
+        totalHandsPlayed: (gameState as any).globalCounters?.totalHandsPlayed ?? 0,
+        totalDiscardsUsed: (gameState as any).globalCounters?.totalDiscardsUsed ?? 0
+      },
+      config: {
+        maxHandSize: (gameState as any).config?.maxHandSize ?? 8,
+        maxHandsPerRound: (gameState as any).config?.maxHandsPerRound ?? 4,
+        maxDiscardsPerRound: (gameState as any).config?.maxDiscardsPerRound ?? 3,
+        startingMoney: (gameState as any).config?.startingMoney ?? 4,
+        startingAnte: (gameState as any).config?.startingAnte ?? 1
+      }
+    };
+  }
+
+  private static serializeCard(card: Card): SerializedCard {
+    return {
+      suit: card.suit,
+      rank: card.rank,
+      enhancement: card.enhancement,
+      seal: card.seal
+    };
+  }
+
+  private static serializeJoker(joker: Joker): SerializedJoker {
+    return {
+      id: joker.id,
+      // 修复3: 补充小丑牌完整信息
+      sticker: joker.sticker,
+      edition: joker.edition,
+      perishableRounds: joker.perishableRounds,
+      state: joker.getState()
+    };
+  }
+
+  private static serializeConsumable(consumable: Consumable): SerializedConsumable {
+    return {
+      id: consumable.id
+    };
+  }
+
+  // 修复1: 序列化商店
+  static serializeShop(shop: Shop): SerializedShop {
+    logger.info('[Storage.serializeShop] 开始序列化商店');
+    const serialized = {
+      items: shop.items.map(item => ({
+        id: item.id,
+        type: item.type,
+        itemId: this.getShopItemId(item),
+        basePrice: item.basePrice,
+        currentPrice: item.currentPrice,
+        sold: item.sold
+      })),
+      rerollCost: shop.rerollCost,
+      baseRerollCost: (shop as any).baseRerollCost ?? 5,
+      rerollCount: (shop as any).rerollCount || 0,
+      vouchersUsed: (shop as any).vouchersUsed || [],
+      isFirstShopVisit: (shop as any).isFirstShopVisit ?? true,
+      itemIdCounter: (shop as any).itemIdCounter || 0
+    };
+    logger.info('[Storage.serializeShop] 序列化完成', {
+      itemCount: serialized.items.length,
+      rerollCost: serialized.rerollCost,
+      baseRerollCost: serialized.baseRerollCost,
+      rerollCount: serialized.rerollCount,
+      isFirstShopVisit: serialized.isFirstShopVisit,
+      itemIdCounter: serialized.itemIdCounter,
+      items: serialized.items.map(i => ({ id: i.id, type: i.type, itemId: i.itemId, sold: i.sold }))
+    });
+    return serialized;
+  }
+
+  // 修复1: 获取商店商品ID
+  private static getShopItemId(item: ShopItem): string {
+    switch (item.type) {
+      case 'joker':
+        return (item.item as Joker).id;
+      case 'consumable':
+        return (item.item as Consumable).id;
+      case 'pack':
+        return (item.item as BoosterPack).id;
+      case 'voucher':
+        return (item.item as typeof VOUCHERS[0]).id;
+      default:
+        return '';
+    }
+  }
+
+  // 修复1: 反序列化商店
+  static deserializeShop(data: SerializedShop): Shop {
+    logger.info('[Storage.deserializeShop] 开始反序列化商店', {
+      itemCount: data.items.length,
+      rerollCost: data.rerollCost,
+      baseRerollCost: data.baseRerollCost,
+      rerollCount: data.rerollCount,
+      isFirstShopVisit: data.isFirstShopVisit,
+      itemIdCounter: data.itemIdCounter
+    });
+
+    logger.info('[Storage.deserializeShop] 创建新Shop实例（会调用构造函数和refresh）');
+    const shop = new Shop();
+
+    // 恢复商店状态
+    logger.info('[Storage.deserializeShop] 恢复商店状态');
+    shop.rerollCost = data.rerollCost;
+    (shop as any).baseRerollCost = data.baseRerollCost ?? 5;
+    (shop as any).rerollCount = data.rerollCount;
+    (shop as any).vouchersUsed = data.vouchersUsed;
+    (shop as any).isFirstShopVisit = data.isFirstShopVisit;
+    (shop as any).itemIdCounter = data.itemIdCounter || 0;
+
+    logger.info('[Storage.deserializeShop] 恢复后的状态', {
+      rerollCost: shop.rerollCost,
+      baseRerollCost: (shop as any).baseRerollCost,
+      rerollCount: (shop as any).rerollCount,
+      isFirstShopVisit: (shop as any).isFirstShopVisit,
+      itemIdCounter: (shop as any).itemIdCounter
+    });
+
+    // 恢复商品
+    logger.info('[Storage.deserializeShop] 开始恢复商品，存档中商品数:', data.items.length);
+    shop.items = data.items.map(item => {
+      const resolvedItem = this.resolveShopItem(item.type, item.itemId);
+      if (!resolvedItem) {
+        logger.warn(`[Storage.deserializeShop] 无法解析商品: type=${item.type}, itemId=${item.itemId}`);
+      }
+      return {
+        id: item.id,
+        type: item.type,
+        item: resolvedItem,
+        basePrice: item.basePrice,
+        currentPrice: item.currentPrice,
+        sold: item.sold
+      };
+    }).filter(item => item.item !== null) as ShopItem[];
+
+    logger.info('[Storage.deserializeShop] 商品恢复完成，实际恢复商品数:', shop.items.length);
+    logger.info('[Storage.deserializeShop] 恢复后的商品列表:', shop.items.map(i => ({
+      id: i.id,
+      type: i.type,
+      itemId: (i.item as any).id,
+      sold: i.sold
+    })));
+
+    return shop;
+  }
+
+  // 修复1: 解析商店商品
+  private static resolveShopItem(type: 'joker' | 'consumable' | 'pack' | 'voucher', itemId: string): any {
+    switch (type) {
+      case 'joker':
+        const joker = getJokerById(itemId);
+        return joker ? joker.clone() : null;
+      case 'consumable':
+        const consumable = getConsumableById(itemId);
+        return consumable ? consumable.clone() : null;
+      case 'pack':
+        return BOOSTER_PACKS.find(p => p.id === itemId) || null;
+      case 'voucher':
+        return VOUCHERS.find(v => v.id === itemId) || null;
+      default:
+        return null;
+    }
+  }
+}
+
+export const save = (gameState: GameState): boolean => Storage.save(gameState);
+export const load = (): SaveData | null => Storage.load();
+export const hasSave = (): boolean => Storage.hasSave();
+export const deleteSave = (): boolean => Storage.deleteSave();
+export const getSaveInfo = (): { exists: boolean; timestamp?: number; version?: string } =>
+  Storage.getSaveInfo();
+export const autoSave = (gameState: GameState): void => Storage.autoSave(gameState);
+export const restoreGameState = (saveData: SaveData): GameState =>
+  Storage.restoreGameState(saveData);

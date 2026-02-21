@@ -1,0 +1,233 @@
+import { JokerInterface, JokerConfig, JokerTrigger, JokerEffectContext, JokerEffectResult, JokerRarity, JokerState, StickerType, JokerEdition } from '../types/joker';
+
+export class Joker implements JokerInterface {
+  id: string;
+  name: string;
+  description: string;
+  rarity: JokerRarity;
+  cost: number;
+  trigger: JokerTrigger;
+  effect: (context: JokerEffectContext) => JokerEffectResult;
+  state: JokerState;
+  sticker: StickerType;
+  edition: JokerEdition;
+  perishableRounds: number;
+  // 可选回调
+  onScoredCallback?: (context: JokerEffectContext) => JokerEffectResult;
+  onHeldCallback?: (context: JokerEffectContext) => JokerEffectResult;
+  onDiscardCallback?: (context: JokerEffectContext) => JokerEffectResult;
+  onPlayCallback?: (context: JokerEffectContext) => JokerEffectResult;
+  onHandPlayedCallback?: (context: JokerEffectContext) => JokerEffectResult;
+  onRerollCallback?: (context: JokerEffectContext) => JokerEffectResult;
+  onBlindSelectCallback?: (context: JokerEffectContext) => JokerEffectResult;
+  onEndOfRoundCallback?: (context: JokerEffectContext) => JokerEffectResult;
+  onCardAddedCallback?: (context: JokerEffectContext) => JokerEffectResult;
+
+  constructor(config: JokerConfig) {
+    this.id = config.id;
+    this.name = config.name;
+    this.description = config.description;
+    this.rarity = config.rarity;
+    this.cost = config.cost;
+    this.trigger = config.trigger;
+    this.effect = config.effect;
+    this.state = config.initialState || {};
+    this.sticker = config.sticker || StickerType.None;
+    this.edition = config.edition || JokerEdition.None;
+    this.perishableRounds = this.sticker === StickerType.Perishable ? 5 : 0;
+    // 设置可选回调
+    this.onScoredCallback = config.onScored;
+    this.onHeldCallback = config.onHeld;
+    this.onDiscardCallback = config.onDiscard;
+    this.onPlayCallback = config.onPlay;
+    this.onHandPlayedCallback = config.onHandPlayed;
+    this.onRerollCallback = config.onReroll;
+    this.onBlindSelectCallback = config.onBlindSelect;
+    this.onEndOfRoundCallback = config.onEndOfRound;
+    this.onCardAddedCallback = config.onCardAdded;
+  }
+
+  updateState(updates: Partial<JokerState>): void {
+    this.state = { ...this.state, ...updates };
+  }
+
+  getState(): JokerState {
+    return { ...this.state };
+  }
+
+  setSticker(sticker: StickerType): void {
+    this.sticker = sticker;
+    if (sticker === StickerType.Perishable) {
+      this.perishableRounds = 5;
+    } else {
+      this.perishableRounds = 0;
+    }
+  }
+
+  decrementPerishable(): boolean {
+    if (this.sticker === StickerType.Perishable && this.perishableRounds > 0) {
+      this.perishableRounds--;
+      return this.perishableRounds === 0; // 返回是否应该摧毁
+    }
+    return false;
+  }
+
+  canBeSold(): boolean {
+    return this.sticker !== StickerType.Eternal;
+  }
+
+  getRentalCost(): number {
+    return this.sticker === StickerType.Rental ? 3 : 0;
+  }
+
+  setEdition(edition: JokerEdition): void {
+    this.edition = edition;
+  }
+
+  getEditionEffects(): { chipBonus: number; multBonus: number; multMultiplier: number; extraSlot: boolean } {
+    switch (this.edition) {
+      case JokerEdition.Foil:
+        return { chipBonus: 50, multBonus: 0, multMultiplier: 1, extraSlot: false };
+      case JokerEdition.Holographic:
+        return { chipBonus: 0, multBonus: 10, multMultiplier: 1, extraSlot: false };
+      case JokerEdition.Polychrome:
+        return { chipBonus: 0, multBonus: 0, multMultiplier: 1.5, extraSlot: false };
+      case JokerEdition.Negative:
+        return { chipBonus: 0, multBonus: 0, multMultiplier: 1, extraSlot: true };
+      default:
+        return { chipBonus: 0, multBonus: 0, multMultiplier: 1, extraSlot: false };
+    }
+  }
+
+  onScored(context: JokerEffectContext): JokerEffectResult {
+    if (this.onScoredCallback) {
+      return this.onScoredCallback(context);
+    }
+    if (this.trigger === JokerTrigger.ON_SCORED) {
+      return this.effect(context);
+    }
+    return {};
+  }
+
+  onHeld(context: JokerEffectContext): JokerEffectResult {
+    if (this.onHeldCallback) {
+      return this.onHeldCallback(context);
+    }
+    if (this.trigger === JokerTrigger.ON_HELD) {
+      return this.effect(context);
+    }
+    return {};
+  }
+
+  onDiscard(context: JokerEffectContext): JokerEffectResult {
+    if (this.onDiscardCallback) {
+      return this.onDiscardCallback(context);
+    }
+    if (this.trigger === JokerTrigger.ON_DISCARD) {
+      return this.effect(context);
+    }
+    return {};
+  }
+
+  onPlay(context: JokerEffectContext): JokerEffectResult {
+    if (this.onPlayCallback) {
+      return this.onPlayCallback(context);
+    }
+    if (this.trigger === JokerTrigger.ON_PLAY) {
+      return this.effect(context);
+    }
+    return {};
+  }
+
+  onIndependent(context: JokerEffectContext): JokerEffectResult {
+    if (this.trigger === JokerTrigger.ON_INDEPENDENT) {
+      return this.effect(context);
+    }
+    return {};
+  }
+
+  onHandPlayed(context: JokerEffectContext): JokerEffectResult {
+    if (this.onHandPlayedCallback) {
+      return this.onHandPlayedCallback(context);
+    }
+    if (this.trigger === JokerTrigger.ON_HAND_PLAYED) {
+      return this.effect(context);
+    }
+    return {};
+  }
+
+  onReroll(context: JokerEffectContext): JokerEffectResult {
+    if (this.onRerollCallback) {
+      return this.onRerollCallback(context);
+    }
+    if (this.trigger === JokerTrigger.ON_REROLL) {
+      return this.effect(context);
+    }
+    return {};
+  }
+
+  onBlindSelect(context: JokerEffectContext): JokerEffectResult {
+    if (this.onBlindSelectCallback) {
+      return this.onBlindSelectCallback(context);
+    }
+    if (this.trigger === JokerTrigger.ON_BLIND_SELECT) {
+      return this.effect(context);
+    }
+    return {};
+  }
+
+  onEndRound(context: JokerEffectContext): JokerEffectResult {
+    if (this.onEndOfRoundCallback) {
+      return this.onEndOfRoundCallback(context);
+    }
+    if (this.trigger === JokerTrigger.END_OF_ROUND) {
+      return this.effect(context);
+    }
+    return {};
+  }
+
+  onCardAdded(context: JokerEffectContext): JokerEffectResult {
+    if (this.onCardAddedCallback) {
+      return this.onCardAddedCallback(context);
+    }
+    if (this.trigger === JokerTrigger.ON_CARD_ADDED) {
+      return this.effect(context);
+    }
+    return {};
+  }
+
+  clone(): JokerInterface {
+    const cloned = new Joker({
+      id: this.id,
+      name: this.name,
+      description: this.description,
+      rarity: this.rarity,
+      cost: this.cost,
+      trigger: this.trigger,
+      effect: this.effect,
+      initialState: this.getState(),
+      sticker: this.sticker,
+      edition: this.edition,
+      onScored: this.onScoredCallback,
+      onHeld: this.onHeldCallback,
+      onDiscard: this.onDiscardCallback,
+      onPlay: this.onPlayCallback,
+      onHandPlayed: this.onHandPlayedCallback,
+      onReroll: this.onRerollCallback,
+      onBlindSelect: this.onBlindSelectCallback,
+      onEndOfRound: this.onEndOfRoundCallback,
+      onCardAdded: this.onCardAddedCallback
+    });
+    // 手动复制 perishableRounds，因为构造函数会根据 sticker 重置
+    cloned.perishableRounds = this.perishableRounds;
+    return cloned;
+  }
+
+  getDisplayInfo(): string {
+    return `${this.name} (${this.rarity}) - ${this.cost}$\n${this.description}`;
+  }
+
+  toString(): string {
+    return this.name;
+  }
+}
