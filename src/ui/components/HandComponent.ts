@@ -138,8 +138,6 @@ export class HandComponent {
       // 临时添加到 DOM 以获取实际尺寸
       firstCardElement.style.position = 'relative';
       firstCardElement.style.flexShrink = '0';
-      // 禁用过渡动画，避免闪烁
-      firstCardElement.style.transition = 'none';
       handArea.appendChild(firstCardElement);
       
       // 强制回流以确保尺寸计算正确
@@ -157,8 +155,9 @@ export class HandComponent {
       // 计算重叠量
       overlap = this.calculateCardOverlap(actualCenterWidth, totalCards, cardWidth);
       
-      // 设置样式（保持 transition 为 none，避免动画）
+      // 设置样式（初始禁用动画，避免渲染时的闪烁）
       firstCardElement.style.zIndex = '0';
+      firstCardElement.style.transition = 'none';
       this.setCardVisualState(firstCardElement, 0, isFirstSelected, totalCards);
       firstCardElement.addEventListener('click', () => this.handleCardClick(0));
       this.cardElements.push(firstCardElement);
@@ -169,11 +168,12 @@ export class HandComponent {
         const isSelected = selectedIndices.has(index);
         const cardElement = CardComponent.renderCard(card, isSelected);
         
-        // 设置卡牌样式
+        // 设置卡牌样式（初始禁用动画）
         cardElement.style.position = 'relative';
         cardElement.style.flexShrink = '0';
         cardElement.style.marginLeft = `-${overlap}px`;
         cardElement.style.zIndex = String(index);
+        cardElement.style.transition = 'none';
         
         // 统一设置卡牌视觉状态
         this.setCardVisualState(cardElement, index, isSelected, totalCards);
@@ -184,6 +184,13 @@ export class HandComponent {
         handArea.appendChild(cardElement);
         this.cardElements.push(cardElement);
       }
+      
+      // 延迟恢复动画，避免初始渲染时的闪烁
+      requestAnimationFrame(() => {
+        this.cardElements.forEach(cardElement => {
+          cardElement.style.transition = '';
+        });
+      });
     }
   }
 
