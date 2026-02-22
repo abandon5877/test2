@@ -309,9 +309,8 @@ export class ShopComponent {
   private calculateOverlap(cardCount: number, containerWidth: number, cardWidth: number): number {
     if (cardCount <= 1) return 0;
 
-    // 减去左右padding（CSS中padding-right约2-8px，padding-left为0）
-    const paddingRight = Math.min(8, Math.max(2, containerWidth * 0.01));
-    const availableWidth = Math.max(0, containerWidth - paddingRight);
+    // jokers-area 的 padding-left 为 0，不需要减去 padding
+    const availableWidth = Math.max(0, containerWidth);
     
     // 计算所有卡牌不重叠时的总宽度
     const totalCardsWidth = cardWidth * cardCount;
