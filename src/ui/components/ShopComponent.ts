@@ -396,8 +396,8 @@ export class ShopComponent {
   private createLeftPanel(): HTMLElement {
     const panel = document.createElement('div');
     panel.className = 'game-panel-column';
-    panel.style.padding = this.scaled(6);
-    panel.style.gap = this.scaled(6);
+    panel.style.padding = this.scaled(4);
+    panel.style.gap = this.scaled(3);
 
     // 底注
     const anteSection = document.createElement('div');
@@ -654,13 +654,27 @@ export class ShopComponent {
         jokersContainer.appendChild(jokerCard);
       });
 
-      // 计算并应用重叠量
-      const overlap = this.calculateJokerOverlap(jokers.length, jokersContainer.clientWidth);
-      jokerCards.forEach((card, index) => {
-        if (index > 0) {
-          card.style.marginLeft = `-${overlap}px`;
+      // 使用 ResizeObserver 在容器大小确定后计算重叠量
+      const applyJokerOverlap = () => {
+        const containerWidth = jokersContainer.clientWidth;
+        if (containerWidth > 0) {
+          const overlap = this.calculateJokerOverlap(jokers.length, containerWidth);
+          jokerCards.forEach((card, index) => {
+            if (index > 0) {
+              card.style.marginLeft = `-${overlap}px`;
+            }
+          });
         }
+      };
+
+      // 立即尝试计算（如果容器已渲染）
+      applyJokerOverlap();
+
+      // 使用 ResizeObserver 监听容器大小变化
+      const resizeObserver = new ResizeObserver(() => {
+        applyJokerOverlap();
       });
+      resizeObserver.observe(jokersContainer);
     }
     jokersSection.appendChild(jokersContainer);
     panel.appendChild(jokersSection);
@@ -707,13 +721,27 @@ export class ShopComponent {
         consumablesContainer.appendChild(consumableCard);
       });
 
-      // 计算并应用重叠量
-      const overlap = this.calculateConsumableOverlap(consumables.length, consumablesContainer.clientWidth);
-      consumableCards.forEach((card, index) => {
-        if (index > 0) {
-          card.style.marginLeft = `-${overlap}px`;
+      // 使用 ResizeObserver 在容器大小确定后计算重叠量
+      const applyConsumableOverlap = () => {
+        const containerWidth = consumablesContainer.clientWidth;
+        if (containerWidth > 0) {
+          const overlap = this.calculateConsumableOverlap(consumables.length, containerWidth);
+          consumableCards.forEach((card, index) => {
+            if (index > 0) {
+              card.style.marginLeft = `-${overlap}px`;
+            }
+          });
         }
+      };
+
+      // 立即尝试计算（如果容器已渲染）
+      applyConsumableOverlap();
+
+      // 使用 ResizeObserver 监听容器大小变化
+      const resizeObserver = new ResizeObserver(() => {
+        applyConsumableOverlap();
       });
+      resizeObserver.observe(consumablesContainer);
     }
     consumablesSection.appendChild(consumablesContainer);
     panel.appendChild(consumablesSection);
