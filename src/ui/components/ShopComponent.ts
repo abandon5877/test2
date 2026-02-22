@@ -420,12 +420,9 @@ export class ShopComponent {
   }
 
   /**
-   * 根据容器宽度计算商品列数
+   * 根据容器宽度和真实卡片宽度计算商品列数
    */
-  private calculateGridColumns(containerWidth: number): number {
-    // joker-card 宽度: clamp(60px, 15vmin, 130px)
-    // 使用更小的估算宽度以充分利用空间
-    const cardWidth = 100;
+  private calculateGridColumns(containerWidth: number, cardWidth: number): number {
     const gap = 12;
     const padding = 16;
     const availableWidth = containerWidth - padding;
@@ -457,17 +454,13 @@ export class ShopComponent {
     itemsTitle.textContent = '🏪 商店商品（点击查看详情）';
     panel.appendChild(itemsTitle);
 
-    // 商品网格 - 根据宽度动态计算列�?
+    // 商品网格
     const itemsGrid = document.createElement('div');
     itemsGrid.className = 'shop-items-grid overflow-y-auto flex-1';
     itemsGrid.style.display = 'grid';
-    itemsGrid.style.gap = this.scaled(16);
+    itemsGrid.style.gap = this.scaled(12);
     itemsGrid.style.padding = this.scaled(12);
     itemsGrid.style.justifyContent = 'center';
-    
-    // 初始列数
-    const initialColumns = this.calculateGridColumns(panel.clientWidth || 400);
-    itemsGrid.style.gridTemplateColumns = `repeat(${initialColumns}, minmax(0, auto))`;
 
     const shopItems = this.getShopItems();
     shopItems.forEach(shopItem => {
@@ -477,16 +470,22 @@ export class ShopComponent {
 
     panel.appendChild(itemsGrid);
 
-    // 使用 ResizeObserver 监听宽度变化，动态调整列�?
+    // 使用 ResizeObserver 监听宽度变化，动态调整列数（基于真实卡片宽度）
     const resizeObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
-        const width = entry.contentRect.width;
-        const columns = this.calculateGridColumns(width);
-        itemsGrid.style.gridTemplateColumns = `repeat(${columns}, minmax(0, auto))`;
+        const containerWidth = entry.contentRect.width;
+        // 获取第一个卡片的真实宽度
+        const firstCard = itemsGrid.querySelector('.joker-card') as HTMLElement;
+        if (firstCard) {
+          const cardRect = firstCard.getBoundingClientRect();
+          const cardWidth = cardRect.width;
+          const columns = this.calculateGridColumns(containerWidth, cardWidth);
+          itemsGrid.style.gridTemplateColumns = `repeat(${columns}, minmax(0, auto))`;
+        }
       }
     });
-    
-    // 延迟观察，确�?panel 已经渲染
+
+    // 延迟观察，确保 panel 和卡片已经渲染
     setTimeout(() => {
       if (panel.isConnected) {
         resizeObserver.observe(panel);
