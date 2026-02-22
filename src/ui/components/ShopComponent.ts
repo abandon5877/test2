@@ -423,18 +423,18 @@ export class ShopComponent {
    * 根据容器宽度计算商品列数
    */
   private calculateGridColumns(containerWidth: number): number {
-    // joker-card 宽度: clamp(60px, 15vmin, 110px)
-    // 估算卡片宽度约为 110px，加上间�?
-    const cardWidth = 110;
-    const gap = 16;
-    const padding = 24;
+    // joker-card 宽度: clamp(60px, 15vmin, 130px)
+    // 使用更小的估算宽度以充分利用空间
+    const cardWidth = 100;
+    const gap = 12;
+    const padding = 16;
     const availableWidth = containerWidth - padding;
-    
-    // 计算可以容纳的列�?
+
+    // 计算可以容纳的列数
     const columns = Math.floor((availableWidth + gap) / (cardWidth + gap));
-    
-    // 至少2列，最�?�?
-    return Math.max(2, Math.min(6, columns));
+
+    // 至少2列，最多5列
+    return Math.max(2, Math.min(5, columns));
   }
 
   /**
