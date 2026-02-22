@@ -152,11 +152,11 @@ export class GameBoard {
     const baseFontSize = 24;
     const baseGap = 8;
 
-    // 根据最小边缩放 (0.5 - 2.0 范围，适配800x400�?840x2048)
+    // 根据最小边缩放 (0.35 - 2.0 范围，适配800x400到3840x2048)
     // 基准: 720px = 1.0
-    // 最�? 400px = 0.55
-    // 最�? 2048px = 2.84，但限制�?.0
-    const scale = Math.max(0.5, Math.min(2.0, minDimension / 720));
+    // 最小 400px = 0.35 (超小屏幕需要更小的字体)
+    // 最大 2048px = 2.84，但限制2.0
+    const scale = Math.max(0.35, Math.min(2.0, minDimension / 720));
 
     return {
       padding: `${Math.round(basePaddingY * scale)}px ${Math.round(basePaddingX * scale)}px`,

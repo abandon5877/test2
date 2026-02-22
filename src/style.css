@@ -1450,13 +1450,6 @@ html, body, #app {
     padding: 2px !important;
   }
 
-  .game-btn {
-    padding: 6px 8px;
-    font-size: 10px;
-    min-height: 36px;
-    min-width: 36px;
-  }
-
   .jokers-area {
     padding-right: 2px;
     min-height: auto;
