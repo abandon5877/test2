@@ -294,11 +294,10 @@ export class GameBoard {
     const interestSection = document.createElement('div');
     interestSection.className = 'game-panel';
     interestSection.id = 'interest-section';
-    const interestCap = this.gameState.getInterestCap?.() ?? 5;
-    const currentInterest = Math.min(Math.floor(this.gameState.money / 5), interestCap);
+    const currentInterest = Math.min(Math.floor(this.gameState.money / 5), this.gameState.getInterestCap?.() ?? 5);
     interestSection.innerHTML = `
       <div class="text-gray-400 text-center" style="font-size: ${this.scaled(19)}">利息</div>
-      <div class="text-green-400 font-bold text-center" style="font-size: ${this.scaled(23)}" id="interest-info">+$${currentInterest} (上限$${interestCap})</div>
+      <div class="text-green-400 font-bold text-center" style="font-size: ${this.scaled(23)}" id="interest-info">+$${currentInterest}</div>
     `;
     panel.appendChild(interestSection);
 

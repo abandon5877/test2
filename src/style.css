@@ -1130,7 +1130,7 @@ html, body, #app {
 /* 小屏幕overlap大(紧凑)，大屏幕overlap小(分散) */
 .game-layout {
   display: grid;
-  grid-template-columns: minmax(100px, 180px) 1fr 360px;
+  grid-template-columns: minmax(80px, 160px) 1fr 400px;
   grid-template-rows: 1fr auto;
   gap: clamp(2px, 1vw, 20px);
   height: 100%;
@@ -1290,10 +1290,10 @@ html, body, #app {
 
 /* 响应式断点 - 适配3840x2048到800x400，右侧栏宽度为原先的0.6倍 */
 
-/* 大屏幕 1920px+ - 右侧栏470px (5*110-4*35+24+36=470) */
+/* 大屏幕 1920px+ - 右侧栏520px */
 @media (min-width: 1920px) {
   .game-layout {
-    grid-template-columns: minmax(120px, 200px) 1fr 470px;
+    grid-template-columns: minmax(100px, 160px) 1fr 520px;
     gap: clamp(8px, 1vw, 24px);
     padding: clamp(8px, 1vw, 24px);
   }
@@ -1311,10 +1311,10 @@ html, body, #app {
   }
 }
 
-/* 中等屏幕 1200px-1919px - 右侧栏360px (5*100-4*47+19+29=360) */
+/* 中等屏幕 1200px-1919px - 右侧栏400px */
 @media (max-width: 1200px) {
   .game-layout {
-    grid-template-columns: minmax(100px, 140px) 1fr 360px;
+    grid-template-columns: minmax(80px, 120px) 1fr 400px;
   }
 
   .jokers-area {
@@ -1330,14 +1330,14 @@ html, body, #app {
   }
 }
 
-/* 小屏幕 900px-1199px - 右侧栏250px (5*90-4*60+16+24=250) */
+/* 小屏幕 900px-1199px - 右侧栏300px */
 @media (max-width: 1199px) {
   :root {
     font-size: clamp(19px, 1.5vw + 0.5rem, 22px);
   }
 
   .game-layout {
-    grid-template-columns: minmax(90px, 120px) 1fr 250px;
+    grid-template-columns: minmax(70px, 100px) 1fr 300px;
   }
 
   .jokers-area {
@@ -1353,14 +1353,14 @@ html, body, #app {
   }
 }
 
-/* 平板/手机横屏 768px-1023px - 右侧栏152px (5*80-4*70+13+19=152) */
+/* 平板/手机横屏 768px-1023px - 右侧栏200px */
 @media (max-width: 768px) {
   :root {
     font-size: clamp(20px, 2vw + 0.5rem, 24px);
   }
 
   .game-layout {
-    grid-template-columns: minmax(85px, 100px) 1fr 152px;
+    grid-template-columns: minmax(60px, 80px) 1fr 200px;
     gap: clamp(2px, 0.5vw, 8px);
     padding: clamp(2px, 0.5vw, 8px);
   }
@@ -1408,14 +1408,14 @@ html, body, #app {
   }
 }
 
-/* 手机竖屏优化 - 右侧栏103px (5*75-4*75+11+17=103) */
+/* 手机竖屏优化 - 右侧栏140px */
 @media (max-aspect-ratio: 9/16) {
   :root {
     font-size: clamp(21px, 2.5vw + 0.5rem, 26px);
   }
 
   .game-layout {
-    grid-template-columns: minmax(50px, 85px) 1fr 103px;
+    grid-template-columns: minmax(45px, 70px) 1fr 140px;
   }
 
   .jokers-area {
@@ -1431,14 +1431,14 @@ html, body, #app {
   }
 }
 
-/* 超小屏幕 480px以下 - 右侧栏56px (5*70-4*80+10+16=56) */
+/* 超小屏幕 480px以下 - 右侧栏100px */
 @media (max-width: 480px) {
   :root {
     font-size: clamp(22px, 3vw + 0.5rem, 28px);
   }
 
   .game-layout {
-    grid-template-columns: minmax(45px, 70px) 1fr 56px;
+    grid-template-columns: minmax(40px, 60px) 1fr 100px;
   }
 
   .game-layout-right {
@@ -1470,14 +1470,14 @@ html, body, #app {
   }
 }
 
-/* 极小屏幕 400px以下 - 右侧栏100px (5*60-4*87+8+14=-26，取最小值100px) */
+/* 极小屏幕 400px以下 - 右侧栏120px */
 @media (max-width: 400px) {
   :root {
     font-size: clamp(23px, 4vw + 0.5rem, 30px);
   }
 
   .game-layout {
-    grid-template-columns: minmax(40px, 60px) 1fr 100px;
+    grid-template-columns: minmax(35px, 50px) 1fr 120px;
     gap: 2px;
     padding: 2px;
   }
