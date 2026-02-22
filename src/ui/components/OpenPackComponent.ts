@@ -149,25 +149,32 @@ export class OpenPackComponent {
   render(): void {
     this.container.innerHTML = '';
 
+    // 创建开包界面根容器
+    const overlay = document.createElement('div');
+    
     if (this.isEmbedded) {
-      // 内嵌模式：只覆盖商品网格区域，不影响右侧栏位
-      this.container.className = 'shop-pack-overlay';
-      this.container.style.position = 'absolute';
-      this.container.style.top = '0';
-      this.container.style.left = '0';
-      this.container.style.right = '0';
-      this.container.style.bottom = '0';
-      this.container.style.backgroundColor = 'rgba(0, 0, 0, 0.9)';
-      this.container.style.zIndex = '10';
-      this.container.style.display = 'flex';
-      this.container.style.flexDirection = 'column';
-      this.container.style.padding = `${this.scaled(16)}`;
-      this.container.style.overflow = 'auto';
-      this.container.style.borderRadius = '8px';
+      // 内嵌模式：绝对定位覆盖父容器，不影响右侧栏位
+      overlay.style.position = 'absolute';
+      overlay.style.top = '0';
+      overlay.style.left = '0';
+      overlay.style.right = '0';
+      overlay.style.bottom = '0';
+      overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.85)';
+      overlay.style.zIndex = '10';
+      overlay.style.display = 'flex';
+      overlay.style.flexDirection = 'column';
+      overlay.style.padding = `${this.scaled(16)}`;
+      overlay.style.overflow = 'auto';
+      overlay.style.borderRadius = '8px';
     } else {
       // 全屏模式
-      this.container.className = 'casino-bg game-container';
-      this.container.style.position = 'relative';
+      overlay.className = 'casino-bg';
+      overlay.style.position = 'fixed';
+      overlay.style.top = '0';
+      overlay.style.left = '0';
+      overlay.style.right = '0';
+      overlay.style.bottom = '0';
+      overlay.style.zIndex = '1000';
     }
 
     // 创建主容器
@@ -277,8 +284,9 @@ export class OpenPackComponent {
     });
     buttonArea.appendChild(skipButton);
 
-    this.container.appendChild(mainContainer);
-    this.container.appendChild(buttonArea);
+    overlay.appendChild(mainContainer);
+    overlay.appendChild(buttonArea);
+    this.container.appendChild(overlay);
   }
 
   /**
@@ -389,10 +397,12 @@ export class OpenPackComponent {
 
     wrapper.appendChild(cardElement);
 
-    // 为消耗牌添加直接操作按钮
+    // 为消耗牌添加使用按钮，同时保留单击选中逻辑
     if (card instanceof Consumable) {
-      const buttonContainer = this.createConsumableButtons(card, index);
-      wrapper.appendChild(buttonContainer);
+      const useButton = this.createUseButton(card, index);
+      wrapper.appendChild(useButton);
+      // 仍然设置单击选中和长按详情的交互
+      this.setupCardInteractions(wrapper, card, index);
     } else {
       // 其他卡牌使用原来的交互方式
       this.setupCardInteractions(wrapper, card, index);
@@ -402,34 +412,24 @@ export class OpenPackComponent {
   }
 
   /**
-   * 创建消耗牌操作按钮
+   * 创建消耗牌使用按钮
    */
-  private createConsumableButtons(consumable: Consumable, index: number): HTMLElement {
-    const buttonContainer = document.createElement('div');
-    buttonContainer.style.display = 'flex';
-    buttonContainer.style.flexDirection = 'column';
-    buttonContainer.style.gap = `${this.calculateScale() * 4}px`;
-    buttonContainer.style.marginTop = `${this.calculateScale() * 4}px`;
-    buttonContainer.style.width = '100%';
-
+  private createUseButton(consumable: Consumable, index: number): HTMLElement {
     const buttonScale = this.calculateScale();
-    const buttonStyle = {
-      padding: `${buttonScale * 4}px ${buttonScale * 8}px`,
-      fontSize: `${buttonScale * 12}px`,
-      borderRadius: `${buttonScale * 4}px`,
-      border: 'none',
-      cursor: 'pointer',
-      fontWeight: 'bold',
-      transition: 'all 0.2s ease',
-      width: '100%'
-    };
-
-    // 使用按钮
     const useButton = document.createElement('button');
     useButton.textContent = '使用';
-    Object.assign(useButton.style, buttonStyle);
+    useButton.style.padding = `${buttonScale * 6}px ${buttonScale * 12}px`;
+    useButton.style.fontSize = `${buttonScale * 14}px`;
+    useButton.style.borderRadius = `${buttonScale * 6}px`;
+    useButton.style.border = 'none';
+    useButton.style.cursor = 'pointer';
+    useButton.style.fontWeight = 'bold';
+    useButton.style.transition = 'all 0.2s ease';
     useButton.style.background = 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)';
     useButton.style.color = '#fff';
+    useButton.style.marginTop = `${buttonScale * 16}px`;
+    useButton.style.boxShadow = '0 2px 8px rgba(34, 197, 94, 0.3)';
+
     useButton.addEventListener('click', (e) => {
       e.stopPropagation();
       this.selectedIndices.add(index);
@@ -437,57 +437,14 @@ export class OpenPackComponent {
     });
     useButton.addEventListener('mouseenter', () => {
       useButton.style.transform = 'scale(1.05)';
-      useButton.style.boxShadow = '0 4px 12px rgba(34, 197, 94, 0.4)';
+      useButton.style.boxShadow = '0 4px 12px rgba(34, 197, 94, 0.5)';
     });
     useButton.addEventListener('mouseleave', () => {
       useButton.style.transform = 'scale(1)';
-      useButton.style.boxShadow = 'none';
+      useButton.style.boxShadow = '0 2px 8px rgba(34, 197, 94, 0.3)';
     });
 
-    // 保留按钮
-    const keepButton = document.createElement('button');
-    keepButton.textContent = '保留';
-    Object.assign(keepButton.style, buttonStyle);
-    keepButton.style.background = 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)';
-    keepButton.style.color = '#fff';
-    keepButton.addEventListener('click', (e) => {
-      e.stopPropagation();
-      this.selectedIndices.add(index);
-      this.callbacks.onCardSelected(consumable, 'keep');
-    });
-    keepButton.addEventListener('mouseenter', () => {
-      keepButton.style.transform = 'scale(1.05)';
-      keepButton.style.boxShadow = '0 4px 12px rgba(59, 130, 246, 0.4)';
-    });
-    keepButton.addEventListener('mouseleave', () => {
-      keepButton.style.transform = 'scale(1)';
-      keepButton.style.boxShadow = 'none';
-    });
-
-    // 详情按钮（长按或点击查看）
-    const detailButton = document.createElement('button');
-    detailButton.textContent = '详情';
-    Object.assign(detailButton.style, buttonStyle);
-    detailButton.style.background = 'linear-gradient(135deg, #6b7280 0%, #4b5563 100%)';
-    detailButton.style.color = '#fff';
-    detailButton.addEventListener('click', (e) => {
-      e.stopPropagation();
-      this.showCardDetail(consumable, index);
-    });
-    detailButton.addEventListener('mouseenter', () => {
-      detailButton.style.transform = 'scale(1.05)';
-      detailButton.style.boxShadow = '0 4px 12px rgba(107, 114, 128, 0.4)';
-    });
-    detailButton.addEventListener('mouseleave', () => {
-      detailButton.style.transform = 'scale(1)';
-      detailButton.style.boxShadow = 'none';
-    });
-
-    buttonContainer.appendChild(useButton);
-    buttonContainer.appendChild(keepButton);
-    buttonContainer.appendChild(detailButton);
-
-    return buttonContainer;
+    return useButton;
   }
 
   /**
