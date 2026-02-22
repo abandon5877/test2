@@ -86,6 +86,15 @@ export class GameBoard {
   }
 
   /**
+   * 仅刷新手牌显示（用于排序操作，不重新渲染小丑牌）
+   */
+  refreshHandOnly(): void {
+    if (this.handComponent) {
+      this.handComponent.setHand(this.gameState.cardPile.hand);
+    }
+  }
+
+  /**
    * 更新出牌/弃牌按钮文本
    */
   private updateActionButtons(): void {

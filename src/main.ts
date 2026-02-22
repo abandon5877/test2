@@ -804,7 +804,7 @@ class Game {
   private handleSortByRank(): void {
     this.gameState.cardPile.hand.sortByRank();
     if (this.currentComponent instanceof GameBoard) {
-      this.currentComponent.refresh();
+      this.currentComponent.refreshHandOnly();
     }
     Storage.autoSave(this.gameState);
   }
@@ -815,7 +815,7 @@ class Game {
   private handleSortBySuit(): void {
     this.gameState.cardPile.hand.sortBySuit();
     if (this.currentComponent instanceof GameBoard) {
-      this.currentComponent.refresh();
+      this.currentComponent.refreshHandOnly();
     }
     Storage.autoSave(this.gameState);
   }
