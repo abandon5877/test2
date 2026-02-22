@@ -859,50 +859,8 @@ body {
   color: rgba(255,255,255,0.8);
 }
 
-/* 响应式设计 */
-@media (max-width: 1200px) {
-  .card {
-    width: 70px;
-    height: 98px;
-  }
-  
-  .card-center {
-    font-size: 28px;
-  }
-  
-  .joker-card {
-    width: clamp(70px, 15vmin, 130px);
-    height: clamp(98px, 21vmin, 182px);
-  }
-}
-
+/* 响应式设计 - 使用 vmin 动态尺寸，无需重复定义 */
 @media (max-width: 768px) {
-  .card {
-    width: clamp(50px, 12vmin, 80px);
-    height: clamp(70px, 16.8vmin, 112px);
-  }
-  
-  .card-center {
-    font-size: clamp(18px, 4vmin, 28px);
-  }
-  
-  .card-corner {
-    font-size: clamp(9px, 2vmin, 14px);
-  }
-  
-  .joker-card {
-    width: clamp(60px, 14vmin, 110px);
-    height: clamp(84px, 19.6vmin, 154px);
-  }
-  
-  .joker-icon {
-    font-size: clamp(22px, 5vmin, 36px);
-  }
-  
-  .joker-name {
-    font-size: clamp(8px, 1.8vmin, 12px);
-  }
-  
   .hand-area {
     gap: 0;
     padding: 10px;
@@ -911,47 +869,6 @@ body {
   .game-btn {
     padding: 10px 16px;
     font-size: 14px;
-  }
-}
-
-/* 竖屏优化（手机竖屏） */
-@media (max-aspect-ratio: 9/16) {
-  .card {
-    width: clamp(45px, 11vmin, 70px);
-    height: clamp(63px, 15.4vmin, 98px);
-  }
-  
-  .card-center {
-    font-size: clamp(16px, 3.5vmin, 24px);
-  }
-  
-  .card-corner {
-    font-size: clamp(8px, 1.8vmin, 12px);
-  }
-  
-  .joker-card {
-    width: clamp(55px, 13vmin, 100px);
-    height: clamp(77px, 18.2vmin, 140px);
-  }
-  
-  .joker-icon {
-    font-size: clamp(20px, 4.5vmin, 32px);
-  }
-  
-  .joker-name {
-    font-size: clamp(7px, 1.6vmin, 10px);
-  }
-  
-  .hand-area {
-    gap: 0;
-    padding: 5px;
-  }
-  
-  .game-btn {
-    padding: 8px 12px;
-    font-size: 12px;
-    min-height: 44px;
-    min-width: 44px;
   }
 }
 
