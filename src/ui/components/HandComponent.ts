@@ -138,7 +138,8 @@ export class HandComponent {
       // 临时添加到 DOM 以获取实际尺寸
       firstCardElement.style.position = 'relative';
       firstCardElement.style.flexShrink = '0';
-      firstCardElement.style.visibility = 'hidden'; // 先隐藏，避免闪烁
+      // 禁用过渡动画，避免闪烁
+      firstCardElement.style.transition = 'none';
       handArea.appendChild(firstCardElement);
       
       // 强制回流以确保尺寸计算正确
@@ -156,8 +157,7 @@ export class HandComponent {
       // 计算重叠量
       overlap = this.calculateCardOverlap(actualCenterWidth, totalCards, cardWidth);
       
-      // 恢复可见性并设置样式
-      firstCardElement.style.visibility = 'visible';
+      // 设置样式（保持 transition 为 none，避免动画）
       firstCardElement.style.zIndex = '0';
       this.setCardVisualState(firstCardElement, 0, isFirstSelected, totalCards);
       firstCardElement.addEventListener('click', () => this.handleCardClick(0));
@@ -197,9 +197,25 @@ export class HandComponent {
    * @returns 重叠量（像素）
    */
   private calculateCardOverlap(centerWidth: number, totalCards: number, cardWidth: number): number {
+    // 计算倾斜卡牌所需的额外 padding
+    // 最大倾斜角度为 12 度（24度范围的一半）
+    // 倾斜后卡牌水平投影增加：cardWidth * (cos(12°) - 1) + cardHeight * sin(12°)
+    // 简化计算：约等于 cardWidth * 0.15 + cardHeight * 0.2
+    const cardHeight = cardWidth * 1.4; // 卡牌高度约为宽度的 1.4 倍
+    const maxRotation = 12; // 最大倾斜角度
+    const rotationRad = (maxRotation * Math.PI) / 180;
+    
+    // 计算单侧溢出量（倾斜卡牌超出容器边界的距离）
+    // 使用三角函数计算：height * sin(θ) + width * (1 - cos(θ))
+    const overflowPerSide = cardHeight * Math.sin(rotationRad) + cardWidth * (1 - Math.cos(rotationRad));
+    const totalPadding = overflowPerSide * 2; // 两侧都需要 padding
+    
+    // 减去 padding 后的可用宽度
+    const availableWidth = Math.max(0, centerWidth - totalPadding);
+    
     // 使用统一的重叠计算函数
     // 扑克手牌使用更大的最大重叠比例（80%），因为需要显示更多卡牌
-    return calculateOverlap(totalCards, centerWidth, cardWidth, {
+    return calculateOverlap(totalCards, availableWidth, cardWidth, {
       minOverlapRatio: 0.05,
       maxOverlapRatio: 0.8,
       slightOverlapRatio: 0
