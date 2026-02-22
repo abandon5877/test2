@@ -3,7 +3,7 @@ import { Consumable } from './Consumable';
 import { Card } from './Card';
 import { JokerInterface } from '../types/joker';
 import { ConsumableInterface } from '../types/consumable';
-import { CardEdition, SealType, CardEnhancement, Suit, Rank } from '../types/card';
+import { CardEdition, SealType, Suit, Rank } from '../types/card';
 import { getRandomJokers } from '../data/jokers';
 import {
   getRandomConsumables,
@@ -18,6 +18,12 @@ import {
   type VoucherPair
 } from '../data/consumables/index';
 import { createModuleLogger } from '../utils/logger';
+import {
+  generateRandomEnhancement,
+  generateRandomPlayingCardEdition,
+  generateRandomSeal,
+  PLAYING_CARD_PROBABILITIES
+} from '../data/probabilities';
 
 const logger = createModuleLogger('Shop');
 
@@ -168,7 +174,7 @@ export class Shop {
       logger.info(`[Shop.generateRandomCards] 第${i + 1}张卡片，随机数:`, rand);
 
       if (rand < weights.joker) {
-        const jokers = getRandomJokers(1);
+        const jokers = getRandomJokers(1, this.vouchersUsed);
         if (jokers.length > 0) {
           const price = this.calculatePrice(jokers[0].cost);
           this.addItem('joker', jokers[0], price);
@@ -338,24 +344,12 @@ export class Shop {
     const randomSuit = suits[Math.floor(Math.random() * suits.length)];
     const randomRank = ranks[Math.floor(Math.random() * ranks.length)];
 
-    const enhancements = [CardEnhancement.Bonus, CardEnhancement.Mult, CardEnhancement.Wild, CardEnhancement.Glass, CardEnhancement.Steel, CardEnhancement.Gold, CardEnhancement.Lucky];
-    const randomEnhancement = enhancements[Math.floor(Math.random() * enhancements.length)];
+    // Illusion 优惠券生成的卡牌总是有增强效果
+    const enhancement = generateRandomEnhancement();
+    const edition = generateRandomPlayingCardEdition(this.vouchersUsed);
+    const seal = Math.random() < PLAYING_CARD_PROBABILITIES.seal ? generateRandomSeal() : SealType.None;
 
-    let edition = CardEdition.None;
-    const editionRoll = Math.random();
-    if (editionRoll < 0.2) {
-      const editions = [CardEdition.Foil, CardEdition.Holographic, CardEdition.Polychrome];
-      edition = editions[Math.floor(Math.random() * editions.length)];
-    }
-
-    let seal = SealType.None;
-    const sealRoll = Math.random();
-    if (sealRoll < 0.2) {
-      const seals = [SealType.Gold, SealType.Red, SealType.Blue, SealType.Purple];
-      seal = seals[Math.floor(Math.random() * seals.length)];
-    }
-
-    const card = new Card(randomSuit, randomRank, randomEnhancement, seal, edition);
+    const card = new Card(randomSuit, randomRank, enhancement, seal, edition);
     const basePrice = 1;
     const price = this.calculatePriceWithEdition(basePrice, edition);
 
@@ -477,6 +471,10 @@ export class Shop {
 
   getVouchersUsedCount(): number {
     return this.vouchersUsed.length;
+  }
+
+  getVouchersUsed(): string[] {
+    return [...this.vouchersUsed];
   }
 
   private addExtraSlot(): void {

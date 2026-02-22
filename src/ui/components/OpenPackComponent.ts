@@ -12,6 +12,7 @@ import { Toast } from './Toast';
 import { Suit, Rank } from '../../types/card';
 import { JokerDetailModal } from './JokerDetailModal';
 import { ConsumableDetailModal } from './ConsumableDetailModal';
+import { generatePlayingCardModifiers } from '../../data/probabilities';
 
 export interface OpenPackCallbacks {
   onClose: () => void;
@@ -71,6 +72,9 @@ export class OpenPackComponent {
   private generatePackContents(): (Card | Joker | Consumable)[] {
     const contents: (Card | Joker | Consumable)[] = [];
 
+    // 获取已使用的优惠券
+    const vouchersUsed = this.gameState.getVouchersUsed ? this.gameState.getVouchersUsed() : [];
+
     switch (this.pack.type) {
       case 'standard':
         for (let i = 0; i < this.pack.choices; i++) {
@@ -87,7 +91,7 @@ export class OpenPackComponent {
         break;
 
       case 'buffoon':
-        contents.push(...getRandomJokers(this.pack.choices));
+        contents.push(...getRandomJokers(this.pack.choices, vouchersUsed));
         break;
 
       case 'spectral':
@@ -100,15 +104,22 @@ export class OpenPackComponent {
 
   /**
    * 生成随机游戏牌
+   * 应用增强、版本、蜡封概率
    */
   private generateRandomPlayingCard(): Card {
     const suits = [Suit.Spades, Suit.Hearts, Suit.Diamonds, Suit.Clubs];
     const ranks = [Rank.Two, Rank.Three, Rank.Four, Rank.Five, Rank.Six, Rank.Seven, Rank.Eight, Rank.Nine, Rank.Ten, Rank.Jack, Rank.Queen, Rank.King, Rank.Ace];
-    
+
     const randomSuit = suits[Math.floor(Math.random() * suits.length)];
     const randomRank = ranks[Math.floor(Math.random() * ranks.length)];
-    
-    return new Card(randomSuit, randomRank);
+
+    // 获取已使用的优惠券（从游戏状态）
+    const vouchersUsed = this.gameState.getVouchersUsed ? this.gameState.getVouchersUsed() : [];
+
+    // 生成增强、版本、蜡封
+    const { enhancement, edition, seal } = generatePlayingCardModifiers(vouchersUsed);
+
+    return new Card(randomSuit, randomRank, enhancement, seal, edition);
   }
 
   /**
@@ -149,7 +160,7 @@ export class OpenPackComponent {
   render(): void {
     this.container.innerHTML = '';
 
-    // 创建开包界面根容器
+根据正版规则校验    // 创建开包界面根容器
     const overlay = document.createElement('div');
     
     if (this.isEmbedded) {

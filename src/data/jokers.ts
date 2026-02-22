@@ -1,9 +1,10 @@
 import { Joker } from '../models/Joker';
-import { JokerRarity, JokerTrigger, type JokerEffectContext, type JokerEffectResult } from '../types/joker';
+import { JokerRarity, JokerTrigger, JokerEdition, type JokerEffectContext, type JokerEffectResult } from '../types/joker';
 import { Suit, CardEnhancement } from '../types/card';
 import { PokerHandType } from '../types/pokerHands';
 import type { Card } from '../models/Card';
 import type { ConsumableInterface } from '../types/consumable';
+import { generateRandomJokerEdition } from './probabilities';
 
 export const JOKERS: Joker[] = [
   new Joker({
@@ -155,18 +156,8 @@ export const JOKERS: Joker[] = [
     description: '复制最左侧小丑牌的能力',
     rarity: JokerRarity.RARE,
     cost: 8,
-    trigger: JokerTrigger.ON_HAND_PLAYED,
-    effect: (context: JokerEffectContext): JokerEffectResult => {
-      const leftmostJoker = context.leftmostJoker;
-      if (leftmostJoker && leftmostJoker.id !== 'brainstorm') {
-        const result = leftmostJoker.effect(context);
-        return {
-          ...result,
-          message: `头脑风暴复制 [${leftmostJoker.name}]: ${result.message || '触发效果'}`
-        };
-      }
-      return {};
-    }
+    trigger: JokerTrigger.ON_INDEPENDENT, // 使用独立触发器，在JokerSystem中专门处理
+    effect: () => ({})
   }),
 
   // 基础牌型类小丑牌
@@ -3155,12 +3146,30 @@ export function getJokersByRarity(rarity: JokerRarity): Joker[] {
   return JOKERS.filter(joker => joker.rarity === rarity).map(j => j.clone() as Joker);
 }
 
-export function getRandomJokers(count: number): Joker[] {
+export function getRandomJokers(count: number, vouchersUsed: string[] = []): Joker[] {
   const shuffled = [...JOKERS].sort(() => Math.random() - 0.5);
-  return shuffled.slice(0, count).map(j => j.clone() as Joker);
+  const jokers = shuffled.slice(0, count).map(j => j.clone() as Joker);
+
+  // 应用版本概率
+  for (const joker of jokers) {
+    const edition = generateRandomJokerEdition(vouchersUsed);
+    if (edition !== JokerEdition.None) {
+      joker.setEdition(edition);
+    }
+  }
+
+  return jokers;
 }
 
-export function getRandomJoker(): Joker {
+export function getRandomJoker(vouchersUsed: string[] = []): Joker {
   const randomIndex = Math.floor(Math.random() * JOKERS.length);
-  return JOKERS[randomIndex].clone() as Joker;
+  const joker = JOKERS[randomIndex].clone() as Joker;
+
+  // 应用版本概率
+  const edition = generateRandomJokerEdition(vouchersUsed);
+  if (edition !== JokerEdition.None) {
+    joker.setEdition(edition);
+  }
+
+  return joker;
 }

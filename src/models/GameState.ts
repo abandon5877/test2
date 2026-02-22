@@ -937,6 +937,16 @@ export class GameState implements GameStateInterface {
     }
   }
 
+  /**
+   * 获取已使用的优惠券列表
+   */
+  getVouchersUsed(): string[] {
+    if (this.shop) {
+      return this.shop.getVouchersUsed();
+    }
+    return [];
+  }
+
   toString(): string {
     const lines: string[] = [];
     lines.push('=== 游戏状态 ===');
