@@ -871,12 +871,17 @@ export class GameBoard {
   /**
    * 计算卡牌重叠量 - 完全基于容器大小的响应式计算
    * 目标：让卡牌填满整个容器，充分利用空间
+   * @param cardCount 卡牌数量
+   * @param containerWidth 容器宽度（包含padding）
+   * @param cardWidth 单张卡牌宽度
+   * @returns 重叠量（像素）
    */
   private calculateOverlap(cardCount: number, containerWidth: number, cardWidth: number): number {
     if (cardCount <= 1) return 0;
 
-    // 计算可用宽度（不留边距，充分利用空间）
-    const availableWidth = Math.max(0, containerWidth);
+    // 减去左右padding（CSS中padding-right约2-8px，padding-left为0）
+    const paddingRight = Math.min(8, Math.max(2, containerWidth * 0.01));
+    const availableWidth = Math.max(0, containerWidth - paddingRight);
     const totalCardsWidth = cardWidth * cardCount;
 
     // 如果所有卡牌不重叠也能放下，使用最小重叠（5%）
@@ -886,11 +891,14 @@ export class GameBoard {
 
     // 需要重叠才能放下
     // 计算需要的重叠量，让最后一张牌刚好填满容器
+    // 公式：第一张牌完整显示 + (n-1)张牌重叠显示 = 可用宽度
+    // cardWidth + (cardCount - 1) * (cardWidth - overlap) = availableWidth
+    // 解得：overlap = (totalCardsWidth - availableWidth) / (cardCount - 1)
     const requiredOverlap = (totalCardsWidth - availableWidth) / (cardCount - 1);
 
-    // 限制重叠量：最小5%，最大75%（允许更紧密的排列以充分利用空间）
+    // 限制重叠量：最小5%，最大70%（允许更紧密的排列以充分利用空间）
     const minOverlap = cardWidth * 0.05;
-    const maxOverlap = cardWidth * 0.75;
+    const maxOverlap = cardWidth * 0.7;
 
     return Math.max(minOverlap, Math.min(requiredOverlap, maxOverlap));
   }
