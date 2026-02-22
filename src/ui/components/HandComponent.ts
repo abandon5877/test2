@@ -102,18 +102,13 @@ export class HandComponent {
     const selectedIndices = this.hand.getSelectedIndices();
     const totalCards = cards.length;
 
-    // 获取中间区域实际宽度：直接使用手牌容器的父元素（hand-area）宽度
+    // 获取中间区域实际宽度
+    // handArea 刚创建还未渲染，使用 container 或 centerPanel 的宽度
     const centerPanel = this.container.closest('.game-layout-center') as HTMLElement;
     
-    // 优先使用 hand-area 的实际宽度，其次是 game-layout-center，最后是容器自身
-    // 使用 getBoundingClientRect 获取更准确的宽度
+    // 优先使用 game-layout-center 的宽度，其次是容器自身
     let centerWidth = getElementWidth(this.container);
-    if (handArea) {
-      const handAreaWidth = getElementWidth(handArea);
-      if (handAreaWidth > 0) {
-        centerWidth = handAreaWidth;
-      }
-    } else if (centerPanel) {
+    if (centerPanel) {
       const centerPanelWidth = getElementWidth(centerPanel);
       if (centerPanelWidth > 0) {
         centerWidth = centerPanelWidth;
@@ -144,7 +139,7 @@ export class HandComponent {
       handArea.appendChild(firstCardElement);
       
       // 获取实际卡牌宽度
-      const actualWidth = firstCardElement.clientWidth;
+      const actualWidth = getElementWidth(firstCardElement);
       if (actualWidth > 0) {
         cardWidth = actualWidth;
       }
