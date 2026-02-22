@@ -95,6 +95,24 @@ export class GameBoard {
   }
 
   /**
+   * 刷新手牌和UI状态（用于出牌弃牌操作，不重新渲染小丑牌和消耗牌）
+   */
+  refreshHandAndUI(): void {
+    this.updateTopBar();
+    this.updateProgressBar();
+    this.updateHandPreview();
+    this.updateActionButtons();
+
+    if (this.handComponent) {
+      this.handComponent.setHand(this.gameState.cardPile.hand);
+      this.handComponent.setRemaining(
+        this.gameState.handsRemaining,
+        this.gameState.discardsRemaining
+      );
+    }
+  }
+
+  /**
    * 更新出牌/弃牌按钮文本
    */
   private updateActionButtons(): void {
@@ -1362,17 +1380,17 @@ export class GameBoard {
     }
 
     const scoreResult = this.gameState.playHand();
-    
+
     if (scoreResult) {
       // 显示分数动画
       this.showScorePopup(scoreResult);
-      
+
       // 回调
       this.callbacks.onPlayHand?.(scoreResult);
-      
-      // 刷新显示
+
+      // 刷新显示（只刷新手牌和UI，不重新渲染小丑牌和消耗牌）
       setTimeout(() => {
-        this.refresh();
+        this.refreshHandAndUI();
       }, 500);
     }
   }
@@ -1385,7 +1403,8 @@ export class GameBoard {
 
     if (discarded) {
       this.callbacks.onDiscard?.();
-      this.refresh();
+      // 只刷新手牌和UI，不重新渲染小丑牌和消耗牌
+      this.refreshHandAndUI();
     }
   }
 

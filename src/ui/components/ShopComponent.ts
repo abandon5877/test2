@@ -289,13 +289,69 @@ export class ShopComponent {
     const baseFontSize = 24;
     const baseGap = 8;
 
-    const scale = Math.max(0.5, Math.min(2.0, minDimension / 720));
+    const scale = Math.max(0.35, Math.min(2.0, minDimension / 720));
 
     return {
       padding: `${Math.round(basePaddingY * scale)}px ${Math.round(basePaddingX * scale)}px`,
       fontSize: `${Math.round(baseFontSize * scale)}px`,
       gap: `${Math.round(baseGap * scale)}px`
     };
+  }
+
+  /**
+   * 根据小丑牌数量计算重叠量
+   */
+  private calculateJokerOverlap(jokerCount: number, containerWidth: number): number {
+    if (jokerCount <= 1) return 0;
+
+    const cardWidth = 90; // 缩放后的小丑牌宽度
+    const padding = 8;
+    const availableWidth = containerWidth - padding;
+
+    if (jokerCount <= 2) {
+      return Math.min(cardWidth * 0.2, 20);
+    }
+
+    const totalCardsWidth = cardWidth * jokerCount;
+    const isSmallScreen = containerWidth < 150;
+
+    if (totalCardsWidth <= availableWidth && !isSmallScreen) {
+      return Math.min(cardWidth * 0.1, 10);
+    }
+
+    const requiredOverlap = (totalCardsWidth - availableWidth) / (jokerCount - 1);
+    const maxOverlap = isSmallScreen ? cardWidth * 0.85 : cardWidth * 0.75;
+    const minOverlap = isSmallScreen ? cardWidth * 0.5 : cardWidth * 0.2;
+
+    return Math.max(minOverlap, Math.min(requiredOverlap, maxOverlap));
+  }
+
+  /**
+   * 根据消耗牌数量计算重叠量
+   */
+  private calculateConsumableOverlap(consumableCount: number, containerWidth: number): number {
+    if (consumableCount <= 1) return 0;
+
+    const cardWidth = 90; // 缩放后的消耗牌宽度
+    const padding = 8;
+    const availableWidth = containerWidth - padding;
+
+    if (consumableCount <= 2) {
+      return Math.min(cardWidth * 0.2, 20);
+    }
+
+    const totalCardsWidth = cardWidth * consumableCount;
+    const isSmallScreen = containerWidth < 150;
+
+    if (totalCardsWidth <= availableWidth && !isSmallScreen) {
+      return Math.min(cardWidth * 0.1, 10);
+    }
+
+    const requiredOverlap = (totalCardsWidth - availableWidth) / (consumableCount - 1);
+    const maxOverlap = isSmallScreen ? cardWidth * 0.85 : cardWidth * 0.75;
+    const minOverlap = isSmallScreen ? cardWidth * 0.5 : cardWidth * 0.2;
+
+    return Math.max(minOverlap, Math.min(requiredOverlap, maxOverlap));
   }
 
   /**
@@ -565,6 +621,7 @@ export class ShopComponent {
     if (jokers.length === 0) {
       jokersContainer.innerHTML = `<div class="text-gray-500 text-center flex items-center justify-center h-full" style="font-size: ${this.scaled(14)}">暂无小丑牌</div>`;
     } else {
+      const jokerCards: HTMLElement[] = [];
       jokers.forEach((joker, index) => {
         const jokerCard = CardComponent.renderJokerCard({
           id: joker.id,
@@ -573,9 +630,7 @@ export class ShopComponent {
           rarity: joker.rarity,
           cost: joker.cost
         });
-        
-        jokerCard.style.transform = 'scale(0.85)';
-        jokerCard.style.transformOrigin = 'center center';
+
         jokerCard.style.cursor = jokers.length > 1 ? 'grab' : 'pointer';
         jokerCard.draggable = jokers.length > 1;
         jokerCard.dataset.index = String(index);
@@ -595,7 +650,16 @@ export class ShopComponent {
           jokerCard.addEventListener('dragleave', (e) => this.handleJokerDragLeave(e));
         }
 
+        jokerCards.push(jokerCard);
         jokersContainer.appendChild(jokerCard);
+      });
+
+      // 计算并应用重叠量
+      const overlap = this.calculateJokerOverlap(jokers.length, jokersContainer.clientWidth);
+      jokerCards.forEach((card, index) => {
+        if (index > 0) {
+          card.style.marginLeft = `-${overlap}px`;
+        }
       });
     }
     jokersSection.appendChild(jokersContainer);
@@ -622,6 +686,7 @@ export class ShopComponent {
     if (consumables.length === 0) {
       consumablesContainer.innerHTML = `<div class="text-gray-500 text-center flex items-center justify-center h-full" style="font-size: ${this.scaled(14)}">暂无消耗牌</div>`;
     } else {
+      const consumableCards: HTMLElement[] = [];
       consumables.forEach((consumable, index) => {
         const consumableCard = CardComponent.renderConsumableCard({
           id: consumable.id,
@@ -630,9 +695,7 @@ export class ShopComponent {
           type: consumable.type,
           cost: consumable.cost
         }, false);
-        
-        consumableCard.style.transform = 'scale(0.85)';
-        consumableCard.style.transformOrigin = 'center center';
+
         consumableCard.style.cursor = 'pointer';
 
         // 点击显示详情弹窗
@@ -640,7 +703,16 @@ export class ShopComponent {
           this.showConsumableDetailModal(consumable, index);
         });
 
+        consumableCards.push(consumableCard);
         consumablesContainer.appendChild(consumableCard);
+      });
+
+      // 计算并应用重叠量
+      const overlap = this.calculateConsumableOverlap(consumables.length, consumablesContainer.clientWidth);
+      consumableCards.forEach((card, index) => {
+        if (index > 0) {
+          card.style.marginLeft = `-${overlap}px`;
+        }
       });
     }
     consumablesSection.appendChild(consumablesContainer);
