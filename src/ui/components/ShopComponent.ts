@@ -522,19 +522,32 @@ export class ShopComponent {
     const icon = document.createElement('div');
     icon.className = 'joker-icon';
     icon.style.flex = '0 0 auto';
-    
+
     // 名称
     const name = document.createElement('div');
     name.className = 'joker-name';
     name.style.flex = '0 0 auto';
-    name.style.marginBottom = 'auto'; // 将名称推到上方，为价格标签留出空间
-    
+
+    // 描述 - 默认隐藏，空间足够时显示
+    const description = document.createElement('div');
+    description.className = 'joker-description';
+    description.style.cssText = `
+      font-size: clamp(8px, 1.5vmin, 10px);
+      text-align: center;
+      color: rgba(255, 255, 255, 0.8);
+      flex: 1 1 auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2px;
+      overflow: hidden;
+    `;
+
     // 价格标签 - 使用 joker-cost 样式
     const priceTag = document.createElement('div');
     priceTag.className = 'joker-cost';
     priceTag.style.flex = '0 0 auto';
-    priceTag.style.marginTop = 'auto'; // 将价格标签推到底部
-    priceTag.style.alignSelf = 'flex-end'; // 右对齐
+    priceTag.style.alignSelf = 'flex-end';
     const canAfford = this.gameState.money >= shopItem.cost;
     if (!canAfford && !shopItem.sold) {
       priceTag.style.background = 'linear-gradient(145deg, #ef4444 0%, #dc2626 100%)';
@@ -551,6 +564,7 @@ export class ShopComponent {
         const joker = shopItem.item as Joker;
         icon.textContent = '🤡';
         name.textContent = joker.name;
+        description.textContent = joker.description;
         // 根据稀有度设置边框颜色
         card.className = `joker-card ${joker.rarity}`;
         // 重新应用样式
@@ -563,24 +577,42 @@ export class ShopComponent {
         const consumable = shopItem.item as Consumable;
         icon.textContent = consumable.type === 'tarot' ? '🔮' : consumable.type === 'planet' ? '🪐' : consumable.type === 'spectral' ? '👻' : '🎴';
         name.textContent = consumable.name;
+        description.textContent = consumable.description;
       } else if (shopItem.type === 'pack') {
         const pack = shopItem.item as BoosterPack;
         icon.textContent = '📦';
         name.textContent = pack.name;
+        description.textContent = pack.description || `${pack.size}张卡牌`;
       } else if (shopItem.type === 'voucher') {
         const voucher = shopItem.item as Voucher;
         icon.textContent = '🎫';
         name.textContent = voucher.name;
+        description.textContent = voucher.description;
       }
-      
+
       priceTag.textContent = `$${shopItem.cost}`;
     }
 
     card.appendChild(icon);
     card.appendChild(name);
     if (!shopItem.sold) {
+      card.appendChild(description);
       card.appendChild(priceTag);
     }
+
+    // 使用 ResizeObserver 根据卡片高度决定是否显示描述
+    const resizeObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const cardHeight = entry.contentRect.height;
+        // 如果卡片高度小于 100px，隐藏描述
+        if (cardHeight < 100) {
+          description.style.display = 'none';
+        } else {
+          description.style.display = 'flex';
+        }
+      }
+    });
+    resizeObserver.observe(card);
 
     return card;
   }
