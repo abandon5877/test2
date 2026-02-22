@@ -527,6 +527,7 @@ export class ShopComponent {
     const name = document.createElement('div');
     name.className = 'joker-name';
     name.style.flex = '0 0 auto';
+    name.style.marginBottom = '2px';
 
     // 描述 - 默认隐藏，空间足够时显示
     const description = document.createElement('div');
@@ -535,12 +536,13 @@ export class ShopComponent {
       font-size: clamp(9px, 1.8vmin, 10px);
       text-align: center;
       color: rgba(255, 255, 255, 0.8);
-      flex: 1 1 auto;
+      flex: 0 1 auto;
       display: flex;
       align-items: center;
       justify-content: center;
       padding: 0px;
       overflow: hidden;
+      margin-bottom: 2px;
     `;
 
     // 价格标签 - 使用 joker-cost 样式
