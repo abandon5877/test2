@@ -1,6 +1,7 @@
 import { Card } from '../../models/Card';
 import { Hand } from '../../models/Hand';
 import { CardComponent } from './CardComponent';
+import { calculateOverlap, getElementWidth } from '../../utils/overlapCalculator';
 
 export interface HandComponentCallbacks {
   onCardSelect?: (card: Card, index: number, isSelected: boolean) => void;
@@ -105,18 +106,25 @@ export class HandComponent {
     const centerPanel = this.container.closest('.game-layout-center') as HTMLElement;
     
     // 优先使用 hand-area 的实际宽度，其次是 game-layout-center，最后是容器自身
-    let centerWidth = this.container.clientWidth;
-    if (handArea && handArea.clientWidth > 0) {
-      centerWidth = handArea.clientWidth;
-    } else if (centerPanel && centerPanel.clientWidth > 0) {
-      centerWidth = centerPanel.clientWidth;
+    // 使用 getBoundingClientRect 获取更准确的宽度
+    let centerWidth = getElementWidth(this.container);
+    if (handArea) {
+      const handAreaWidth = getElementWidth(handArea);
+      if (handAreaWidth > 0) {
+        centerWidth = handAreaWidth;
+      }
+    } else if (centerPanel) {
+      const centerPanelWidth = getElementWidth(centerPanel);
+      if (centerPanelWidth > 0) {
+        centerWidth = centerPanelWidth;
+      }
     }
     
     // 确保最小宽度（防止计算错误）
     centerWidth = Math.max(200, centerWidth);
     
     // 记录当前容器宽度
-    this.lastContainerWidth = this.container.clientWidth;
+    this.lastContainerWidth = getElementWidth(this.container);
 
     // 先渲染第一张卡牌到 DOM，获取实际宽度后再计算重叠量
     // 这样可以准确获取 CSS 计算后的卡牌尺寸
@@ -187,81 +195,13 @@ export class HandComponent {
    * @returns 重叠量（像素）
    */
   private calculateCardOverlap(centerWidth: number, totalCards: number, cardWidth: number): number {
-    if (totalCards <= 1) return 0;
-
-    // 获取容器高度，用于在极端比例下调整重叠量
-    const containerHeight = this.container.clientHeight;
-    const aspectRatio = centerWidth / containerHeight;
-    
-    // 动态计算边距：基于容器宽度的连续函数
-    // 使用 clamp 确保边距在合理范围内（10px 到 60px）
-    const padding = Math.max(10, Math.min(60, centerWidth * 0.06));
-    const availableWidth = centerWidth - padding;
-
-    // 计算需要的总宽度（无重叠时）
-    const totalWidthNeeded = totalCards * cardWidth;
-
-    // 如果不需要重叠，返回0
-    if (totalWidthNeeded <= availableWidth) {
-      console.log('[HandComponent] 无需重叠', { centerWidth, totalCards, cardWidth, availableWidth, totalWidthNeeded });
-      return 0;
-    }
-
-    // 计算需要的重叠量
-    // 总宽度 = cardWidth + (totalCards - 1) * (cardWidth - overlap)
-    const calculatedOverlap = cardWidth - (availableWidth - cardWidth) / (totalCards - 1);
-
-    // 动态计算最大重叠量：基于容器宽度的连续函数
-    // 使用平滑的插值函数，避免分段跳跃
-    // 目标：容器越宽，保留的可见比例越高（35% ~ 55%）
-    const minVisibleRatio = 0.35;  // 最小可见比例（最拥挤时保留更多）
-    const maxVisibleRatio = 0.55;  // 最大可见比例（最宽松时）
-    const referenceMinWidth = 250;  // 参考最小宽度（降低以适应更小的屏幕）
-    const referenceMaxWidth = 1200; // 参考最大宽度
-    
-    // 使用平滑的插值计算可见比例
-    const widthRatio = Math.max(0, Math.min(1, 
-      (centerWidth - referenceMinWidth) / (referenceMaxWidth - referenceMinWidth)
-    ));
-    let visibleRatio = minVisibleRatio + (maxVisibleRatio - minVisibleRatio) * widthRatio;
-    
-    // 在极端宽高比下增加可见比例，避免卡牌堆叠太紧
-    const idealAspectRatio = 1.78;
-    const aspectRatioDeviation = Math.abs(aspectRatio - idealAspectRatio) / idealAspectRatio;
-    if (aspectRatioDeviation > 0.3) {
-      visibleRatio = Math.min(0.6, visibleRatio + 0.1);
-    }
-    
-    const maxOverlap = cardWidth * (1 - visibleRatio);
-    
-    // 动态计算最小重叠量：确保卡牌不会太分散
-    // 基于容器宽度连续变化（10% ~ 40% 的卡牌宽度，降低最小值）
-    const minOverlapRatio = Math.max(0.1, Math.min(0.4, 0.5 - centerWidth / 2500));
-    const minOverlap = cardWidth * minOverlapRatio;
-
-    const finalOverlap = Math.min(Math.max(calculatedOverlap, minOverlap), maxOverlap);
-    
-    // 输出调试日志
-    console.log('[HandComponent] 重叠量计算', {
-      centerWidth,
-      containerHeight,
-      aspectRatio: aspectRatio.toFixed(2),
-      totalCards,
-      cardWidth,
-      padding,
-      availableWidth,
-      calculatedOverlap: calculatedOverlap.toFixed(2),
-      widthRatio: widthRatio.toFixed(2),
-      visibleRatio: visibleRatio.toFixed(2),
-      aspectRatioDeviation: aspectRatioDeviation.toFixed(2),
-      maxOverlap: maxOverlap.toFixed(2),
-      minOverlapRatio: minOverlapRatio.toFixed(2),
-      minOverlap: minOverlap.toFixed(2),
-      finalOverlap: finalOverlap.toFixed(2)
+    // 使用统一的重叠计算函数
+    // 扑克手牌使用更大的最大重叠比例（80%），因为需要显示更多卡牌
+    return calculateOverlap(totalCards, centerWidth, cardWidth, {
+      minOverlapRatio: 0.05,
+      maxOverlapRatio: 0.8,
+      slightOverlapRatio: 0
     });
-
-    // 返回计算的重叠量，限制在合理范围内
-    return finalOverlap;
   }
 
   /**
@@ -338,35 +278,15 @@ export class HandComponent {
    * @returns 倾斜角度（度）
    */
   private calculateCardRotation(index: number, totalCards: number): number {
-    // 获取容器尺寸
-    const containerWidth = this.container.clientWidth;
-    const containerHeight = this.container.clientHeight;
-    const aspectRatio = containerWidth / containerHeight;
+    // 固定倾斜程度，不跟随屏幕大小变化
+    // 基础角度范围固定为24度
+    const maxAngleRange = Math.min(24, totalCards * 3);
     
-    // 基础角度范围：根据手牌数量动态调整
-    // 手牌越多，每张牌的角度越小，保持整体扇形美观
-    // 降低最大角度，避免在极端比例下过于分散
-    const maxAngleRange = Math.min(24, totalCards * 3); // 降低最大角度从32到24
-    
-    // 根据宽高比动态调整角度范围
-    // 使用连续函数而非分段判断，实现平滑过渡
-    // 理想宽高比为 16:9 ≈ 1.78
-    const idealAspectRatio = 1.78;
-    const maxDeviation = 1.0; // 降低最大偏离值，使衰减更快
-    
-    // 计算偏离理想比例的程度（0 ~ 1）
-    const deviation = Math.min(1, Math.abs(aspectRatio - idealAspectRatio) / maxDeviation);
-    
-    // 偏离越大，角度范围越小（使用更激进的衰减函数）
-    // 角度范围在 40% ~ 100% 之间连续变化
-    const angleScaleFactor = 1 - (deviation * 0.6); // 0.4 ~ 1.0，更激进的衰减
-    const baseAngleRange = maxAngleRange * angleScaleFactor;
-    
-    const angleStep = totalCards > 1 ? baseAngleRange / (totalCards - 1) : 0;
+    const angleStep = totalCards > 1 ? maxAngleRange / (totalCards - 1) : 0;
     
     // 从左边开始计算角度
     // 第一张牌为负角度，最后一张为正角度，中间均匀分布
-    const rotation = -baseAngleRange / 2 + index * angleStep;
+    const rotation = -maxAngleRange / 2 + index * angleStep;
     
     return rotation;
   }
