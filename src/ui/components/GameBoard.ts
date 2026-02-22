@@ -640,22 +640,39 @@ export class GameBoard {
   }
 
   /**
-   * 重新计算小丑牌重叠量（用于窗口大小改变时）
+   * 重新计算小丑牌和消耗牌重叠量（用于窗口大小改变时）
    */
   private recalculateJokerOverlap(): void {
-    if (!this.jokersArea) return;
-
-    const jokerCards = this.jokersArea.querySelectorAll('.joker-card');
-    if (jokerCards.length <= 1) return;
-
-    const overlap = this.calculateJokerOverlap(jokerCards.length);
-    jokerCards.forEach((card, index) => {
-      if (index > 0) {
-        (card as HTMLElement).style.marginLeft = `-${overlap}px`;
-      } else {
-        (card as HTMLElement).style.marginLeft = '0';
+    // 重新计算小丑牌重叠量
+    if (this.jokersArea) {
+      const jokerCards = this.jokersArea.querySelectorAll('.joker-card');
+      if (jokerCards.length > 1) {
+        const overlap = this.calculateJokerOverlap(jokerCards.length);
+        jokerCards.forEach((card, index) => {
+          if (index > 0) {
+            (card as HTMLElement).style.marginLeft = `-${overlap}px`;
+          } else {
+            (card as HTMLElement).style.marginLeft = '0';
+          }
+        });
       }
-    });
+    }
+
+    // 重新计算消耗牌重叠量
+    const consumablesArea = document.getElementById('consumables-area');
+    if (consumablesArea) {
+      const consumableCards = consumablesArea.querySelectorAll('.consumable-card');
+      if (consumableCards.length > 1) {
+        const overlap = this.calculateConsumableOverlap(consumableCards.length);
+        consumableCards.forEach((card, index) => {
+          if (index > 0) {
+            (card as HTMLElement).style.marginLeft = `-${overlap}px`;
+          } else {
+            (card as HTMLElement).style.marginLeft = '0';
+          }
+        });
+      }
+    }
   }
 
   /**
@@ -1191,6 +1208,42 @@ export class GameBoard {
   }
 
   /**
+   * 根据消耗牌数量计算重叠量
+   * 动态调整margin-left，使消耗牌填满整个consumables-area
+   */
+  private calculateConsumableOverlap(consumableCount: number): number {
+    const consumablesArea = document.getElementById('consumables-area');
+    if (!consumablesArea) return 0;
+    if (consumableCount <= 1) return 0;
+
+    const containerWidth = consumablesArea.clientWidth;
+    const cardWidth = consumablesArea.querySelector('.consumable-card')?.clientWidth || 90;
+
+    const padding = 8;
+    const availableWidth = containerWidth - padding;
+
+    // 如果牌很少（1-2张），不重叠或轻微重叠
+    if (consumableCount <= 2) {
+      return Math.min(cardWidth * 0.2, 20);
+    }
+
+    const totalCardsWidth = cardWidth * consumableCount;
+
+    // 小屏幕检测
+    const isSmallScreen = containerWidth < 150;
+
+    if (totalCardsWidth <= availableWidth && !isSmallScreen) {
+      return Math.min(cardWidth * 0.1, 10);
+    }
+
+    const requiredOverlap = (totalCardsWidth - availableWidth) / (consumableCount - 1);
+    const maxOverlap = isSmallScreen ? cardWidth * 0.85 : cardWidth * 0.75;
+    const minOverlap = isSmallScreen ? cardWidth * 0.5 : cardWidth * 0.2;
+
+    return Math.max(minOverlap, Math.min(requiredOverlap, maxOverlap));
+  }
+
+  /**
    * 更新消耗牌区域
    */
   private updateConsumables(): void {
@@ -1210,22 +1263,8 @@ export class GameBoard {
       return;
     }
 
-    // 添加点击展开/收起功能
-    const toggleExpand = (clickedElement: HTMLElement) => {
-      const allCards = consumablesArea.querySelectorAll('.consumable-card-wrapper');
-      const isExpanded = clickedElement.classList.contains('expanded');
-      
-      // 先收起所有卡牌
-      allCards.forEach(card => {
-        card.classList.remove('expanded');
-      });
-
-      // 如果点击的卡片之前没有展开，则展开它
-      if (!isExpanded) {
-        clickedElement.classList.add('expanded');
-      }
-    };
-
+    // 先渲染所有消耗牌
+    const consumableCards: HTMLElement[] = [];
     consumables.forEach((consumable, index) => {
       const consumableCard = CardComponent.renderConsumableCard({
         id: consumable.id,
@@ -1235,7 +1274,7 @@ export class GameBoard {
         cost: consumable.cost,
         isNegative: (consumable as any).isNegative
       });
-      
+
       consumableCard.style.cursor = 'pointer';
       consumableCard.dataset.index = String(index);
 
@@ -1249,7 +1288,16 @@ export class GameBoard {
         });
       });
 
+      consumableCards.push(consumableCard);
       consumablesArea.appendChild(consumableCard);
+    });
+
+    // 计算并应用重叠量
+    const overlap = this.calculateConsumableOverlap(consumables.length);
+    consumableCards.forEach((card, index) => {
+      if (index > 0) {
+        card.style.marginLeft = `-${overlap}px`;
+      }
     });
 
     // 更新标题中的数量（区分负片牌）

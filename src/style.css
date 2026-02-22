@@ -363,9 +363,9 @@ body {
 
 /* 消耗牌样式 - 使用 vmin 实现响应式缩放 */
 .consumable-card {
-  width: clamp(70px, 18vmin, 110px);
-  height: clamp(93px, 24vmin, 147px);
-  border-radius: clamp(6px, 1.5vmin, 10px);
+  width: clamp(50px, 12vmin, 90px);
+  height: clamp(70px, 16.8vmin, 126px);
+  border-radius: clamp(5px, 1.5vmin, 10px);
   border: 2px solid;
   display: flex;
   flex-direction: column;
@@ -399,23 +399,24 @@ body {
 }
 
 .consumable-icon {
-  font-size: clamp(24px, 5vmin, 32px);
-  flex: 1;
+  font-size: clamp(20px, 4.5vmin, 32px);
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .consumable-name {
-  font-size: clamp(9px, 1.8vmin, 10px);
+  font-size: clamp(9px, 2vmin, 11px);
   font-weight: bold;
   text-align: center;
   color: #fff;
-  min-height: clamp(18px, 3.5vmin, 24px);
+  min-height: clamp(16px, 3vmin, 22px);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 0 2px;
+  flex-shrink: 0;
 }
 
 .consumable-type {
@@ -1244,7 +1245,7 @@ html, body, #app {
   display: flex;
   justify-content: flex-start;
   align-items: center;
-  padding: clamp(2px, 1vw, 8px) clamp(4px, 1.5vw, 12px);
+  padding: clamp(2px, 1vw, 8px) clamp(2px, 1vw, 8px) clamp(2px, 1vw, 8px) 0;
   margin-top: clamp(2px, 1vh, 10px);
   min-height: clamp(80px, 20vmin, 110px);
   max-height: clamp(100px, 26vmin, 160px);
@@ -1253,14 +1254,9 @@ html, body, #app {
 }
 
 .consumables-area .consumable-card {
-  margin-left: calc(-1 * clamp(30px, 8vmin, 50px));
   transition: all 0.3s ease;
   position: relative;
   flex-shrink: 0;
-}
-
-.consumables-area .consumable-card:first-child {
-  margin-left: 0;
 }
 
 .consumables-area .consumable-card:hover {
