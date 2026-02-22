@@ -625,7 +625,28 @@ export class GameBoard {
       // 由 ResponsiveLayoutManager 处理缩放调整
       setTimeout(() => {
         this.layoutManager?.checkAndAdjustLayout();
+        // 重新计算小丑牌重叠量
+        this.recalculateJokerOverlap();
       }, 100);
+    });
+  }
+
+  /**
+   * 重新计算小丑牌重叠量（用于窗口大小改变时）
+   */
+  private recalculateJokerOverlap(): void {
+    if (!this.jokersArea) return;
+
+    const jokerCards = this.jokersArea.querySelectorAll('.joker-card');
+    if (jokerCards.length <= 1) return;
+
+    const overlap = this.calculateJokerOverlap(jokerCards.length);
+    jokerCards.forEach((card, index) => {
+      if (index > 0) {
+        (card as HTMLElement).style.marginLeft = `-${overlap}px`;
+      } else {
+        (card as HTMLElement).style.marginLeft = '0';
+      }
     });
   }
 
@@ -805,6 +826,52 @@ export class GameBoard {
   }
 
   /**
+   * 根据小丑牌数量计算重叠量
+   * 动态调整margin-left，使小丑牌填满整个jokers-area
+   */
+  private calculateJokerOverlap(jokerCount: number): number {
+    if (!this.jokersArea) return 0;
+    if (jokerCount <= 1) return 0;
+
+    const containerWidth = this.jokersArea.clientWidth;
+    const cardWidth = this.jokersArea.querySelector('.joker-card')?.clientWidth || 90;
+
+    // 计算需要的重叠量：
+    // 总宽度 = 第一张牌完整宽度 + (n-1)张牌的重叠部分
+    // 重叠量 = (n-1张牌的总宽度 - 容器宽度) / (n-1)
+
+    const padding = 8; // 左右padding总和（减小padding以利用更多空间）
+    const availableWidth = containerWidth - padding;
+
+    // 计算需要的重叠量
+    // 目标：所有牌的总宽度 = 第一张牌 + (n-1) * (牌宽 - 重叠量)
+    // 解方程：availableWidth = cardWidth + (n-1) * (cardWidth - overlap)
+    // overlap = ((n-1) * cardWidth - (availableWidth - cardWidth)) / (n-1)
+    // overlap = cardWidth - (availableWidth - cardWidth) / (n-1)
+
+    const totalCardsWidth = cardWidth * jokerCount;
+
+    // 小屏幕检测：如果容器很窄，使用更激进的重叠策略
+    const isSmallScreen = containerWidth < 150;
+
+    if (totalCardsWidth <= availableWidth && !isSmallScreen) {
+      // 如果所有牌不重叠也能放下，只使用轻微重叠
+      return Math.min(cardWidth * 0.1, 10);
+    }
+
+    // 需要重叠才能放下
+    const requiredOverlap = (totalCardsWidth - availableWidth) / (jokerCount - 1);
+
+    // 小屏幕上允许更大的重叠量（最多重叠85%的牌宽）
+    const maxOverlap = isSmallScreen ? cardWidth * 0.85 : cardWidth * 0.75;
+
+    // 确保至少有最小重叠量，防止牌溢出容器
+    const minOverlap = isSmallScreen ? cardWidth * 0.5 : cardWidth * 0.2;
+
+    return Math.max(minOverlap, Math.min(requiredOverlap, maxOverlap));
+  }
+
+  /**
    * 创建小丑牌区域 - 水平重叠排列，支持点击展开
    */
   private updateJokers(): void {
@@ -822,6 +889,8 @@ export class GameBoard {
       return;
     }
 
+    // 先渲染所有小丑牌以获取实际尺寸
+    const jokerCards: HTMLElement[] = [];
     jokers.forEach((joker, index) => {
       const jokerCard = CardComponent.renderJokerCard({
         id: joker.id,
@@ -831,10 +900,25 @@ export class GameBoard {
         cost: joker.cost,
         edition: joker.edition
       });
-      
+
       jokerCard.draggable = jokers.length > 1;
       jokerCard.style.cursor = jokers.length > 1 ? 'grab' : 'pointer';
       jokerCard.dataset.index = String(index);
+      jokerCards.push(jokerCard);
+      this.jokersArea!.appendChild(jokerCard);
+    });
+
+    // 计算并应用重叠量
+    const overlap = this.calculateJokerOverlap(jokers.length);
+    jokerCards.forEach((card, index) => {
+      if (index > 0) {
+        card.style.marginLeft = `-${overlap}px`;
+      }
+    });
+
+    // 重新绑定事件（因为已经添加到DOM）
+    jokerCards.forEach((jokerCard, index) => {
+      const joker = jokers[index];
 
       // 点击显示详情弹窗（Board界面不带卖出按钮）
       jokerCard.addEventListener('click', (e) => {
@@ -862,8 +946,6 @@ export class GameBoard {
         jokerCard.addEventListener('touchend', (e) => this.handleJokerTouchEnd(e, joker, index));
         jokerCard.addEventListener('touchcancel', (e) => this.handleJokerTouchEnd(e, joker, index));
       }
-
-      this.jokersArea!.appendChild(jokerCard);
     });
   }
 

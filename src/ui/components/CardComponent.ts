@@ -299,6 +299,11 @@ export class CardComponent {
     description.className = 'joker-description';
     description.textContent = joker.description;
 
+    // 自适应字体大小以填满容器
+    requestAnimationFrame(() => {
+      CardComponent.adjustFontSizeToFit(description);
+    });
+
     const cost = document.createElement('div');
     cost.className = 'joker-cost';
     cost.textContent = `$${joker.cost}`;
@@ -335,6 +340,74 @@ export class CardComponent {
     cardElement.title = `点击查看详情: ${joker.name}`;
 
     return cardElement;
+  }
+
+  /**
+   * 调整字体大小以适应容器，填满可用空间
+   * 使用二分查找找到最佳字体大小
+   */
+  private static adjustFontSizeToFit(element: HTMLElement): void {
+    const parent = element.parentElement;
+    if (!parent) return;
+
+    // 获取其他元素
+    const icon = parent.querySelector('.joker-icon') as HTMLElement;
+    const name = parent.querySelector('.joker-name') as HTMLElement;
+    const cost = parent.querySelector('.joker-cost') as HTMLElement;
+
+    if (!icon || !name || !cost) return;
+
+    // 计算可用空间
+    const parentRect = parent.getBoundingClientRect();
+    const iconRect = icon.getBoundingClientRect();
+    const nameRect = name.getBoundingClientRect();
+    const costRect = cost.getBoundingClientRect();
+
+    // 计算已占用的高度（从卡片顶部到cost底部，以及cost底部到卡片底部的空间）
+    const paddingTop = iconRect.top - parentRect.top;
+    const paddingBottom = parentRect.bottom - costRect.bottom;
+    const gaps = nameRect.top - iconRect.bottom + costRect.top - nameRect.bottom;
+    const usedHeight = iconRect.height + nameRect.height + costRect.height + paddingTop + paddingBottom + gaps;
+
+    // 可用高度
+    const availableHeight = parentRect.height - usedHeight;
+
+    // 可用宽度（减去padding）
+    const availableWidth = parentRect.width - 8;
+
+    const text = element.textContent || '';
+
+    // 使用二分查找找到最佳字体大小
+    let minSize = 6;
+    let maxSize = 16;
+    let bestSize = 10;
+
+    // 临时设置行高为1.2以便计算
+    element.style.lineHeight = '1.2';
+
+    while (minSize <= maxSize) {
+      const midSize = Math.floor((minSize + maxSize) / 2);
+      element.style.fontSize = `${midSize}px`;
+
+      // 强制重绘以获取正确尺寸
+      const height = element.scrollHeight;
+      const width = element.scrollWidth;
+
+      // 检查是否适合（考虑多行文本）
+      // 估算需要的行数
+      const avgCharsPerLine = Math.floor(availableWidth / (midSize * 0.6)); // 中文字符约0.6倍字体宽度
+      const estimatedLines = Math.ceil(text.length / Math.max(avgCharsPerLine, 1));
+      const estimatedHeight = estimatedLines * midSize * 1.2;
+
+      if (estimatedHeight <= availableHeight && width <= availableWidth) {
+        bestSize = midSize;
+        minSize = midSize + 1;
+      } else {
+        maxSize = midSize - 1;
+      }
+    }
+
+    element.style.fontSize = `${bestSize}px`;
   }
 
   /**

@@ -186,16 +186,16 @@ body {
 
 /* 小丑牌样式 - 使用 vmin 实现更好的屏幕比例缩放 */
 .joker-card {
-  width: clamp(60px, 15vmin, 110px);
-  height: clamp(84px, 21vmin, 154px);
-  border-radius: clamp(6px, 1.5vmin, 12px);
+  width: clamp(50px, 12vmin, 90px);
+  height: clamp(70px, 16.8vmin, 126px);
+  border-radius: clamp(5px, 1.5vmin, 10px);
   background: linear-gradient(145deg, #2d1b4e 0%, #1a0f2e 100%);
   border: 3px solid;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: space-between;
-  padding: clamp(4px, 1.2vmin, 8px) clamp(3px, 1vmin, 6px) clamp(3px, 0.8vmin, 5px);
+  padding: clamp(2px, 0.6vmin, 4px) clamp(3px, 1vmin, 6px) clamp(3px, 0.8vmin, 5px);
   cursor: pointer;
   transition: all 0.2s ease;
   position: relative;
@@ -235,8 +235,8 @@ body {
 }
 
 .joker-icon {
-  font-size: clamp(28px, 6vmin, 40px);
-  flex: 1;
+  font-size: clamp(20px, 4.5vmin, 32px);
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -248,12 +248,13 @@ body {
   text-align: center;
   color: #fff;
   text-shadow: 0 1px 2px rgba(0,0,0,0.5);
-  margin-bottom: clamp(2px, 0.5vmin, 4px);
-  min-height: clamp(20px, 4vmin, 28px);
+  margin: clamp(2px, 0.5vmin, 4px) 0;
+  min-height: clamp(16px, 3vmin, 22px);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 0 2px;
+  flex-shrink: 0;
 }
 
 .joker-cost {
@@ -271,16 +272,34 @@ body {
 }
 
 .joker-description {
-  font-size: clamp(7px, 1.5vmin, 11px);
-  color: rgba(255,255,255,0.8);
+  font-size: 10px; /* 基础字体大小，会被JS动态调整 */
+  color: rgba(255,255,255,0.9);
   text-align: center;
-  margin-top: clamp(2px, 0.5vmin, 6px);
-  line-height: 1.3;
-  max-height: clamp(30px, 6vmin, 50px);
+  margin: clamp(2px, 0.5vmin, 4px) 0;
+  line-height: 1.2;
   overflow: hidden;
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  padding: 0 2px;
+}
+
+/* 小屏幕（vmin < 400）隐藏说明文字 */
+@media (max-width: 400px), (max-height: 400px) {
+  .joker-description {
+    display: none;
+  }
+}
+
+/* 大屏幕（vmin > 400）说明文字自适应填满剩余空间 */
+@media (min-width: 401px) and (min-height: 401px) {
+  .joker-card {
+    justify-content: flex-start;
+  }
 }
 
 /* 水平重叠卡牌容器 */
@@ -1186,7 +1205,7 @@ html, body, #app {
   display: flex;
   justify-content: flex-start;
   align-items: center;
-  padding: clamp(2px, 1vw, 8px) clamp(4px, 1.5vw, 12px);
+  padding: clamp(2px, 1vw, 8px) clamp(2px, 1vw, 8px) clamp(2px, 1vw, 8px) 0;
   min-height: clamp(80px, 20vmin, 110px);
   max-height: clamp(100px, 26vmin, 160px);
   flex-wrap: nowrap;
