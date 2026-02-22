@@ -871,36 +871,36 @@ body {
   }
   
   .joker-card {
-    width: 110px;
-    height: 154px;
+    width: clamp(70px, 15vmin, 130px);
+    height: clamp(98px, 21vmin, 182px);
   }
 }
 
 @media (max-width: 768px) {
   .card {
-    width: 60px;
-    height: 84px;
+    width: clamp(50px, 12vmin, 80px);
+    height: clamp(70px, 16.8vmin, 112px);
   }
   
   .card-center {
-    font-size: 24px;
+    font-size: clamp(18px, 4vmin, 28px);
   }
   
   .card-corner {
-    font-size: 12px;
+    font-size: clamp(9px, 2vmin, 14px);
   }
   
   .joker-card {
-    width: 70px;
-    height: 98px;
+    width: clamp(60px, 14vmin, 110px);
+    height: clamp(84px, 19.6vmin, 154px);
   }
   
   .joker-icon {
-    font-size: 28px;
+    font-size: clamp(22px, 5vmin, 36px);
   }
   
   .joker-name {
-    font-size: 9px;
+    font-size: clamp(8px, 1.8vmin, 12px);
   }
   
   .hand-area {
@@ -917,29 +917,29 @@ body {
 /* 竖屏优化（手机竖屏） */
 @media (max-aspect-ratio: 9/16) {
   .card {
-    width: 50px;
-    height: 70px;
+    width: clamp(45px, 11vmin, 70px);
+    height: clamp(63px, 15.4vmin, 98px);
   }
   
   .card-center {
-    font-size: 20px;
+    font-size: clamp(16px, 3.5vmin, 24px);
   }
   
   .card-corner {
-    font-size: 10px;
+    font-size: clamp(8px, 1.8vmin, 12px);
   }
   
   .joker-card {
-    width: 60px;
-    height: 84px;
+    width: clamp(55px, 13vmin, 100px);
+    height: clamp(77px, 18.2vmin, 140px);
   }
   
   .joker-icon {
-    font-size: 24px;
+    font-size: clamp(20px, 4.5vmin, 32px);
   }
   
   .joker-name {
-    font-size: 8px;
+    font-size: clamp(7px, 1.6vmin, 10px);
   }
   
   .hand-area {
