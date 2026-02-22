@@ -909,8 +909,13 @@ export class GameBoard {
     if (!this.jokersArea) return 0;
     if (jokerCount <= 1) return 0;
 
-    const containerWidth = this.jokersArea.clientWidth;
-    const cardWidth = this.jokersArea.querySelector('.joker-card')?.clientWidth || 90;
+    // 使用 getBoundingClientRect 获取更准确的容器宽度
+    const containerRect = this.jokersArea.getBoundingClientRect();
+    const containerWidth = containerRect.width;
+    
+    // 获取第一个卡片的真实宽度
+    const firstCard = this.jokersArea.querySelector('.joker-card') as HTMLElement;
+    const cardWidth = firstCard?.getBoundingClientRect().width || 90;
 
     return this.calculateOverlap(jokerCount, containerWidth, cardWidth);
   }
@@ -1235,8 +1240,13 @@ export class GameBoard {
     if (!consumablesArea) return 0;
     if (consumableCount <= 1) return 0;
 
-    const containerWidth = consumablesArea.clientWidth;
-    const cardWidth = consumablesArea.querySelector('.consumable-card')?.clientWidth || 90;
+    // 使用 getBoundingClientRect 获取更准确的容器宽度
+    const containerRect = consumablesArea.getBoundingClientRect();
+    const containerWidth = containerRect.width;
+    
+    // 获取第一个卡片的真实宽度
+    const firstCard = consumablesArea.querySelector('.consumable-card') as HTMLElement;
+    const cardWidth = firstCard?.getBoundingClientRect().width || 90;
 
     return this.calculateOverlap(consumableCount, containerWidth, cardWidth);
   }
