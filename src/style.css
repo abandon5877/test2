@@ -842,35 +842,21 @@ body {
 .hand-preview {
   background: rgba(0,0,0,0.4);
   border-radius: 8px;
-  padding: clamp(8px, 2vh, 16px) clamp(12px, 3vw, 20px);
+  padding: 12px 20px;
   text-align: center;
   border: 1px solid rgba(212,175,55,0.3);
-  max-width: 100%;
-  overflow: hidden;
 }
 
 .hand-preview-name {
-  font-size: clamp(16px, 4vmin, 25px);
+  font-size: 25px;
   font-weight: bold;
   color: #ffd700;
   margin-bottom: 4px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 100%;
 }
 
 .hand-preview-score {
-  font-size: clamp(12px, 3vmin, 19px);
+  font-size: 19px;
   color: rgba(255,255,255,0.8);
-  max-width: 100%;
-  overflow: hidden;
-}
-
-.hand-preview-score div {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 /* 响应式设计 - 使用 vmin 动态尺寸，无需重复定义 */

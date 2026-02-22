@@ -695,26 +695,127 @@ export class GameBoard {
 
   /**
    * 创建牌型预览区域
+   * 布局：左右列宽度比例固定为 1:3（左列减小）
+   * ┌───────────────────┬────────────────────────────────────────────────┐
+   * │                   │  ┌────────────────┬────────────────┐           │
+   * │   高牌            │  │    5 筹码      │   × 1 倍率     │           │
+   * │   选择卡牌查看牌型 │  │   + 10         │   + 44         │           │
+   * ├───────────────────┤  └────────────────┴────────────────┘           │
+   * │   已选择 5 张      │      预计: 15 × 45 = 675                       │
+   * └───────────────────┴────────────────────────────────────────────────┘
+   * 
+   * 响应式设计：
+   * - 小屏幕 (宽度<600px): 紧凑布局，较小字体
+   * - 中等屏幕 (600px-1200px): 标准布局
+   * - 大屏幕 (宽度>1200px): 限制最大尺寸，避免太空
+   * - 文字自适应：显示不下时自动缩小字号
    */
   private createHandPreviewArea(): HTMLElement {
     const area = document.createElement('div');
     area.className = 'hand-preview';
     area.id = 'hand-preview-area';
-    area.style.fontSize = 'clamp(0.625rem, 1.8vmin, 0.875rem)';
     area.style.display = 'flex';
-    area.style.flexDirection = 'column';
+    area.style.flexDirection = 'row';
     area.style.justifyContent = 'center';
     area.style.alignItems = 'center';
-    area.style.padding = 'clamp(8px, 2vh, 16px)';
-    area.style.margin = 'clamp(4px, 1vh, 8px)';
+    // 减小上下padding，避免边框间距太大；增大左右padding
+    area.style.padding = 'clamp(4px, 1vh, 8px) clamp(16px, 4vw, 32px)';
+    area.style.margin = 'clamp(2px, 0.5vh, 4px)';
+    // 左右栏中间增加padding
+    area.style.gap = 'clamp(16px, 4vw, 32px)';
 
     area.innerHTML = `
-      <div class="hand-preview-name" id="preview-hand-type" style="font-size: clamp(0.875rem, 2.5vmin, 1.25rem); margin-bottom: 4px;">-</div>
-      <div class="hand-preview-score" id="preview-hand-score" style="font-size: clamp(0.625rem, 1.8vmin, 0.875rem);">选择卡牌查看牌型</div>
-      <div class="hand-preview-selected" id="preview-selected-count" style="font-size: clamp(0.5rem, 1.5vmin, 0.75rem); color: #9ca3af; margin-top: 4px;">已选择 0 张卡牌</div>
+      <!-- 左列：牌型（占2/3）和选牌数（占1/3），宽度占比 25%，高度占90% -->
+      <div class="preview-left-column" style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 25%; height: 90%; flex-shrink: 0;">
+        <!-- 牌型区域：占2/3高度，单行显示，字体可放大 -->
+        <div class="preview-hand-type-container" style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 66.67%; margin-bottom: 4px; width: 100%; overflow: hidden;">
+          <div class="hand-preview-name auto-fit-text" id="preview-hand-type" data-max-font="48" style="font-size: clamp(0.875rem, 3vw, 3rem); font-weight: bold; color: #ffd700; line-height: 1; text-align: center; width: 100%;">选择卡牌查看牌型</div>
+        </div>
+        <!-- 选牌数：占1/3高度，强制单行 -->
+        <div class="hand-preview-selected auto-fit-text" id="preview-selected-count" data-max-font="20" style="font-size: clamp(0.625rem, 1.5vw, 1.25rem); color: #9ca3af; line-height: 1; text-align: center; height: 33.33%; display: flex; align-items: center; justify-content: center; width: 100%; white-space: nowrap; overflow: hidden;">已选择 0 张卡牌</div>
+      </div>
+
+      <!-- 右列：筹码/倍率信息和预计分数，宽度占比 75%，高度占90% -->
+      <div class="preview-right-column" style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 75%; height: 90%;">
+        <!-- 右列第一行：筹码、乘号、倍率三列布局 -->
+        <div class="preview-stats-row" style="display: flex; flex-direction: row; align-items: center; justify-content: center; width: 100%; height: 60%;">
+          <!-- 左边：筹码信息 -->
+          <div class="preview-chips-section" style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 45%; height: 100%; overflow: hidden; gap: 4px;">
+            <!-- 基础值和加成各占50%高度，1:1比例 -->
+            <div class="auto-fit-text" id="preview-base-chips" data-max-font="32" style="font-size: clamp(0.75rem, 2vw, 2rem); color: #60a5fa; white-space: nowrap; line-height: 1; width: 100%; height: 50%; text-align: center; display: flex; align-items: center; justify-content: flex-end; padding-right: 8px;">0 筹码</div>
+            <div class="auto-fit-text" id="preview-chip-bonus" data-max-font="24" style="font-size: clamp(0.625rem, 1.8vw, 1.5rem); color: #93c5fd; white-space: nowrap; line-height: 1; width: 100%; height: 50%; text-align: center; display: flex; align-items: center; justify-content: flex-end; padding-right: 8px;">+ 0</div>
+          </div>
+          <!-- 中间：乘号 -->
+          <div class="preview-multiply-sign" style="display: flex; align-items: center; justify-content: center; width: 10%; height: 100%;">
+            <span style="font-size: 1.5rem; color: #9ca3af; font-weight: bold;">×</span>
+          </div>
+          <!-- 右边：倍率信息 -->
+          <div class="preview-mult-section" style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 45%; height: 100%; overflow: hidden; gap: 4px;">
+            <!-- 基础值和加成各占50%高度，1:1比例 -->
+            <div class="auto-fit-text" id="preview-base-mult" data-max-font="32" style="font-size: clamp(0.75rem, 2vw, 2rem); color: #f87171; white-space: nowrap; line-height: 1; width: 100%; height: 50%; text-align: center; display: flex; align-items: center; justify-content: flex-start; padding-left: 8px;">1 倍率</div>
+            <div class="auto-fit-text" id="preview-mult-bonus" data-max-font="24" style="font-size: clamp(0.625rem, 1.8vw, 1.5rem); color: #fca5a5; white-space: nowrap; line-height: 1; width: 100%; height: 50%; text-align: center; display: flex; align-items: center; justify-content: flex-start; padding-left: 8px;">+ 0</div>
+          </div>
+        </div>
+        <!-- 右列第二行：预计分数 -->
+        <div class="preview-total-row auto-fit-text" id="preview-total-score" data-max-font="28" style="font-size: clamp(0.75rem, 2vw, 1.75rem); color: #fbbf24; font-weight: bold; white-space: nowrap; line-height: 1; height: 40%; width: 100%; text-align: center; display: flex; align-items: center; justify-content: center; overflow: hidden;">
+          -
+        </div>
+      </div>
     `;
 
     return area;
+  }
+
+  /**
+   * 调整预览区域文字大小以适应容器
+   * 根据文字长度动态计算最合适的字号，支持放大和缩小
+   * 出牌后牌型变化时重新计算
+   */
+  private adjustPreviewFontSizes(): void {
+    const previewArea = document.getElementById('hand-preview-area');
+    if (!previewArea) return;
+
+    const autoFitElements = previewArea.querySelectorAll('.auto-fit-text');
+    
+    autoFitElements.forEach((el) => {
+      const element = el as HTMLElement;
+      const parent = element.parentElement;
+      if (!parent) return;
+      
+      const parentWidth = parent.clientWidth;
+      const parentHeight = parent.clientHeight;
+      
+      // 获取最大字体限制（从 data 属性或默认值）
+      const maxFontSize = parseInt(element.dataset.maxFont || '48');
+      const minFontSize = 10;
+      
+      // 先重置字体大小为最小值，然后逐步放大
+      let fontSize = minFontSize;
+      element.style.fontSize = `${fontSize}px`;
+      
+      // 逐步增大字体直到填满容器或达到最大值
+      let attempts = 0;
+      while (attempts < 50) {
+        const nextFontSize = fontSize + 1;
+        if (nextFontSize > maxFontSize) break;
+        
+        // 尝试设置更大的字体
+        element.style.fontSize = `${nextFontSize}px`;
+        
+        // 检查是否溢出
+        const isOverflowX = element.scrollWidth > parentWidth;
+        const isOverflowY = element.scrollHeight > parentHeight;
+        
+        if (isOverflowX || isOverflowY) {
+          // 如果溢出，回退到上一个大小
+          element.style.fontSize = `${fontSize}px`;
+          break;
+        }
+        
+        fontSize = nextFontSize;
+        attempts++;
+      }
+    });
   }
 
   /**
@@ -799,28 +900,43 @@ export class GameBoard {
 
   /**
    * 更新牌型预览
+   * 左列：牌型名称（占2/3高度）+ 选牌数（占1/3高度）
+   * 右列：筹码/倍率信息 + 预计分数
    */
   private updateHandPreview(): void {
     const handTypeEl = document.getElementById('preview-hand-type');
-    const handScoreEl = document.getElementById('preview-hand-score');
     const selectedCountEl = document.getElementById('preview-selected-count');
+    const baseChipsEl = document.getElementById('preview-base-chips');
+    const chipBonusEl = document.getElementById('preview-chip-bonus');
+    const baseMultEl = document.getElementById('preview-base-mult');
+    const multBonusEl = document.getElementById('preview-mult-bonus');
+    const totalScoreEl = document.getElementById('preview-total-score');
 
-    if (!handTypeEl || !handScoreEl) return;
+    if (!handTypeEl || !totalScoreEl) return;
 
     const selectedCards = this.gameState.cardPile.hand.getSelectedCards();
 
-    // 更新已选择卡牌数量
+    // 更新已选择卡牌数量（左列下方 - 选牌数）
     if (selectedCountEl) {
       selectedCountEl.textContent = `已选择 ${selectedCards.length} 张卡牌`;
     }
 
     if (selectedCards.length === 0) {
-      handTypeEl.textContent = '-';
-      handScoreEl.textContent = '选择卡牌查看牌型';
+      // 重置所有显示
+      handTypeEl.textContent = '选择卡牌查看牌型';
+      if (baseChipsEl) baseChipsEl.textContent = '0 筹码';
+      if (chipBonusEl) chipBonusEl.textContent = '';
+      if (baseMultEl) baseMultEl.textContent = '1 倍率';
+      if (multBonusEl) multBonusEl.textContent = '';
+      totalScoreEl.textContent = '-';
+      // 调整字体大小以适应容器
+      requestAnimationFrame(() => {
+        this.adjustPreviewFontSizes();
+      });
       return;
     }
 
-    // 检查是否有四指效果并设置配�?
+    // 检查是否有四指效果并设置配置
     const jokers = this.gameState.getJokerSlots().getJokers();
     const fourFingers = jokers.some(j => j.effect?.({}).fourFingers);
     PokerHandDetector.setConfig({ fourFingers });
@@ -848,65 +964,40 @@ export class GameBoard {
 
       const scoreResult = ScoringSystem.calculate(selectedCards, detectionResult.handType, gameState, heldCards, this.gameState.getJokerSlots());
 
-      // 计算卡牌筹码加成
-      const cardChipBonus = scoreResult.chipBonus;
-
+      // 左列：牌型名称
       handTypeEl.textContent = baseValue.displayName;
-      handScoreEl.innerHTML = `
-        <div class="preview-score-line">
-          基础: ${scoreResult.baseChips} 筹码 × ${scoreResult.baseMultiplier} 倍率
-        </div>
-        ${cardChipBonus > 0 ? `<div class="preview-score-line">+ 卡牌筹码: ${cardChipBonus}</div>` : ''}
-        ${scoreResult.multBonus > 0 ? `<div class="preview-score-line">+ 倍率加成: ${scoreResult.multBonus}</div>` : ''}
-        <div class="preview-score-total">
-          预计: ${scoreResult.totalChips} × ${scoreResult.totalMultiplier} = ${scoreResult.totalScore}
-        </div>
-      `;
-      
-      // 动态调整字体大小
-      this.adjustPreviewFontSize(handTypeEl, handScoreEl);
+
+      // 右列第一行左边：筹码信息
+      if (baseChipsEl) {
+        baseChipsEl.textContent = `${scoreResult.baseChips} 筹码`;
+      }
+      if (chipBonusEl) {
+        const cardChipBonus = scoreResult.chipBonus;
+        chipBonusEl.textContent = cardChipBonus > 0 ? `+ ${cardChipBonus}` : '';
+      }
+
+      // 右列第一行右边：倍率信息（显示数字+倍率，乘号在中间列）
+      if (baseMultEl) {
+        baseMultEl.textContent = `${scoreResult.baseMultiplier} 倍率`;
+      }
+      if (multBonusEl) {
+        multBonusEl.textContent = scoreResult.multBonus > 0 ? `+ ${scoreResult.multBonus}` : '';
+      }
+
+      // 右列第二行：预计分数
+      totalScoreEl.textContent = `预计: ${scoreResult.totalChips} × ${scoreResult.totalMultiplier} = ${scoreResult.totalScore}`;
     } else {
       handTypeEl.textContent = '无效牌型';
-      handScoreEl.textContent = '请选择有效的扑克牌型';
-      this.adjustPreviewFontSize(handTypeEl, handScoreEl);
+      if (baseChipsEl) baseChipsEl.textContent = '-';
+      if (chipBonusEl) chipBonusEl.textContent = '';
+      if (baseMultEl) baseMultEl.textContent = '-';
+      if (multBonusEl) multBonusEl.textContent = '';
+      totalScoreEl.textContent = '-';
     }
-  }
 
-  /**
-   * 动态调整预览区域字体大小
-   */
-  private adjustPreviewFontSize(handTypeEl: HTMLElement, handScoreEl: HTMLElement): void {
-    const container = handScoreEl.parentElement;
-    if (!container) return;
-    
-    const containerWidth = container.clientWidth;
-    const containerHeight = container.clientHeight;
-    
-    // 初始字体大小
-    let fontSize = 16;
-    handScoreEl.style.fontSize = `${fontSize}px`;
-    handTypeEl.style.fontSize = `${fontSize + 4}px`;
-    
-    // 如果内容溢出，逐步减小字体
-    const maxIterations = 10;
-    for (let i = 0; i < maxIterations; i++) {
-      const isOverflowing = handScoreEl.scrollWidth > containerWidth || 
-                           handScoreEl.scrollHeight > containerHeight ||
-                           handTypeEl.scrollWidth > containerWidth;
-      
-      if (!isOverflowing || fontSize <= 10) break;
-      
-      fontSize -= 1;
-      handScoreEl.style.fontSize = `${fontSize}px`;
-      handTypeEl.style.fontSize = `${fontSize + 4}px`;
-    }
-    
-    // 设置子元素样式
-    const lines = handScoreEl.querySelectorAll('.preview-score-line, .preview-score-total');
-    lines.forEach(line => {
-      (line as HTMLElement).style.whiteSpace = 'nowrap';
-      (line as HTMLElement).style.overflow = 'hidden';
-      (line as HTMLElement).style.textOverflow = 'ellipsis';
+    // 调整字体大小以适应容器
+    requestAnimationFrame(() => {
+      this.adjustPreviewFontSizes();
     });
   }
 
