@@ -577,8 +577,8 @@ body {
 .game-panel {
   background: rgba(0,0,0,0.3);
   border: 2px solid rgba(212,175,55,0.3);
-  border-radius: 12px;
-  padding: 8px 12px;  /* 减小内边距：上下 8px，左右 12px */
+  border-radius: 8px;
+  padding: 4px 8px;  /* 减小内边距：上下 4px，左右 8px */
   backdrop-filter: blur(10px);
 }
 

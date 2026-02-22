@@ -231,8 +231,8 @@ export class GameBoard {
   private createLeftPanel(): HTMLElement {
     const panel = document.createElement('div');
     panel.className = 'game-panel-column';
-    panel.style.padding = this.scaled(6);
-    panel.style.gap = this.scaled(6);
+    panel.style.padding = this.scaled(4);
+    panel.style.gap = this.scaled(3);
 
     // 底注和盲注名称合并显示
     const anteBlindSection = document.createElement('div');
