@@ -532,14 +532,14 @@ export class ShopComponent {
     const description = document.createElement('div');
     description.className = 'joker-description';
     description.style.cssText = `
-      font-size: clamp(8px, 1.5vmin, 10px);
+      font-size: clamp(9px, 1.8vmin, 10px);
       text-align: center;
       color: rgba(255, 255, 255, 0.8);
       flex: 1 1 auto;
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 2px;
+      padding: 0px;
       overflow: hidden;
     `;
 
@@ -600,7 +600,21 @@ export class ShopComponent {
       card.appendChild(priceTag);
     }
 
-    // 使用 ResizeObserver 根据卡片高度决定是否显示描述
+    // 动态调整字体大小以适应容器
+    const adjustFontSize = () => {
+      if (description.style.display === 'none') return;
+      
+      let fontSize = 10; // 初始字体大小
+      description.style.fontSize = `${fontSize}px`;
+      
+      // 如果文字溢出，逐步减小字体大小
+      while (fontSize > 6 && (description.scrollHeight > description.clientHeight || description.scrollWidth > description.clientWidth)) {
+        fontSize -= 0.5;
+        description.style.fontSize = `${fontSize}px`;
+      }
+    };
+
+    // 使用 ResizeObserver 根据卡片高度决定是否显示描述，并调整字体大小
     const resizeObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
         const cardHeight = entry.contentRect.height;
@@ -609,10 +623,15 @@ export class ShopComponent {
           description.style.display = 'none';
         } else {
           description.style.display = 'flex';
+          // 延迟调整字体大小，确保布局已完成
+          setTimeout(adjustFontSize, 0);
         }
       }
     });
     resizeObserver.observe(card);
+
+    // 初始调整字体大小
+    setTimeout(adjustFontSize, 0);
 
     return card;
   }
