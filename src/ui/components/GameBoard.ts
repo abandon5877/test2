@@ -869,8 +869,31 @@ export class GameBoard {
   }
 
   /**
+   * 计算卡牌重叠量 - 完全基于容器大小的响应式计算
+   */
+  private calculateOverlap(cardCount: number, containerWidth: number, cardWidth: number): number {
+    if (cardCount <= 1) return 0;
+
+    const availableWidth = Math.max(0, containerWidth - 4);
+    const totalCardsWidth = cardWidth * cardCount;
+
+    // 如果所有卡牌不重叠也能放下，使用轻微重叠
+    if (totalCardsWidth <= availableWidth) {
+      return cardWidth * 0.1;
+    }
+
+    // 需要重叠才能放下
+    const requiredOverlap = (totalCardsWidth - availableWidth) / (cardCount - 1);
+
+    // 限制重叠量：10% ~ 60%
+    const minOverlap = cardWidth * 0.1;
+    const maxOverlap = cardWidth * 0.6;
+
+    return Math.max(minOverlap, Math.min(requiredOverlap, maxOverlap));
+  }
+
+  /**
    * 根据小丑牌数量计算重叠量
-   * 动态调整margin-left，使小丑牌填满整个jokers-area
    */
   private calculateJokerOverlap(jokerCount: number): number {
     if (!this.jokersArea) return 0;
@@ -879,39 +902,7 @@ export class GameBoard {
     const containerWidth = this.jokersArea.clientWidth;
     const cardWidth = this.jokersArea.querySelector('.joker-card')?.clientWidth || 90;
 
-    // 计算需要的重叠量：
-    // 总宽度 = 第一张牌完整宽度 + (n-1)张牌的重叠部分
-    // 重叠量 = (n-1张牌的总宽度 - 容器宽度) / (n-1)
-
-    const padding = 8; // 左右padding总和（减小padding以利用更多空间）
-    const availableWidth = containerWidth - padding;
-
-    // 计算需要的重叠量
-    // 目标：所有牌的总宽度 = 第一张牌 + (n-1) * (牌宽 - 重叠量)
-    // 解方程：availableWidth = cardWidth + (n-1) * (cardWidth - overlap)
-    // overlap = ((n-1) * cardWidth - (availableWidth - cardWidth)) / (n-1)
-    // overlap = cardWidth - (availableWidth - cardWidth) / (n-1)
-
-    const totalCardsWidth = cardWidth * jokerCount;
-
-    // 小屏幕检测：如果容器很窄，使用更激进的重叠策略
-    const isSmallScreen = containerWidth < 150;
-
-    if (totalCardsWidth <= availableWidth && !isSmallScreen) {
-      // 如果所有牌不重叠也能放下，只使用轻微重叠
-      return Math.min(cardWidth * 0.1, 10);
-    }
-
-    // 需要重叠才能放下
-    const requiredOverlap = (totalCardsWidth - availableWidth) / (jokerCount - 1);
-
-    // 小屏幕上允许更大的重叠量（最多重叠85%的牌宽）
-    const maxOverlap = isSmallScreen ? cardWidth * 0.85 : cardWidth * 0.75;
-
-    // 确保至少有最小重叠量，防止牌溢出容器
-    const minOverlap = isSmallScreen ? cardWidth * 0.5 : cardWidth * 0.2;
-
-    return Math.max(minOverlap, Math.min(requiredOverlap, maxOverlap));
+    return this.calculateOverlap(jokerCount, containerWidth, cardWidth);
   }
 
   /**
@@ -1237,28 +1228,7 @@ export class GameBoard {
     const containerWidth = consumablesArea.clientWidth;
     const cardWidth = consumablesArea.querySelector('.consumable-card')?.clientWidth || 90;
 
-    const padding = 8;
-    const availableWidth = containerWidth - padding;
-
-    // 如果牌很少（1-2张），不重叠或轻微重叠
-    if (consumableCount <= 2) {
-      return Math.min(cardWidth * 0.2, 20);
-    }
-
-    const totalCardsWidth = cardWidth * consumableCount;
-
-    // 小屏幕检测
-    const isSmallScreen = containerWidth < 150;
-
-    if (totalCardsWidth <= availableWidth && !isSmallScreen) {
-      return Math.min(cardWidth * 0.1, 10);
-    }
-
-    const requiredOverlap = (totalCardsWidth - availableWidth) / (consumableCount - 1);
-    const maxOverlap = isSmallScreen ? cardWidth * 0.85 : cardWidth * 0.75;
-    const minOverlap = isSmallScreen ? cardWidth * 0.5 : cardWidth * 0.2;
-
-    return Math.max(minOverlap, Math.min(requiredOverlap, maxOverlap));
+    return this.calculateOverlap(consumableCount, containerWidth, cardWidth);
   }
 
   /**
