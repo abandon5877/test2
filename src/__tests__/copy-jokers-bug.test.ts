@@ -5,6 +5,8 @@ import { JokerSlots } from '../models/JokerSlots';
 import { Suit, Rank } from '../types/card';
 import { getJokerById } from '../data/jokers';
 import { PokerHandType } from '../types/pokerHands';
+import { CopyEffectHelper } from '../systems/CopyEffectHelper';
+import { Joker } from '../models/Joker';
 
 describe('复制类小丑牌重复计算问题检查', () => {
   describe('蓝图 (Blueprint)', () => {
@@ -46,6 +48,48 @@ describe('复制类小丑牌重复计算问题检查', () => {
       // 总倍率应该是 8 (jolly) + 8 (blueprint复制) = 16
       expect(result.multBonus).toBe(16);
     });
+
+    it('蓝图不应复制不兼容的小丑牌（如四指）', () => {
+      const jokerSlots = new JokerSlots(5);
+      const blueprint = getJokerById('blueprint')!;
+      const fourFingers = getJokerById('four_fingers')!; // 四指 - 被动效果，不应被复制
+
+      // 顺序：蓝图(左), 四指(右)
+      jokerSlots.addJoker(blueprint);
+      jokerSlots.addJoker(fourFingers);
+
+      const cards = [
+        new Card(Suit.Spades, Rank.Ace),
+        new Card(Suit.Hearts, Rank.Ace),
+      ];
+
+      const result = ScoringSystem.calculate(cards, PokerHandType.OnePair, undefined, undefined, jokerSlots);
+
+      // 四指是不兼容的，蓝图不应复制其效果
+      const blueprintEffects = result.jokerEffects?.filter(e => e.jokerName === '蓝图');
+      expect(blueprintEffects?.length).toBe(0);
+    });
+
+    it('蓝图不应复制另一个蓝图或头脑风暴', () => {
+      const jokerSlots = new JokerSlots(5);
+      const blueprint1 = getJokerById('blueprint')!;
+      const blueprint2 = getJokerById('blueprint')!;
+
+      // 顺序：蓝图1(左), 蓝图2(右)
+      jokerSlots.addJoker(blueprint1);
+      jokerSlots.addJoker(blueprint2);
+
+      const cards = [
+        new Card(Suit.Spades, Rank.Ace),
+        new Card(Suit.Hearts, Rank.Ace),
+      ];
+
+      const result = ScoringSystem.calculate(cards, PokerHandType.OnePair, undefined, undefined, jokerSlots);
+
+      // 蓝图不应复制另一个蓝图
+      const blueprintEffects = result.jokerEffects?.filter(e => e.jokerName === '蓝图');
+      expect(blueprintEffects?.length).toBe(0);
+    });
   });
 
   describe('头脑风暴 (Brainstorm)', () => {
@@ -86,6 +130,89 @@ describe('复制类小丑牌重复计算问题检查', () => {
 
       // 总倍率应该是 8 (jolly) + 8 (brainstorm复制) = 16
       expect(result.multBonus).toBe(16);
+    });
+
+    it('头脑风暴不应复制不兼容的小丑牌（如幻想性错觉）', () => {
+      const jokerSlots = new JokerSlots(5);
+      const pareidolia = getJokerById('pareidolia')!; // 幻想性错觉 - 被动效果
+      const brainstorm = getJokerById('brainstorm')!;
+
+      // 顺序：幻想性错觉(左), 头脑风暴(右)
+      jokerSlots.addJoker(pareidolia);
+      jokerSlots.addJoker(brainstorm);
+
+      const cards = [
+        new Card(Suit.Spades, Rank.Ace),
+        new Card(Suit.Hearts, Rank.Ace),
+      ];
+
+      const result = ScoringSystem.calculate(cards, PokerHandType.OnePair, undefined, undefined, jokerSlots);
+
+      // 幻想性错觉是不兼容的，头脑风暴不应复制其效果
+      const brainstormEffects = result.jokerEffects?.filter(e => e.jokerName === '头脑风暴');
+      expect(brainstormEffects?.length).toBe(0);
+    });
+  });
+
+  describe('CopyEffectHelper', () => {
+    it('应正确识别可复制的小丑牌', () => {
+      const jolly = getJokerById('jolly_joker')!;
+      expect(CopyEffectHelper.isCopyable(jolly)).toBe(true);
+    });
+
+    it('应正确识别不可复制的小丑牌（四指）', () => {
+      const fourFingers = getJokerById('four_fingers')!;
+      expect(CopyEffectHelper.isCopyable(fourFingers)).toBe(false);
+    });
+
+    it('应正确识别不可复制的小丑牌（幻想性错觉）', () => {
+      const pareidolia = getJokerById('pareidolia')!;
+      expect(CopyEffectHelper.isCopyable(pareidolia)).toBe(false);
+    });
+
+    it('应正确识别不可复制的小丑牌（金色小丑 - 回合结束效果）', () => {
+      const goldenJoker = getJokerById('golden_joker')!;
+      expect(CopyEffectHelper.isCopyable(goldenJoker)).toBe(false);
+    });
+
+    it('getBlueprintTarget应返回正确的目标小丑', () => {
+      const jolly = getJokerById('jolly_joker')!;
+      const blueprint = getJokerById('blueprint')!;
+
+      const jokers = [blueprint, jolly];
+      const target = CopyEffectHelper.getBlueprintTarget(0, jokers);
+
+      expect(target).toBe(jolly);
+    });
+
+    it('getBlueprintTarget不应返回不兼容的小丑', () => {
+      const blueprint = getJokerById('blueprint')!;
+      const fourFingers = getJokerById('four_fingers')!;
+
+      const jokers = [blueprint, fourFingers];
+      const target = CopyEffectHelper.getBlueprintTarget(0, jokers);
+
+      expect(target).toBeNull();
+    });
+
+    it('getBrainstormTarget应返回正确的目标小丑', () => {
+      const jolly = getJokerById('jolly_joker')!;
+      const brainstorm = getJokerById('brainstorm')!;
+
+      const jokers = [jolly, brainstorm];
+      const target = CopyEffectHelper.getBrainstormTarget(1, jokers);
+
+      expect(target).toBe(jolly);
+    });
+
+    it('getBrainstormTarget不应返回不兼容的小丑', () => {
+      const pareidolia = getJokerById('pareidolia')!;
+      const brainstorm = getJokerById('brainstorm')!;
+
+      const jokers = [pareidolia, brainstorm];
+      const target = CopyEffectHelper.getBrainstormTarget(1, jokers);
+
+      expect(target).toBeNull();
     });
   });
 });

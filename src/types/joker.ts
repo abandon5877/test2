@@ -175,6 +175,7 @@ export interface JokerInterface {
   readonly sticker: StickerType; // 贴纸类型
   readonly edition: JokerEdition; // 版本类型
   readonly perishableRounds: number; // 易腐剩余回合数
+  readonly isCopyable: boolean; // 是否可被蓝图/头脑风暴复制
   onScored?(context: JokerEffectContext): JokerEffectResult;
   onHeld?(context: JokerEffectContext): JokerEffectResult;
   onDiscard?(context: JokerEffectContext): JokerEffectResult;
@@ -194,6 +195,39 @@ export interface JokerInterface {
   getRentalCost(): number; // 获取租赁成本
   clone(): JokerInterface;
 }
+
+// 不兼容蓝图/头脑风暴的小丑牌ID列表（根据官方Wiki）
+export const INCOMPATIBLE_JOKER_IDS = new Set([
+  'astronomer',      // 天文学家 - 商店行星牌免费（被动）
+  'chaos_the_clown', // 混沌小丑 - 免费刷新（被动）
+  'chicot',          // 奇科 - Boss盲注无效（被动）
+  'cloud_9',         // 九霄云外 - 回合结束给钱（回合结束触发）
+  'credit_card',     // 信用卡 - 可欠债（被动）
+  'delayed_gratification', // 延迟满足 - 回合结束给钱（回合结束触发）
+  'drunkard',        // 酒鬼 - +弃牌（被动）
+  'egg',             // 蛋 - 增加售价（回合结束触发）
+  'four_fingers',    // 四指 - 改变牌型判定（被动）
+  'gift_card',       // 礼品卡 - 增加售价（回合结束触发）
+  'golden_joker',    // 金色小丑 - 回合结束给钱（回合结束触发）
+  'invisible_joker', // 隐形小丑 - 出售时复制（出售触发）
+  'juggler',         // 杂耍者 - +手牌上限（被动）
+  'merry_andy',      // 快乐的安迪 - +弃牌-手牌（被动）
+  'midas_mask',      // 迈达斯面具 - 脸牌变金牌（被动）
+  'mr_bones',        // 骨头先生 - 防止死亡（被动）
+  'oops_all_6s',     // 哎呀全是6 - 概率翻倍（被动）
+  'pareidolia',      // 幻想性错觉 - 所有牌视为脸牌（被动）
+  'rocket',          // 火箭 - 回合结束给钱（回合结束触发）
+  'satellite',       // 卫星 - 回合结束给钱（回合结束触发）
+  'shortcut',        // 捷径 - 改变顺子判定（被动）
+  'showman',         // 马戏团演员 - 允许重复（被动）
+  'sixth_sense',     // 第六感 - 第一手单6摧毁（特殊触发）
+  'smeared_joker',   // 污损小丑 - 花色简化（被动）
+  'splash',          // 水花 - 所有牌计分（被动）
+  'to_the_moon',     // 登月 - 增加利息（被动/回合结束）
+  'trading_card',    // 交易卡 - 第一手弃牌给钱（特殊触发）
+  'troubadour',      // 吟游诗人 - +手牌-出牌（被动）
+  'turtle_bean',     // 龟豆 - +手牌上限递减（被动）
+]);
 
 export interface JokerConfig {
   readonly id: string;
@@ -217,6 +251,11 @@ export interface JokerConfig {
   readonly onEndOfRound?: (context: JokerEffectContext) => JokerEffectResult;
   readonly onCardAdded?: (context: JokerEffectContext) => JokerEffectResult;
   readonly onSell?: (context: JokerEffectContext) => JokerEffectResult; // 出售时触发（隐形小丑）
+  /**
+   * 是否可被蓝图/头脑风暴复制
+   * 默认为true
+   */
+  readonly isCopyable?: boolean;
 }
 
 export const JOKER_RARITY_COLORS: Readonly<Record<JokerRarity, string>> = {

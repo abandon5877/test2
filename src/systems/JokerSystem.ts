@@ -4,6 +4,7 @@ import { PokerHandType } from '../types/pokerHands';
 import { ScoreResult } from './ScoringSystem';
 import { createModuleLogger } from '../utils/logger';
 import { JokerSlots } from '../models/JokerSlots';
+import { CopyEffectHelper } from './CopyEffectHelper';
 
 const logger = createModuleLogger('JokerSystem');
 
@@ -163,10 +164,10 @@ export class JokerSystem {
       }
 
       // 2. 处理蓝图的复制效果（复制右侧小丑的 onScored）
-      if (joker.id === 'blueprint' && i < jokers.length - 1) {
-        const rightJoker = jokers[i + 1];
-        if (rightJoker && rightJoker.id !== 'blueprint' && rightJoker.onScored) {
-          const result = rightJoker.onScored(context);
+      if (joker.id === 'blueprint') {
+        const targetJoker = CopyEffectHelper.getBlueprintTarget(i, jokers);
+        if (targetJoker && targetJoker.onScored) {
+          const result = targetJoker.onScored(context);
 
           if (result.chipBonus || result.multBonus || result.multMultiplier || result.moneyBonus || result.message) {
             totalChipBonus += result.chipBonus || 0;
@@ -177,7 +178,7 @@ export class JokerSystem {
 
             effects.push({
               jokerName: joker.name,
-              effect: `蓝图复制 [${rightJoker.name}]: ${result.message || '触发效果'}`,
+              effect: `蓝图复制 [${targetJoker.name}]: ${result.message || '触发效果'}`,
               chipBonus: result.chipBonus,
               multBonus: result.multBonus,
               multMultiplier: result.multMultiplier,
@@ -185,15 +186,18 @@ export class JokerSystem {
             });
           }
 
-          this.applyEffectResult(joker, result);
+          // 蓝图复制时不应更新目标小丑牌的状态，只更新自己的状态
+          if (result.stateUpdate) {
+            joker.updateState(result.stateUpdate);
+          }
         }
       }
 
       // 3. 处理头脑风暴的复制效果（复制最左侧小丑的 onScored）
-      if (joker.id === 'brainstorm' && jokers.length > 1) {
-        const leftmostJoker = jokers[0];
-        if (leftmostJoker && leftmostJoker.id !== 'brainstorm' && leftmostJoker.onScored) {
-          const result = leftmostJoker.onScored(context);
+      if (joker.id === 'brainstorm') {
+        const targetJoker = CopyEffectHelper.getBrainstormTarget(i, jokers);
+        if (targetJoker && targetJoker.onScored) {
+          const result = targetJoker.onScored(context);
 
           if (result.chipBonus || result.multBonus || result.multMultiplier || result.moneyBonus || result.message) {
             totalChipBonus += result.chipBonus || 0;
@@ -204,7 +208,7 @@ export class JokerSystem {
 
             effects.push({
               jokerName: joker.name,
-              effect: `头脑风暴复制 [${leftmostJoker.name}]: ${result.message || '触发效果'}`,
+              effect: `头脑风暴复制 [${targetJoker.name}]: ${result.message || '触发效果'}`,
               chipBonus: result.chipBonus,
               multBonus: result.multBonus,
               multMultiplier: result.multMultiplier,
@@ -212,7 +216,10 @@ export class JokerSystem {
             });
           }
 
-          this.applyEffectResult(joker, result);
+          // 头脑风暴复制时不应更新目标小丑牌的状态，只更新自己的状态
+          if (result.stateUpdate) {
+            joker.updateState(result.stateUpdate);
+          }
         }
       }
     }
@@ -302,11 +309,11 @@ export class JokerSystem {
       }
 
       // 2. 处理蓝图的复制效果（复制右侧小丑的 onHandPlayed）
-      if (joker.id === 'blueprint' && i < jokers.length - 1) {
-        const rightJoker = jokers[i + 1];
-        if (rightJoker && rightJoker.id !== 'blueprint' && 'onHandPlayed' in rightJoker && typeof (rightJoker as any).onHandPlayed === 'function') {
-          console.log(`[JokerSystem] 蓝图[${i}] 复制右侧小丑[${i + 1}] onHandPlayed:`, rightJoker.name);
-          const result = rightJoker.onHandPlayed!(context);
+      if (joker.id === 'blueprint') {
+        const targetJoker = CopyEffectHelper.getBlueprintTarget(i, jokers);
+        if (targetJoker && targetJoker.onHandPlayed) {
+          console.log(`[JokerSystem] 蓝图[${i}] 复制右侧小丑 onHandPlayed:`, targetJoker.name);
+          const result = targetJoker.onHandPlayed(context);
           console.log(`[JokerSystem] 蓝图复制 onHandPlayed返回:`, result);
 
           if (result.chipBonus || result.multBonus || result.multMultiplier || result.message) {
@@ -318,23 +325,26 @@ export class JokerSystem {
 
             effects.push({
               jokerName: joker.name,
-              effect: `蓝图复制 [${rightJoker.name}]: ${result.message || '触发效果'}`,
+              effect: `蓝图复制 [${targetJoker.name}]: ${result.message || '触发效果'}`,
               chipBonus: result.chipBonus,
               multBonus: result.multBonus,
               multMultiplier: result.multMultiplier
             });
           }
 
-          this.applyEffectResult(joker, result);
+          // 蓝图复制时不应更新目标小丑牌的状态，只更新自己的状态
+          if (result.stateUpdate) {
+            joker.updateState(result.stateUpdate);
+          }
         }
       }
 
       // 3. 处理头脑风暴的复制效果（复制最左侧小丑的 onHandPlayed）
-      if (joker.id === 'brainstorm' && jokers.length > 1) {
-        const leftmostJoker = jokers[0];
-        if (leftmostJoker && leftmostJoker.id !== 'brainstorm' && 'onHandPlayed' in leftmostJoker && typeof (leftmostJoker as any).onHandPlayed === 'function') {
-          console.log(`[JokerSystem] 头脑风暴[${i}] 复制最左侧小丑 onHandPlayed:`, leftmostJoker.name);
-          const result = leftmostJoker.onHandPlayed!(context);
+      if (joker.id === 'brainstorm') {
+        const targetJoker = CopyEffectHelper.getBrainstormTarget(i, jokers);
+        if (targetJoker && targetJoker.onHandPlayed) {
+          console.log(`[JokerSystem] 头脑风暴[${i}] 复制最左侧小丑 onHandPlayed:`, targetJoker.name);
+          const result = targetJoker.onHandPlayed(context);
           console.log(`[JokerSystem] 头脑风暴复制 onHandPlayed返回:`, result);
 
           if (result.chipBonus || result.multBonus || result.multMultiplier || result.message) {
@@ -346,14 +356,17 @@ export class JokerSystem {
 
             effects.push({
               jokerName: joker.name,
-              effect: `头脑风暴复制 [${leftmostJoker.name}]: ${result.message || '触发效果'}`,
+              effect: `头脑风暴复制 [${targetJoker.name}]: ${result.message || '触发效果'}`,
               chipBonus: result.chipBonus,
               multBonus: result.multBonus,
               multMultiplier: result.multMultiplier
             });
           }
 
-          this.applyEffectResult(joker, result);
+          // 头脑风暴复制时不应更新目标小丑牌的状态，只更新自己的状态
+          if (result.stateUpdate) {
+            joker.updateState(result.stateUpdate);
+          }
         }
       }
     }
@@ -416,10 +429,10 @@ export class JokerSystem {
       }
 
       // 2. 处理蓝图的复制效果（复制右侧小丑的 onPlay）
-      if (joker.id === 'blueprint' && i < jokers.length - 1) {
-        const rightJoker = jokers[i + 1];
-        if (rightJoker && rightJoker.id !== 'blueprint' && rightJoker.onPlay) {
-          const result = rightJoker.onPlay(context);
+      if (joker.id === 'blueprint') {
+        const targetJoker = CopyEffectHelper.getBlueprintTarget(i, jokers);
+        if (targetJoker && targetJoker.onPlay) {
+          const result = targetJoker.onPlay(context);
 
           if (result.chipBonus || result.multBonus || result.multMultiplier || result.message) {
             totalChipBonus += result.chipBonus || 0;
@@ -430,22 +443,25 @@ export class JokerSystem {
 
             effects.push({
               jokerName: joker.name,
-              effect: `蓝图复制 [${rightJoker.name}]: ${result.message || '触发效果'}`,
+              effect: `蓝图复制 [${targetJoker.name}]: ${result.message || '触发效果'}`,
               chipBonus: result.chipBonus,
               multBonus: result.multBonus,
               multMultiplier: result.multMultiplier
             });
           }
 
-          this.applyEffectResult(joker, result);
+          // 蓝图复制时不应更新目标小丑牌的状态，只更新自己的状态
+          if (result.stateUpdate) {
+            joker.updateState(result.stateUpdate);
+          }
         }
       }
 
       // 3. 处理头脑风暴的复制效果（复制最左侧小丑的 onPlay）
-      if (joker.id === 'brainstorm' && jokers.length > 1) {
-        const leftmostJoker = jokers[0];
-        if (leftmostJoker && leftmostJoker.id !== 'brainstorm' && leftmostJoker.onPlay) {
-          const result = leftmostJoker.onPlay(context);
+      if (joker.id === 'brainstorm') {
+        const targetJoker = CopyEffectHelper.getBrainstormTarget(i, jokers);
+        if (targetJoker && targetJoker.onPlay) {
+          const result = targetJoker.onPlay(context);
 
           if (result.chipBonus || result.multBonus || result.multMultiplier || result.message) {
             totalChipBonus += result.chipBonus || 0;
@@ -456,14 +472,17 @@ export class JokerSystem {
 
             effects.push({
               jokerName: joker.name,
-              effect: `头脑风暴复制 [${leftmostJoker.name}]: ${result.message || '触发效果'}`,
+              effect: `头脑风暴复制 [${targetJoker.name}]: ${result.message || '触发效果'}`,
               chipBonus: result.chipBonus,
               multBonus: result.multBonus,
               multMultiplier: result.multMultiplier
             });
           }
 
-          this.applyEffectResult(joker, result);
+          // 头脑风暴复制时不应更新目标小丑牌的状态，只更新自己的状态
+          if (result.stateUpdate) {
+            joker.updateState(result.stateUpdate);
+          }
         }
       }
     }
@@ -538,93 +557,8 @@ export class JokerSystem {
         }
       }
 
-      // 2. 处理蓝图的复制效果（复制右侧小丑的 onEndRound）
-      if (joker.id === 'blueprint' && i < jokers.length - 1) {
-        const rightJoker = jokers[i + 1];
-        if (rightJoker && rightJoker.id !== 'blueprint' && rightJoker.onEndRound) {
-          const result = rightJoker.onEndRound(context);
-
-          // 处理状态更新
-          if (result.stateUpdate) {
-            joker.updateState(result.stateUpdate);
-          }
-
-          // 处理自我摧毁（蓝图复制时，摧毁的是自己）
-          if (result.destroySelf) {
-            destroyedJokers.push(i);
-            jokerSlots.removeJoker(i);
-          }
-
-          // 处理摧毁右侧小丑
-          if (result.destroyRightJoker && i < jokers.length - 1) {
-            const rightIndex = i + 1;
-            destroyedJokers.push(rightIndex);
-            jokerSlots.removeJoker(rightIndex);
-          }
-
-          // 处理摧毁随机小丑（不包括自己）
-          if (result.destroyRandomJoker && jokers.length > 1) {
-            const otherIndices = jokers.map((_, idx) => idx).filter(idx => idx !== i);
-            const randomIndex = otherIndices[Math.floor(Math.random() * otherIndices.length)];
-            destroyedJokers.push(randomIndex);
-            jokerSlots.removeJoker(randomIndex);
-          }
-
-          if (result.moneyBonus || result.message) {
-            totalMoneyBonus += result.moneyBonus || 0;
-
-            effects.push({
-              jokerName: joker.name,
-              effect: `蓝图复制 [${rightJoker.name}]: ${result.message || '触发效果'}`,
-              moneyBonus: result.moneyBonus
-            });
-          }
-        }
-      }
-
-      // 3. 处理头脑风暴的复制效果（复制最左侧小丑的 onEndRound）
-      if (joker.id === 'brainstorm' && jokers.length > 1) {
-        const leftmostJoker = jokers[0];
-        if (leftmostJoker && leftmostJoker.id !== 'brainstorm' && leftmostJoker.onEndRound) {
-          const result = leftmostJoker.onEndRound(context);
-
-          // 处理状态更新
-          if (result.stateUpdate) {
-            joker.updateState(result.stateUpdate);
-          }
-
-          // 处理自我摧毁（头脑风暴复制时，摧毁的是自己）
-          if (result.destroySelf) {
-            destroyedJokers.push(i);
-            jokerSlots.removeJoker(i);
-          }
-
-          // 处理摧毁右侧小丑
-          if (result.destroyRightJoker && i < jokers.length - 1) {
-            const rightIndex = i + 1;
-            destroyedJokers.push(rightIndex);
-            jokerSlots.removeJoker(rightIndex);
-          }
-
-          // 处理摧毁随机小丑（不包括自己）
-          if (result.destroyRandomJoker && jokers.length > 1) {
-            const otherIndices = jokers.map((_, idx) => idx).filter(idx => idx !== i);
-            const randomIndex = otherIndices[Math.floor(Math.random() * otherIndices.length)];
-            destroyedJokers.push(randomIndex);
-            jokerSlots.removeJoker(randomIndex);
-          }
-
-          if (result.moneyBonus || result.message) {
-            totalMoneyBonus += result.moneyBonus || 0;
-
-            effects.push({
-              jokerName: joker.name,
-              effect: `头脑风暴复制 [${leftmostJoker.name}]: ${result.message || '触发效果'}`,
-              moneyBonus: result.moneyBonus
-            });
-          }
-        }
-      }
+      // 注意：根据官方规则，蓝图和头脑风暴不复制回合结束效果
+      // 回合结束效果（如金色小丑给钱、蛋增加售价等）不被复制
     }
 
     return {
@@ -1124,10 +1058,10 @@ export class JokerSystem {
       }
 
       // 2. 处理蓝图的复制效果（复制右侧小丑）
-      if (joker.id === 'blueprint' && i < jokers.length - 1) {
-        const rightJoker = jokers[i + 1];
-        if (rightJoker && rightJoker.id !== 'blueprint' && rightJoker.onDiscard) {
-          const result = rightJoker.onDiscard(context);
+      if (joker.id === 'blueprint') {
+        const targetJoker = CopyEffectHelper.getBlueprintTarget(i, jokers);
+        if (targetJoker && targetJoker.onDiscard) {
+          const result = targetJoker.onDiscard(context);
 
           if (result.chipBonus || result.multBonus || result.multMultiplier || result.moneyBonus || result.message) {
             totalChipBonus += result.chipBonus || 0;
@@ -1139,7 +1073,7 @@ export class JokerSystem {
 
             effects.push({
               jokerName: joker.name,
-              effect: `蓝图复制 [${rightJoker.name}]: ${result.message || '触发效果'}`,
+              effect: `蓝图复制 [${targetJoker.name}]: ${result.message || '触发效果'}`,
               chipBonus: result.chipBonus,
               multBonus: result.multBonus,
               multMultiplier: result.multMultiplier,
@@ -1147,15 +1081,18 @@ export class JokerSystem {
             });
           }
 
-          this.applyEffectResult(joker, result);
+          // 蓝图复制时不应更新目标小丑牌的状态，只更新自己的状态
+          if (result.stateUpdate) {
+            joker.updateState(result.stateUpdate);
+          }
         }
       }
 
       // 3. 处理头脑风暴的复制效果（复制最左侧小丑）
-      if (joker.id === 'brainstorm' && jokers.length > 1) {
-        const leftmostJoker = jokers[0];
-        if (leftmostJoker && leftmostJoker.id !== 'brainstorm' && leftmostJoker.onDiscard) {
-          const result = leftmostJoker.onDiscard(context);
+      if (joker.id === 'brainstorm') {
+        const targetJoker = CopyEffectHelper.getBrainstormTarget(i, jokers);
+        if (targetJoker && targetJoker.onDiscard) {
+          const result = targetJoker.onDiscard(context);
 
           if (result.chipBonus || result.multBonus || result.multMultiplier || result.moneyBonus || result.message) {
             totalChipBonus += result.chipBonus || 0;
@@ -1167,7 +1104,7 @@ export class JokerSystem {
 
             effects.push({
               jokerName: joker.name,
-              effect: `头脑风暴复制 [${leftmostJoker.name}]: ${result.message || '触发效果'}`,
+              effect: `头脑风暴复制 [${targetJoker.name}]: ${result.message || '触发效果'}`,
               chipBonus: result.chipBonus,
               multBonus: result.multBonus,
               multMultiplier: result.multMultiplier,
@@ -1175,7 +1112,10 @@ export class JokerSystem {
             });
           }
 
-          this.applyEffectResult(joker, result);
+          // 头脑风暴复制时不应更新目标小丑牌的状态，只更新自己的状态
+          if (result.stateUpdate) {
+            joker.updateState(result.stateUpdate);
+          }
         }
       }
     }
@@ -1264,10 +1204,10 @@ export class JokerSystem {
       }
 
       // 2. 处理蓝图的复制效果（复制右侧小丑的 onHeld）
-      if (joker.id === 'blueprint' && i < jokers.length - 1) {
-        const rightJoker = jokers[i + 1];
-        if (rightJoker && rightJoker.id !== 'blueprint' && rightJoker.onHeld) {
-          const result = rightJoker.onHeld(context);
+      if (joker.id === 'blueprint') {
+        const targetJoker = CopyEffectHelper.getBlueprintTarget(i, jokers);
+        if (targetJoker && targetJoker.onHeld) {
+          const result = targetJoker.onHeld(context);
 
           if (result.chipBonus || result.multBonus || result.multMultiplier || result.message) {
             totalChipBonus += result.chipBonus || 0;
@@ -1278,22 +1218,25 @@ export class JokerSystem {
 
             effects.push({
               jokerName: joker.name,
-              effect: `蓝图复制 [${rightJoker.name}]: ${result.message || '触发效果'}`,
+              effect: `蓝图复制 [${targetJoker.name}]: ${result.message || '触发效果'}`,
               chipBonus: result.chipBonus,
               multBonus: result.multBonus,
               multMultiplier: result.multMultiplier
             });
           }
 
-          this.applyEffectResult(joker, result);
+          // 蓝图复制时不应更新目标小丑牌的状态，只更新自己的状态
+          if (result.stateUpdate) {
+            joker.updateState(result.stateUpdate);
+          }
         }
       }
 
       // 3. 处理头脑风暴的复制效果（复制最左侧小丑的 onHeld）
-      if (joker.id === 'brainstorm' && jokers.length > 1) {
-        const leftmostJoker = jokers[0];
-        if (leftmostJoker && leftmostJoker.id !== 'brainstorm' && leftmostJoker.onHeld) {
-          const result = leftmostJoker.onHeld(context);
+      if (joker.id === 'brainstorm') {
+        const targetJoker = CopyEffectHelper.getBrainstormTarget(i, jokers);
+        if (targetJoker && targetJoker.onHeld) {
+          const result = targetJoker.onHeld(context);
 
           if (result.chipBonus || result.multBonus || result.multMultiplier || result.message) {
             totalChipBonus += result.chipBonus || 0;
@@ -1304,14 +1247,17 @@ export class JokerSystem {
 
             effects.push({
               jokerName: joker.name,
-              effect: `头脑风暴复制 [${leftmostJoker.name}]: ${result.message || '触发效果'}`,
+              effect: `头脑风暴复制 [${targetJoker.name}]: ${result.message || '触发效果'}`,
               chipBonus: result.chipBonus,
               multBonus: result.multBonus,
               multMultiplier: result.multMultiplier
             });
           }
 
-          this.applyEffectResult(joker, result);
+          // 头脑风暴复制时不应更新目标小丑牌的状态，只更新自己的状态
+          if (result.stateUpdate) {
+            joker.updateState(result.stateUpdate);
+          }
         }
       }
     }

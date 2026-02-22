@@ -12,6 +12,7 @@ export class Joker implements JokerInterface {
   sticker: StickerType;
   edition: JokerEdition;
   perishableRounds: number;
+  isCopyable: boolean;
   // 可选回调
   onScoredCallback?: (context: JokerEffectContext) => JokerEffectResult;
   onHeldCallback?: (context: JokerEffectContext) => JokerEffectResult;
@@ -36,6 +37,7 @@ export class Joker implements JokerInterface {
     this.sticker = config.sticker || StickerType.None;
     this.edition = config.edition || JokerEdition.None;
     this.perishableRounds = this.sticker === StickerType.Perishable ? 5 : 0;
+    this.isCopyable = config.isCopyable !== false; // 默认为true
     // 设置可选回调
     this.onScoredCallback = config.onScored;
     this.onHeldCallback = config.onHeld;
@@ -226,7 +228,8 @@ export class Joker implements JokerInterface {
       onBlindSelect: this.onBlindSelectCallback,
       onEndOfRound: this.onEndOfRoundCallback,
       onCardAdded: this.onCardAddedCallback,
-      onSell: this.onSellCallback
+      onSell: this.onSellCallback,
+      isCopyable: this.isCopyable
     });
     // 手动复制 perishableRounds，因为构造函数会根据 sticker 重置
     cloned.perishableRounds = this.perishableRounds;
