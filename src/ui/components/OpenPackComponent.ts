@@ -228,8 +228,8 @@ export class OpenPackComponent {
     cardsContainer.style.flexWrap = 'wrap';
     cardsContainer.style.justifyContent = 'center';
     cardsContainer.style.alignItems = 'center';
-    // 所有卡包都使用大间距，禁用重叠
-    cardsContainer.style.gap = this.scaled(48);
+    // 减小间距，让卡牌更紧凑
+    cardsContainer.style.gap = this.scaled(24);
     cardsContainer.style.flex = '1';
     cardsContainer.style.width = '100%';
     cardsContainer.style.maxWidth = '90vw';
