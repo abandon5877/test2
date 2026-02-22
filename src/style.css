@@ -66,8 +66,8 @@ body {
 
 /* 卡牌基础样式 - 使用 vmin 实现更好的屏幕比例缩放 */
 .card {
-  width: clamp(50px, 12vmin, 90px);
-  height: clamp(70px, 16.8vmin, 126px);
+  width: clamp(60px, 20vmin, 120px);
+  height: clamp(84px, 28vmin, 168px);
   border-radius: clamp(5px, 1.5vmin, 10px);
   background: linear-gradient(145deg, #ffffff 0%, #f0f0f0 100%);
   border: 2px solid #d4af37;
@@ -186,8 +186,8 @@ body {
 
 /* 小丑牌样式 - 使用 vmin 实现更好的屏幕比例缩放 */
 .joker-card {
-  width: clamp(50px, 12vmin, 90px);
-  height: clamp(70px, 16.8vmin, 126px);
+  width: clamp(60px, 22vmin, 120px);
+  height: clamp(84px, 30.8vmin, 168px);
   border-radius: clamp(5px, 1.5vmin, 10px);
   background: linear-gradient(145deg, #2d1b4e 0%, #1a0f2e 100%);
   border: 3px solid;
@@ -363,8 +363,8 @@ body {
 
 /* 消耗牌样式 - 使用 vmin 实现响应式缩放 */
 .consumable-card {
-  width: clamp(50px, 12vmin, 90px);
-  height: clamp(70px, 16.8vmin, 126px);
+  width: clamp(60px, 20vmin, 120px);
+  height: clamp(84px, 28vmin, 168px);
   border-radius: clamp(5px, 1.5vmin, 10px);
   border: 2px solid;
   display: flex;

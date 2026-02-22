@@ -527,11 +527,12 @@ export class ShopComponent {
     icon.className = 'joker-icon';
     icon.style.flex = '0 0 auto';
 
-    // 名称
+    // 名称 - 使用比描述更大的字体
     const name = document.createElement('div');
     name.className = 'joker-name';
     name.style.flex = '0 0 auto';
     name.style.marginBottom = '2px';
+    name.style.fontSize = 'clamp(11px, 2.2vmin, 13px)'; // 比描述大2px左右
 
     // 描述 - 默认隐藏，空间足够时显示
     const description = document.createElement('div');
