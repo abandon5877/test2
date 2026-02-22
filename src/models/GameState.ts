@@ -18,6 +18,7 @@ import { BossSystem } from '../systems/BossSystem';
 import { PokerHandDetector } from '../systems/PokerHandDetector';
 import { initializeBlindConfigs, resetBlindConfigs } from '../data/blinds';
 import { ConsumableDataManager } from '../data/ConsumableDataManager';
+import { getConsumableById } from '../data/consumables';
 import type { JokerInterface } from '../types/joker';
 import type { ConsumableInterface } from '../types/consumable';
 import { CardEnhancement } from '../types/card';
@@ -576,11 +577,34 @@ export class GameState implements GameStateInterface {
     }
   }
 
-  exitShop(): void {
-    if (this.phase === GamePhase.SHOP) {
-      this.phase = GamePhase.BLIND_SELECT;
-      this.currentBlind = null;
+  exitShop(): { success: boolean; copiedConsumableId?: string; message?: string } {
+    if (this.phase !== GamePhase.SHOP) {
+      return { success: false, message: '不在商店阶段' };
     }
+
+    // 处理 ON_SHOP_EXIT 触发器的小丑牌效果（如佩尔科）
+    const consumables = this.consumableSlots.getConsumables();
+    const shopExitResult = JokerSystem.processShopExit(this.jokerSlots, [...consumables]);
+
+    // 如果有复制的消耗牌，添加到消耗牌槽位
+    if (shopExitResult.copiedConsumableId) {
+      const copiedConsumable = getConsumableById(shopExitResult.copiedConsumableId);
+      if (copiedConsumable) {
+        const added = this.consumableSlots.addConsumable(copiedConsumable.clone());
+        if (!added) {
+          logger.warn('佩尔科: 消耗牌槽位已满，无法复制');
+        }
+      }
+    }
+
+    this.phase = GamePhase.BLIND_SELECT;
+    this.currentBlind = null;
+
+    return {
+      success: true,
+      copiedConsumableId: shopExitResult.copiedConsumableId,
+      message: shopExitResult.effects.length > 0 ? shopExitResult.effects.map(e => e.effect).join(', ') : undefined
+    };
   }
 
   /**

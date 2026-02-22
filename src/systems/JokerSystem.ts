@@ -510,6 +510,57 @@ export class JokerSystem {
   }
 
   /**
+   * 处理离开商店
+   * 处理 ON_SHOP_EXIT 触发器的小丑牌效果（如佩尔科）
+   */
+  static processShopExit(
+    jokerSlots: JokerSlots,
+    consumables: unknown[]
+  ): {
+    effects: JokerEffectDetail[];
+    copiedConsumableId?: string;
+  } {
+    const effects: JokerEffectDetail[] = [];
+    let copiedConsumableId: string | undefined;
+
+    const jokers = jokerSlots.getJokers();
+
+    for (let i = 0; i < jokers.length; i++) {
+      const joker = jokers[i];
+      if (joker.trigger !== 'on_shop_exit') continue;
+
+      const context: JokerEffectContext = {
+        consumables,
+        ...this.createPositionContext(jokerSlots, i)
+      };
+
+      // 添加jokerState到context
+      (context as unknown as { jokerState: typeof joker.state }).jokerState = joker.state;
+
+      const result = joker.effect(context);
+
+      if (result.message) {
+        effects.push({
+          jokerName: joker.name,
+          effect: result.message
+        });
+      }
+
+      // 处理佩尔科的复制效果
+      if (result.copiedConsumableId) {
+        copiedConsumableId = result.copiedConsumableId;
+      }
+
+      this.applyEffectResult(joker, result);
+    }
+
+    return {
+      effects,
+      copiedConsumableId
+    };
+  }
+
+  /**
    * 处理弃牌
    */
   static processDiscard(

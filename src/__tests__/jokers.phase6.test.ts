@@ -269,10 +269,29 @@ describe('阶段6: 其他效果补全测试', () => {
         description: '离开商店时复制随机塔罗/行星牌',
         rarity: JokerRarity.LEGENDARY,
         cost: 20,
-        trigger: JokerTrigger.END_OF_ROUND,
-        effect: () => ({
-          message: '佩克欧: 复制随机塔罗/行星牌'
-        })
+        trigger: JokerTrigger.ON_SHOP_EXIT,
+        effect: (context) => {
+          const consumables = context.consumables as { id: string; name: string; type: string }[] | undefined;
+          
+          if (!consumables || consumables.length === 0) {
+            return { message: '佩尔科: 没有消耗牌可复制' };
+          }
+          
+          const tarotOrPlanetCards = consumables.filter(c => 
+            c.type === 'tarot' || c.type === 'planet'
+          );
+          
+          if (tarotOrPlanetCards.length === 0) {
+            return { message: '佩尔科: 没有塔罗/行星牌可复制' };
+          }
+          
+          const randomCard = tarotOrPlanetCards[Math.floor(Math.random() * tarotOrPlanetCards.length)];
+          
+          return {
+            message: `佩尔科: 复制了 ${randomCard.name}`,
+            copiedConsumableId: randomCard.id
+          };
+        }
       });
 
       jokerSlots.addJoker(perkeo);
@@ -281,6 +300,108 @@ describe('阶段6: 其他效果补全测试', () => {
       const jokers = jokerSlots.getJokers();
       expect(jokers[0].id).toBe('perkeo');
       expect(jokers[0].rarity).toBe(JokerRarity.LEGENDARY);
+      expect(jokers[0].trigger).toBe('on_shop_exit');
+    });
+
+    it('应该在离开商店时复制随机塔罗/行星牌', () => {
+      const perkeo = new Joker({
+        id: 'perkeo',
+        name: '佩克欧',
+        description: '离开商店时复制随机塔罗/行星牌',
+        rarity: JokerRarity.LEGENDARY,
+        cost: 20,
+        trigger: JokerTrigger.ON_SHOP_EXIT,
+        effect: (context) => {
+          const consumables = context.consumables as { id: string; name: string; type: string }[] | undefined;
+          
+          if (!consumables || consumables.length === 0) {
+            return { message: '佩尔科: 没有消耗牌可复制' };
+          }
+          
+          const tarotOrPlanetCards = consumables.filter(c => 
+            c.type === 'tarot' || c.type === 'planet'
+          );
+          
+          if (tarotOrPlanetCards.length === 0) {
+            return { message: '佩尔科: 没有塔罗/行星牌可复制' };
+          }
+          
+          const randomCard = tarotOrPlanetCards[Math.floor(Math.random() * tarotOrPlanetCards.length)];
+          
+          return {
+            message: `佩尔科: 复制了 ${randomCard.name}`,
+            copiedConsumableId: randomCard.id
+          };
+        }
+      });
+
+      jokerSlots.addJoker(perkeo);
+
+      // 模拟消耗牌列表
+      const mockConsumables = [
+        { id: 'the_fool', name: '愚人', type: 'tarot' },
+        { id: 'pluto', name: '冥王星', type: 'planet' },
+        { id: 'crystal_ball', name: '水晶球', type: 'spectral' }
+      ];
+
+      // 调用processShopExit
+      const result = JokerSystem.processShopExit(jokerSlots, mockConsumables);
+
+      // 验证效果被触发
+      expect(result.effects).toHaveLength(1);
+      expect(result.effects[0].jokerName).toBe('佩克欧');
+      expect(result.effects[0].effect).toContain('佩尔科: 复制了');
+      
+      // 验证复制了塔罗牌或行星牌（不是幻灵牌）
+      expect(result.copiedConsumableId).toBeDefined();
+      expect(['the_fool', 'pluto']).toContain(result.copiedConsumableId);
+    });
+
+    it('没有塔罗/行星牌时不应该复制', () => {
+      const perkeo = new Joker({
+        id: 'perkeo',
+        name: '佩克欧',
+        description: '离开商店时复制随机塔罗/行星牌',
+        rarity: JokerRarity.LEGENDARY,
+        cost: 20,
+        trigger: JokerTrigger.ON_SHOP_EXIT,
+        effect: (context) => {
+          const consumables = context.consumables as { id: string; name: string; type: string }[] | undefined;
+          
+          if (!consumables || consumables.length === 0) {
+            return { message: '佩尔科: 没有消耗牌可复制' };
+          }
+          
+          const tarotOrPlanetCards = consumables.filter(c => 
+            c.type === 'tarot' || c.type === 'planet'
+          );
+          
+          if (tarotOrPlanetCards.length === 0) {
+            return { message: '佩尔科: 没有塔罗/行星牌可复制' };
+          }
+          
+          const randomCard = tarotOrPlanetCards[Math.floor(Math.random() * tarotOrPlanetCards.length)];
+          
+          return {
+            message: `佩尔科: 复制了 ${randomCard.name}`,
+            copiedConsumableId: randomCard.id
+          };
+        }
+      });
+
+      jokerSlots.addJoker(perkeo);
+
+      // 只有幻灵牌
+      const mockConsumables = [
+        { id: 'crystal_ball', name: '水晶球', type: 'spectral' }
+      ];
+
+      const result = JokerSystem.processShopExit(jokerSlots, mockConsumables);
+
+      // 验证效果被触发但没有复制
+      expect(result.effects).toHaveLength(1);
+      expect(result.effects[0].effect).toBe('佩尔科: 没有塔罗/行星牌可复制');
+      expect(result.copiedConsumableId).toBeUndefined();
     });
   });
 });

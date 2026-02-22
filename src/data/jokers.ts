@@ -3,6 +3,7 @@ import { JokerRarity, JokerTrigger, type JokerEffectContext, type JokerEffectRes
 import { Suit, CardEnhancement } from '../types/card';
 import { PokerHandType } from '../types/pokerHands';
 import type { Card } from '../models/Card';
+import type { ConsumableInterface } from '../types/consumable';
 
 export const JOKERS: Joker[] = [
   new Joker({
@@ -604,10 +605,34 @@ export const JOKERS: Joker[] = [
     description: '离开商店时复制随机塔罗/行星牌',
     rarity: JokerRarity.LEGENDARY,
     cost: 20,
-    trigger: JokerTrigger.END_OF_ROUND,
+    trigger: JokerTrigger.ON_SHOP_EXIT,
     effect: (context: JokerEffectContext): JokerEffectResult => {
+      // 从context获取消耗牌槽位信息
+      const consumables = context.consumables as ConsumableInterface[] | undefined;
+      
+      if (!consumables || consumables.length === 0) {
+        return {
+          message: '佩尔科: 没有消耗牌可复制'
+        };
+      }
+      
+      // 筛选塔罗牌和行星牌
+      const tarotOrPlanetCards = consumables.filter(c => 
+        c.type === 'tarot' || c.type === 'planet'
+      );
+      
+      if (tarotOrPlanetCards.length === 0) {
+        return {
+          message: '佩尔科: 没有塔罗/行星牌可复制'
+        };
+      }
+      
+      // 随机选择一张
+      const randomCard = tarotOrPlanetCards[Math.floor(Math.random() * tarotOrPlanetCards.length)];
+      
       return {
-        message: '佩尔科: 复制随机塔罗/行星牌'
+        message: `佩尔科: 复制了 ${randomCard.name}`,
+        copiedConsumableId: randomCard.id
       };
     }
   }),

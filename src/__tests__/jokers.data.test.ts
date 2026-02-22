@@ -289,7 +289,8 @@ describe('小丑牌数据文件测试', () => {
         'on_discard',
         'on_reroll',
         'on_blind_select',
-        'on_card_added'
+        'on_card_added',
+        'on_shop_exit'
       ];
 
       for (const joker of JOKERS) {

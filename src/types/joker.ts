@@ -35,7 +35,8 @@ export enum JokerTrigger {
   ON_HAND_PLAYED = 'on_hand_played',
   ON_REROLL = 'on_reroll',
   ON_BLIND_SELECT = 'on_blind_select',
-  ON_CARD_ADDED = 'on_card_added'
+  ON_CARD_ADDED = 'on_card_added',
+  ON_SHOP_EXIT = 'on_shop_exit' // 离开商店时触发（用于佩尔科）
 }
 
 export interface JokerEffectContext {
@@ -76,6 +77,8 @@ export interface JokerEffectContext {
   readonly mostPlayedHand?: PokerHandType | null; // 最常出的牌型（用于obelisk）
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   readonly jokerState?: any; // 小丑牌状态（用于flash_card等）
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  readonly consumables?: any[]; // 消耗牌列表（用于佩尔科）
 }
 
 export interface JokerEffectResult {
@@ -121,6 +124,7 @@ export interface JokerEffectResult {
   readonly removeEnhancements?: boolean; // 移除强化
   readonly turnToGold?: number; // 变成金牌数量
   readonly spectralBonus?: number; // 幻灵牌奖励
+  readonly copiedConsumableId?: string; // 复制的消耗牌ID（用于佩尔科）
 }
 
 // 小丑牌状态存储接口
