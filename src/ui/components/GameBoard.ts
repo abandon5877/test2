@@ -836,16 +836,6 @@ export class GameBoard {
       jokerCard.style.cursor = jokers.length > 1 ? 'grab' : 'pointer';
       jokerCard.dataset.index = String(index);
 
-      // 位置标签
-      if (index === 0 || index === jokers.length - 1) {
-        const positionLabel = document.createElement('div');
-        positionLabel.className = 'absolute -top-2 left-1/2 transform -translate-x-1/2 z-10';
-        positionLabel.style.pointerEvents = 'none';
-        const labelText = index === 0 ? '最左' : '最右';
-        positionLabel.innerHTML = `<span class="bg-blue-500 text-white px-1 py-0.5 rounded font-bold" style="font-size: clamp(8px, 1.5vmin, 12px);">${labelText}</span>`;
-        jokerCard.appendChild(positionLabel);
-      }
-
       // 点击显示详情弹窗（Board界面不带卖出按钮）
       jokerCard.addEventListener('click', (e) => {
         // 如果正在拖拽，不触发点击

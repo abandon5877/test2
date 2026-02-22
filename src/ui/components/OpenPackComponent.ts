@@ -160,7 +160,7 @@ export class OpenPackComponent {
   render(): void {
     this.container.innerHTML = '';
 
-根据正版规则校验    // 创建开包界面根容器
+    // 创建开包界面根容器
     const overlay = document.createElement('div');
     
     if (this.isEmbedded) {

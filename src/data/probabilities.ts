@@ -91,7 +91,8 @@ export function getPlayingCardEditionProbabilities(vouchersUsed: string[] = []):
     [CardEdition.None]: noneProb,
     [CardEdition.Foil]: foilProb,
     [CardEdition.Holographic]: holographicProb,
-    [CardEdition.Polychrome]: polychromeProb
+    [CardEdition.Polychrome]: polychromeProb,
+    [CardEdition.Negative]: 0  // 游戏牌不会有负片版本
   };
 }
 
