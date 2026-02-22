@@ -195,7 +195,8 @@ export class ScoringSystem {
     initialDeckSize?: number, // 牌库初始大小（用于侵蚀效果）
     handsPlayed?: number, // 本回合已出牌次数（用于loyalty_card等）
     discardsUsed?: number, // 本回合已弃牌次数（用于yorick等）
-    handsRemaining?: number // 剩余手牌数（用于acrobat等）
+    handsRemaining?: number, // 剩余手牌数（用于acrobat等）
+    mostPlayedHand?: PokerHandType | null // 最常出的牌型（用于obelisk）
   ): ScoreResult {
     if (cards.length === 0) {
       logger.warn('Calculate called with empty cards');
@@ -523,7 +524,8 @@ export class ScoringSystem {
         discardsUsed,
         deckSize,
         initialDeckSize,
-        handsRemaining
+        handsRemaining,
+        mostPlayedHand
       );
 
       totalChips = jokerResult.totalChips;

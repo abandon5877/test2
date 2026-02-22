@@ -282,11 +282,17 @@ export class GameState implements GameStateInterface {
       return null;
     }
 
-    logger.info('Playing hand', { 
+    logger.info('Playing hand', {
       cardCount: selectedCards.length,
       cards: selectedCards.map(c => c.toString()),
-      handsRemaining: this.handsRemaining 
+      handsRemaining: this.handsRemaining
     });
+
+    // 检测牌型
+    const handResult = PokerHandDetector.detect(selectedCards);
+
+    // 记录牌型出牌次数（用于方尖碑等统计最常出牌型）
+    BossSystem.beforePlayHand(this.bossState, handResult.handType);
 
     const gameState = {
       money: this.money,
@@ -309,7 +315,10 @@ export class GameState implements GameStateInterface {
     const discardsUsed = this.roundStats.discardsUsed;
     const handsRemaining = this.handsRemaining;
 
-    const scoreResult = ScoringSystem.calculate(selectedCards, undefined, gameState, heldCards, this.jokerSlots, currentTotalCards, initialDeckSize, handsPlayed, discardsUsed, handsRemaining);
+    // 获取最常出的牌型（用于方尖碑）
+    const mostPlayedHand = this.bossState.getMostPlayedHand();
+
+    const scoreResult = ScoringSystem.calculate(selectedCards, undefined, gameState, heldCards, this.jokerSlots, currentTotalCards, initialDeckSize, handsPlayed, discardsUsed, handsRemaining, mostPlayedHand);
 
     this.playedHandTypes.add(scoreResult.handType);
     this.lastPlayScore = scoreResult.totalScore;

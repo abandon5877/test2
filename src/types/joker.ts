@@ -73,6 +73,7 @@ export interface JokerEffectContext {
   readonly handsRemaining?: number; // 剩余手牌
   readonly interestCap?: number; // 利息上限
   readonly defeatedBoss?: boolean; // 是否击败Boss（用于rocket）
+  readonly mostPlayedHand?: PokerHandType | null; // 最常出的牌型（用于obelisk）
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   readonly jokerState?: any; // 小丑牌状态（用于flash_card等）
 }

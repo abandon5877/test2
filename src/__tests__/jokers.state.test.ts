@@ -284,6 +284,145 @@ describe('阶段3: 状态存储机制测试', () => {
     });
   });
 
+  describe('obelisk (方尖碑)', () => {
+    it('应该正确从context获取mostPlayedHand并计算倍率', () => {
+      const obelisk = new Joker({
+        id: 'obelisk',
+        name: '方尖碑',
+        description: '连续不打最常出的牌型，每手x0.2倍率',
+        rarity: JokerRarity.UNCOMMON,
+        cost: 8,
+        trigger: JokerTrigger.ON_HAND_PLAYED,
+        effect: (context): { multMultiplier?: number; stateUpdate?: { streak?: number }; message?: string } => {
+          const mostPlayedHand = context.mostPlayedHand;
+          const jokerState = (context as unknown as { jokerState?: { streak?: number } }).jokerState || {};
+          const currentStreak = jokerState.streak || 0;
+
+          if (mostPlayedHand && context.handType !== mostPlayedHand) {
+            const newStreak = currentStreak + 1;
+            const multiplier = 1 + (newStreak * 0.2);
+            return {
+              multMultiplier: multiplier,
+              stateUpdate: { streak: newStreak },
+              message: `方尖碑: 连续${newStreak}手不打${mostPlayedHand} x${multiplier.toFixed(1)}倍率`
+            };
+          } else if (context.handType === mostPlayedHand) {
+            return {
+              stateUpdate: { streak: 0 }
+            };
+          }
+          return {};
+        }
+      });
+
+      jokerSlots.addJoker(obelisk);
+
+      const card = createTestCard(Suit.Hearts, Rank.Ace);
+
+      // 场景1: 没有最常出牌型时，不应触发效果
+      const result1 = JokerSystem.processHandPlayed(
+        jokerSlots, [card], PokerHandType.HighCard, 100, 1,
+        undefined, undefined, undefined, undefined, undefined, undefined, null
+      );
+      expect(result1.multMultiplier).toBe(1);
+
+      // 场景2: 打出非最常出牌型，应该增加倍率
+      const result2 = JokerSystem.processHandPlayed(
+        jokerSlots, [card], PokerHandType.HighCard, 100, 1,
+        undefined, undefined, undefined, undefined, undefined, undefined, PokerHandType.OnePair
+      );
+      expect(result2.multMultiplier).toBe(1.2); // 1 + 0.2
+
+      // 检查状态更新
+      let jokers = jokerSlots.getJokers();
+      expect(jokers[0].getState().streak).toBe(1);
+
+      // 场景3: 连续不出最常出牌型，倍率应该累加
+      const result3 = JokerSystem.processHandPlayed(
+        jokerSlots, [card], PokerHandType.Flush, 100, 1,
+        undefined, undefined, undefined, undefined, undefined, undefined, PokerHandType.OnePair
+      );
+      expect(result3.multMultiplier).toBe(1.4); // 1 + 0.4
+
+      jokers = jokerSlots.getJokers();
+      expect(jokers[0].getState().streak).toBe(2);
+
+      // 场景4: 打出最常出牌型，连击应该重置
+      const result4 = JokerSystem.processHandPlayed(
+        jokerSlots, [card], PokerHandType.OnePair, 100, 1,
+        undefined, undefined, undefined, undefined, undefined, undefined, PokerHandType.OnePair
+      );
+      expect(result4.multMultiplier).toBe(1); // 不触发效果
+
+      jokers = jokerSlots.getJokers();
+      expect(jokers[0].getState().streak).toBe(0);
+    });
+
+    it('方尖碑状态应该在存档读档后保持', () => {
+      const obelisk = new Joker({
+        id: 'obelisk',
+        name: '方尖碑',
+        description: '连续不打最常出的牌型，每手x0.2倍率',
+        rarity: JokerRarity.UNCOMMON,
+        cost: 8,
+        trigger: JokerTrigger.ON_HAND_PLAYED,
+        effect: (context): { multMultiplier?: number; stateUpdate?: { streak?: number }; message?: string } => {
+          const mostPlayedHand = context.mostPlayedHand;
+          const jokerState = (context as unknown as { jokerState?: { streak?: number } }).jokerState || {};
+          const currentStreak = jokerState.streak || 0;
+
+          if (mostPlayedHand && context.handType !== mostPlayedHand) {
+            const newStreak = currentStreak + 1;
+            const multiplier = 1 + (newStreak * 0.2);
+            return {
+              multMultiplier: multiplier,
+              stateUpdate: { streak: newStreak },
+              message: `方尖碑: 连续${newStreak}手不打${mostPlayedHand} x${multiplier.toFixed(1)}倍率`
+            };
+          } else if (context.handType === mostPlayedHand) {
+            return {
+              stateUpdate: { streak: 0 }
+            };
+          }
+          return {};
+        }
+      });
+
+      jokerSlots.addJoker(obelisk);
+
+      // 模拟连续3手不出最常出牌型
+      const card = createTestCard(Suit.Hearts, Rank.Ace);
+      for (let i = 0; i < 3; i++) {
+        JokerSystem.processHandPlayed(
+          jokerSlots, [card], PokerHandType.HighCard, 100, 1,
+          undefined, undefined, undefined, undefined, undefined, undefined, PokerHandType.OnePair
+        );
+      }
+
+      // 验证状态
+      let jokers = jokerSlots.getJokers();
+      expect(jokers[0].getState().streak).toBe(3);
+
+      // 保存状态
+      const savedState = jokerSlots.getState();
+
+      // 创建新系统并恢复状态
+      const newSystem = new JokerSlots(5);
+      newSystem.restoreState(savedState);
+
+      // 验证状态被恢复
+      jokers = newSystem.getJokers();
+      expect(jokers[0].getState().streak).toBe(3);
+
+      // 读档后应该继续累加
+      const result = JokerSystem.processHandPlayed(
+        newSystem, [card], PokerHandType.Flush, 100, 1,
+        undefined, undefined, undefined, undefined, undefined, undefined, PokerHandType.OnePair
+      );
+      expect(result.multMultiplier).toBe(1.8); // 1 + 4 * 0.2
+    });
+  });
+
   describe('状态持久化', () => {
     it('clone()应该正确复制状态', () => {
       const constellation = new Joker({

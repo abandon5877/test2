@@ -2406,21 +2406,23 @@ export const JOKERS: Joker[] = [
     cost: 8,
     trigger: JokerTrigger.ON_HAND_PLAYED,
     effect: (context: JokerEffectContext): JokerEffectResult => {
-      const jokerState = (context as unknown as { jokerState?: { mostPlayedHand?: PokerHandType; streak?: number } }).jokerState || {};
-      const mostPlayedHand = jokerState.mostPlayedHand;
+      // 从context获取最常出的牌型（由BossState统计）
+      const mostPlayedHand = context.mostPlayedHand;
+      // 从自己的state中获取连击数
+      const jokerState = (context as unknown as { jokerState?: { streak?: number } }).jokerState || {};
       const currentStreak = jokerState.streak || 0;
-      
+
       if (mostPlayedHand && context.handType !== mostPlayedHand) {
         const newStreak = currentStreak + 1;
         const multiplier = 1 + (newStreak * 0.2);
         return {
           multMultiplier: multiplier,
           message: `方尖碑: 连续${newStreak}手不打${mostPlayedHand} x${multiplier.toFixed(1)}倍率`,
-          stateUpdate: { ...jokerState, streak: newStreak }
+          stateUpdate: { streak: newStreak }
         };
       } else if (context.handType === mostPlayedHand) {
         return {
-          stateUpdate: { ...jokerState, streak: 0 }
+          stateUpdate: { streak: 0 }
         };
       }
       return {};

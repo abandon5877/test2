@@ -168,7 +168,8 @@ export class JokerSystem {
     discardsUsed?: number,
     deckSize?: number,
     initialDeckSize?: number,
-    handsRemaining?: number
+    handsRemaining?: number,
+    mostPlayedHand?: PokerHandType | null
   ): {
     chipBonus: number;
     multBonus: number;
@@ -202,6 +203,7 @@ export class JokerSystem {
         deckSize,
         initialDeckSize,
         handsRemaining,
+        mostPlayedHand,
         ...this.createPositionContext(jokerSlots, i)
       };
 
@@ -639,7 +641,8 @@ export class JokerSystem {
     discardsUsed?: number,
     deckSize?: number,
     initialDeckSize?: number,
-    handsRemaining?: number // 剩余手牌数（用于acrobat等）
+    handsRemaining?: number, // 剩余手牌数（用于acrobat等）
+    mostPlayedHand?: PokerHandType | null // 最常出的牌型（用于obelisk）
   ): ProcessedScoreResult {
     const jokerEffects: JokerEffectDetail[] = [];
     let totalChipBonus = 0;
@@ -709,7 +712,8 @@ export class JokerSystem {
       discardsUsed,
       deckSize,
       initialDeckSize,
-      handsRemaining
+      handsRemaining,
+      mostPlayedHand
     );
     console.log('[JokerSystem] processHandPlayed结果:', { chipBonus: handPlayedResult.chipBonus, multBonus: handPlayedResult.multBonus, multMultiplier: handPlayedResult.multMultiplier, effects: handPlayedResult.effects });
     totalChipBonus += handPlayedResult.chipBonus;
