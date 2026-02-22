@@ -304,24 +304,28 @@ export class ShopComponent {
   private calculateJokerOverlap(jokerCount: number, containerWidth: number): number {
     if (jokerCount <= 1) return 0;
 
-    const cardWidth = 90; // 缩放后的小丑牌宽度
-    const padding = 8;
-    const availableWidth = containerWidth - padding;
+    const cardWidth = 90; // 小丑牌宽度
+    const padding = 4; // 减小padding计算
+    const availableWidth = Math.max(0, containerWidth - padding);
 
+    // 如果只有2张牌，使用轻微重叠
     if (jokerCount <= 2) {
-      return Math.min(cardWidth * 0.2, 20);
+      return Math.min(cardWidth * 0.15, 15);
     }
 
     const totalCardsWidth = cardWidth * jokerCount;
-    const isSmallScreen = containerWidth < 150;
-
-    if (totalCardsWidth <= availableWidth && !isSmallScreen) {
+    
+    // 如果所有牌不重叠也能放下，只使用轻微重叠
+    if (totalCardsWidth <= availableWidth) {
       return Math.min(cardWidth * 0.1, 10);
     }
 
+    // 需要重叠才能放下
     const requiredOverlap = (totalCardsWidth - availableWidth) / (jokerCount - 1);
-    const maxOverlap = isSmallScreen ? cardWidth * 0.85 : cardWidth * 0.75;
-    const minOverlap = isSmallScreen ? cardWidth * 0.5 : cardWidth * 0.2;
+    
+    // 限制重叠量：最多重叠60%，最少重叠10%
+    const maxOverlap = cardWidth * 0.6;
+    const minOverlap = cardWidth * 0.1;
 
     return Math.max(minOverlap, Math.min(requiredOverlap, maxOverlap));
   }
@@ -332,24 +336,28 @@ export class ShopComponent {
   private calculateConsumableOverlap(consumableCount: number, containerWidth: number): number {
     if (consumableCount <= 1) return 0;
 
-    const cardWidth = 90; // 缩放后的消耗牌宽度
-    const padding = 8;
-    const availableWidth = containerWidth - padding;
+    const cardWidth = 90; // 消耗牌宽度
+    const padding = 4; // 减小padding计算
+    const availableWidth = Math.max(0, containerWidth - padding);
 
+    // 如果只有2张牌，使用轻微重叠
     if (consumableCount <= 2) {
-      return Math.min(cardWidth * 0.2, 20);
+      return Math.min(cardWidth * 0.15, 15);
     }
 
     const totalCardsWidth = cardWidth * consumableCount;
-    const isSmallScreen = containerWidth < 150;
-
-    if (totalCardsWidth <= availableWidth && !isSmallScreen) {
+    
+    // 如果所有牌不重叠也能放下，只使用轻微重叠
+    if (totalCardsWidth <= availableWidth) {
       return Math.min(cardWidth * 0.1, 10);
     }
 
+    // 需要重叠才能放下
     const requiredOverlap = (totalCardsWidth - availableWidth) / (consumableCount - 1);
-    const maxOverlap = isSmallScreen ? cardWidth * 0.85 : cardWidth * 0.75;
-    const minOverlap = isSmallScreen ? cardWidth * 0.5 : cardWidth * 0.2;
+    
+    // 限制重叠量：最多重叠60%，最少重叠10%
+    const maxOverlap = cardWidth * 0.6;
+    const minOverlap = cardWidth * 0.1;
 
     return Math.max(minOverlap, Math.min(requiredOverlap, maxOverlap));
   }
@@ -529,8 +537,14 @@ export class ShopComponent {
    */
   private createUnifiedShopItemCard(shopItem: ShopItem): HTMLElement {
     const card = document.createElement('div');
-    card.className = `joker-card common shop-item-compact ${shopItem.sold ? 'sold' : ''}`;
+    card.className = `joker-card common ${shopItem.sold ? 'sold' : ''}`;
     card.style.cursor = shopItem.sold ? 'not-allowed' : 'pointer';
+    // 确保卡片使用正确的flex布局
+    card.style.display = 'flex';
+    card.style.flexDirection = 'column';
+    card.style.justifyContent = 'space-between';
+    card.style.alignItems = 'center';
+    card.style.position = 'relative';
 
     if (!shopItem.sold) {
       card.addEventListener('click', () => this.handleSelectItem(shopItem));
@@ -539,14 +553,20 @@ export class ShopComponent {
     // 图标
     const icon = document.createElement('div');
     icon.className = 'joker-icon';
+    icon.style.flex = '0 0 auto';
     
     // 名称
     const name = document.createElement('div');
     name.className = 'joker-name';
+    name.style.flex = '0 0 auto';
+    name.style.marginBottom = 'auto'; // 将名称推到上方，为价格标签留出空间
     
     // 价格标签 - 使用 joker-cost 样式
     const priceTag = document.createElement('div');
     priceTag.className = 'joker-cost';
+    priceTag.style.flex = '0 0 auto';
+    priceTag.style.marginTop = 'auto'; // 将价格标签推到底部
+    priceTag.style.alignSelf = 'flex-end'; // 右对齐
     const canAfford = this.gameState.money >= shopItem.cost;
     if (!canAfford && !shopItem.sold) {
       priceTag.style.background = 'linear-gradient(145deg, #ef4444 0%, #dc2626 100%)';
@@ -564,7 +584,13 @@ export class ShopComponent {
         icon.textContent = '🤡';
         name.textContent = joker.name;
         // 根据稀有度设置边框颜色
-        card.className = `joker-card ${joker.rarity} shop-item-compact`;
+        card.className = `joker-card ${joker.rarity}`;
+        // 重新应用样式
+        card.style.display = 'flex';
+        card.style.flexDirection = 'column';
+        card.style.justifyContent = 'space-between';
+        card.style.alignItems = 'center';
+        card.style.position = 'relative';
       } else if (shopItem.type === 'consumable') {
         const consumable = shopItem.item as Consumable;
         icon.textContent = consumable.type === 'tarot' ? '🔮' : consumable.type === 'planet' ? '🪐' : consumable.type === 'spectral' ? '👻' : '🎴';
