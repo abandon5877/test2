@@ -853,19 +853,61 @@ export class GameBoard {
 
       handTypeEl.textContent = baseValue.displayName;
       handScoreEl.innerHTML = `
-        <div class="text-sm text-gray-400">
+        <div class="preview-score-line">
           基础: ${scoreResult.baseChips} 筹码 × ${scoreResult.baseMultiplier} 倍率
         </div>
-        ${cardChipBonus > 0 ? `<div class="text-sm text-blue-400">+ 卡牌筹码: ${cardChipBonus}</div>` : ''}
-        ${scoreResult.multBonus > 0 ? `<div class="text-sm text-purple-400">+ 倍率加成: ${scoreResult.multBonus}</div>` : ''}
-        <div class="text-lg text-yellow-400 font-bold mt-1">
+        ${cardChipBonus > 0 ? `<div class="preview-score-line">+ 卡牌筹码: ${cardChipBonus}</div>` : ''}
+        ${scoreResult.multBonus > 0 ? `<div class="preview-score-line">+ 倍率加成: ${scoreResult.multBonus}</div>` : ''}
+        <div class="preview-score-total">
           预计: ${scoreResult.totalChips} × ${scoreResult.totalMultiplier} = ${scoreResult.totalScore}
         </div>
       `;
+      
+      // 动态调整字体大小
+      this.adjustPreviewFontSize(handTypeEl, handScoreEl);
     } else {
       handTypeEl.textContent = '无效牌型';
       handScoreEl.textContent = '请选择有效的扑克牌型';
+      this.adjustPreviewFontSize(handTypeEl, handScoreEl);
     }
+  }
+
+  /**
+   * 动态调整预览区域字体大小
+   */
+  private adjustPreviewFontSize(handTypeEl: HTMLElement, handScoreEl: HTMLElement): void {
+    const container = handScoreEl.parentElement;
+    if (!container) return;
+    
+    const containerWidth = container.clientWidth;
+    const containerHeight = container.clientHeight;
+    
+    // 初始字体大小
+    let fontSize = 16;
+    handScoreEl.style.fontSize = `${fontSize}px`;
+    handTypeEl.style.fontSize = `${fontSize + 4}px`;
+    
+    // 如果内容溢出，逐步减小字体
+    const maxIterations = 10;
+    for (let i = 0; i < maxIterations; i++) {
+      const isOverflowing = handScoreEl.scrollWidth > containerWidth || 
+                           handScoreEl.scrollHeight > containerHeight ||
+                           handTypeEl.scrollWidth > containerWidth;
+      
+      if (!isOverflowing || fontSize <= 10) break;
+      
+      fontSize -= 1;
+      handScoreEl.style.fontSize = `${fontSize}px`;
+      handTypeEl.style.fontSize = `${fontSize + 4}px`;
+    }
+    
+    // 设置子元素样式
+    const lines = handScoreEl.querySelectorAll('.preview-score-line, .preview-score-total');
+    lines.forEach(line => {
+      (line as HTMLElement).style.whiteSpace = 'nowrap';
+      (line as HTMLElement).style.overflow = 'hidden';
+      (line as HTMLElement).style.textOverflow = 'ellipsis';
+    });
   }
 
   /**
