@@ -579,16 +579,6 @@ export class ShopComponent {
         jokerCard.style.cursor = jokers.length > 1 ? 'grab' : 'pointer';
         jokerCard.draggable = jokers.length > 1;
         jokerCard.dataset.index = String(index);
-        
-        // 添加位置标签（最左/最右）
-        if (index === 0 || index === jokers.length - 1) {
-          const positionLabel = document.createElement('div');
-          positionLabel.className = 'absolute -top-2 left-1/2 transform -translate-x-1/2 z-10';
-          positionLabel.style.pointerEvents = 'none';
-          const labelText = index === 0 ? '最左' : '最右';
-          positionLabel.innerHTML = `<span class="bg-blue-500 text-white px-1 py-0.5 rounded font-bold" style="font-size: clamp(8px, 1.5vmin, 12px);">${labelText}</span>`;
-          jokerCard.appendChild(positionLabel);
-        }
 
         // 点击显示详情弹窗（包含卖出按钮）
         jokerCard.addEventListener('click', (e) => {
@@ -983,7 +973,7 @@ ${description}
       deck: this.gameState.cardPile.deck,
       jokers: this.gameState.jokers,
       lastUsedConsumable: this.gameState.lastUsedConsumable ?? undefined,
-      addJoker: (rarity?: 'rare'): boolean => {
+      addJoker: (rarity?: 'rare' | 'legendary'): boolean => {
         console.log('[ShopComponent] addJoker 被调用, rarity:', rarity);
         const joker = getRandomJoker();
         console.log('[ShopComponent] 生成的随机小丑牌:', joker.id, joker.name);
@@ -1021,18 +1011,54 @@ ${description}
         console.log('[ShopComponent] destroyOtherJokers 被调用');
         const jokers = this.gameState.jokers;
         if (jokers.length <= 1) return 0;
-        
-        const randomIndex = Math.floor(Math.random() * jokers.length);
+
+        // 找到被复制的小丑索引（最后添加的那个）
+        const copiedJokerIndex = jokers.length - 1;
         let destroyedCount = 0;
-        
+
         for (let i = jokers.length - 1; i >= 0; i--) {
-          if (i !== randomIndex) {
-            this.gameState.removeJoker(i);
-            destroyedCount++;
+          // 跳过被复制的小丑，销毁其他所有小丑
+          if (i !== copiedJokerIndex) {
+            const joker = jokers[i] as Joker;
+            // 永恒小丑不能被摧毁
+            if (joker.sticker !== 'eternal') {
+              this.gameState.removeJoker(i);
+              destroyedCount++;
+            }
           }
         }
         console.log('[ShopComponent] 已销毁小丑牌数量:', destroyedCount);
         return destroyedCount;
+      },
+      copyRandomJoker: (): { success: boolean; copiedJokerName?: string } => {
+        console.log('[ShopComponent] copyRandomJoker 被调用');
+        const jokers = this.gameState.jokers;
+        if (jokers.length === 0) {
+          return { success: false };
+        }
+
+        // 随机选择一个小丑
+        const randomIndex = Math.floor(Math.random() * jokers.length);
+        const jokerToCopy = jokers[randomIndex] as Joker;
+
+        console.log('[ShopComponent] 选择复制的小丑:', jokerToCopy.name);
+
+        // 克隆小丑
+        const clonedJoker = jokerToCopy.clone() as Joker;
+
+        // 官方规则：负片版本不会被复制
+        if (clonedJoker.edition === JokerEdition.Negative) {
+          clonedJoker.edition = JokerEdition.None;
+        }
+
+        // 添加到小丑槽位
+        const success = this.gameState.addJoker(clonedJoker);
+        console.log('[ShopComponent] 复制小丑结果:', success, clonedJoker.name);
+
+        return {
+          success,
+          copiedJokerName: success ? clonedJoker.name : undefined
+        };
       }
     };
 

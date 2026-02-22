@@ -492,7 +492,7 @@ class Game {
           deck: this.gameState.cardPile.deck,
           jokers: this.gameState.jokers,
           lastUsedConsumable: this.gameState.lastUsedConsumable ?? undefined,
-          addJoker: (rarity?: 'rare'): boolean => {
+          addJoker: (rarity?: 'rare' | 'legendary'): boolean => {
             console.log('[Game] addJoker 被调用, rarity:', rarity);
             const joker = getRandomJoker();
             console.log('[Game] 生成的随机小丑牌:', joker.id, joker.name);

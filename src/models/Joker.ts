@@ -225,7 +225,8 @@ export class Joker implements JokerInterface {
       onReroll: this.onRerollCallback,
       onBlindSelect: this.onBlindSelectCallback,
       onEndOfRound: this.onEndOfRoundCallback,
-      onCardAdded: this.onCardAddedCallback
+      onCardAdded: this.onCardAddedCallback,
+      onSell: this.onSellCallback
     });
     // 手动复制 perishableRounds，因为构造函数会根据 sticker 重置
     cloned.perishableRounds = this.perishableRounds;

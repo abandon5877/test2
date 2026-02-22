@@ -405,8 +405,18 @@ export const SPECTRAL_CONSUMABLES: Consumable[] = [
     description: '随机复制1张小丑，摧毁其他所有小丑',
     type: ConsumableType.SPECTRAL,
     cost: 8,
-    useCondition: '需要至少有2张小丑牌',
+    useCondition: '需要至少有1张小丑牌',
     use: (context: ConsumableEffectContext): ConsumableEffectResult => {
+      // 首先复制随机小丑
+      let copiedJokerName: string | undefined;
+      if (context.copyRandomJoker) {
+        const result = context.copyRandomJoker();
+        if (result.success) {
+          copiedJokerName = result.copiedJokerName;
+        }
+      }
+
+      // 然后销毁其他小丑
       let destroyedCount = 0;
       if (context.destroyOtherJokers) {
         destroyedCount = context.destroyOtherJokers();
@@ -414,8 +424,14 @@ export const SPECTRAL_CONSUMABLES: Consumable[] = [
 
       return {
         success: true,
-        message: `生命之符: 复制1张小丑，摧毁了${destroyedCount}张小丑`
+        message: copiedJokerName
+          ? `生命之符: 复制了 "${copiedJokerName}"，摧毁了${destroyedCount}张小丑`
+          : `生命之符: 复制1张小丑，摧毁了${destroyedCount}张小丑`
       };
+    },
+    canUse: (context: ConsumableEffectContext): boolean => {
+      // 需要至少1张小丑牌
+      return !!(context.jokers && context.jokers.length >= 1);
     }
   }),
 
@@ -451,7 +467,7 @@ export const SPECTRAL_CONSUMABLES: Consumable[] = [
     description: '给随机小丑添加多色版本，摧毁其他所有小丑',
     type: ConsumableType.SPECTRAL,
     cost: 8,
-    useCondition: '需要至少有2张小丑牌',
+    useCondition: '需要至少有1张小丑牌，且不是所有小丑都已有版本',
     use: (context: ConsumableEffectContext): ConsumableEffectResult => {
       let editionAdded = false;
       if (context.addEditionToRandomJoker) {
@@ -469,6 +485,15 @@ export const SPECTRAL_CONSUMABLES: Consumable[] = [
           ? `诅咒: 随机小丑获得多色版本，摧毁了${destroyedCount}张小丑`
           : `诅咒: 没有可添加版本的小丑，摧毁了${destroyedCount}张小丑`
       };
+    },
+    canUse: (context: ConsumableEffectContext): boolean => {
+      // 需要至少1张小丑牌
+      if (!context.jokers || context.jokers.length === 0) {
+        return false;
+      }
+      // 且不是所有小丑都已有版本
+      const allHaveEdition = context.jokers.every(j => j.hasEdition);
+      return !allHaveEdition;
     }
   }),
 
@@ -534,9 +559,15 @@ export const SPECTRAL_CONSUMABLES: Consumable[] = [
       if (context.canAddJoker && !context.canAddJoker()) {
         return { success: false, message: '小丑牌槽位已满' };
       }
+
+      let jokerAdded = false;
+      if (context.addJoker) {
+        jokerAdded = context.addJoker('legendary');
+      }
+
       return {
         success: true,
-        message: '灵魂: 创建传奇小丑'
+        message: jokerAdded ? '灵魂: 创建传奇小丑' : '灵魂: 小丑槽位已满，无法创建'
       };
     },
     canUse: (context: ConsumableEffectContext): boolean => {

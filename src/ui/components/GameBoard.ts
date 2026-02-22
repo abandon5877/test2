@@ -1274,7 +1274,7 @@ export class GameBoard {
       money: this.gameState.money,
       jokers: this.gameState.jokers,
       lastUsedConsumable: this.gameState.lastUsedConsumable ?? undefined,
-      addJoker: (rarity?: 'rare'): boolean => {
+      addJoker: (rarity?: 'rare' | 'legendary'): boolean => {
         console.log('[GameBoard] addJoker 被调用, rarity:', rarity);
         const joker = getRandomJoker();
         console.log('[GameBoard] 生成的随机小丑牌:', joker.id, joker.name);
@@ -1312,18 +1312,54 @@ export class GameBoard {
         console.log('[GameBoard] destroyOtherJokers 被调用');
         const jokers = this.gameState.jokers;
         if (jokers.length <= 1) return 0;
-        
-        const randomIndex = Math.floor(Math.random() * jokers.length);
+
+        // 找到被复制的小丑索引（最后添加的那个）
+        const copiedJokerIndex = jokers.length - 1;
         let destroyedCount = 0;
-        
+
         for (let i = jokers.length - 1; i >= 0; i--) {
-          if (i !== randomIndex) {
-            this.gameState.removeJoker(i);
-            destroyedCount++;
+          // 跳过被复制的小丑，销毁其他所有小丑
+          if (i !== copiedJokerIndex) {
+            const joker = jokers[i] as Joker;
+            // 永恒小丑不能被摧毁
+            if (joker.sticker !== 'eternal') {
+              this.gameState.removeJoker(i);
+              destroyedCount++;
+            }
           }
         }
         console.log('[GameBoard] 摧毁了', destroyedCount, '张小丑');
         return destroyedCount;
+      },
+      copyRandomJoker: (): { success: boolean; copiedJokerName?: string } => {
+        console.log('[GameBoard] copyRandomJoker 被调用');
+        const jokers = this.gameState.jokers;
+        if (jokers.length === 0) {
+          return { success: false };
+        }
+
+        // 随机选择一个小丑
+        const randomIndex = Math.floor(Math.random() * jokers.length);
+        const jokerToCopy = jokers[randomIndex] as Joker;
+
+        console.log('[GameBoard] 选择复制的小丑:', jokerToCopy.name);
+
+        // 克隆小丑
+        const clonedJoker = jokerToCopy.clone() as Joker;
+
+        // 官方规则：负片版本不会被复制
+        if (clonedJoker.edition === JokerEdition.Negative) {
+          clonedJoker.edition = JokerEdition.None;
+        }
+
+        // 添加到小丑槽位
+        const success = this.gameState.addJoker(clonedJoker);
+        console.log('[GameBoard] 复制小丑结果:', success, clonedJoker.name);
+
+        return {
+          success,
+          copiedJokerName: success ? clonedJoker.name : undefined
+        };
       }
     };
 

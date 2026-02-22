@@ -23,8 +23,9 @@ export interface ConsumableEffectContext {
   };
   readonly lastUsedConsumable?: { id: string; type: ConsumableType };
   readonly addConsumable?: (consumable: ConsumableConfig) => boolean;
-  readonly jokers?: readonly { edition?: string; hasEdition?: boolean; sellPrice?: number }[];
-  readonly addJoker?: (rarity?: 'rare') => boolean;
+  readonly jokers?: readonly { edition?: string; hasEdition?: boolean; sellPrice?: number; sticker?: string }[];
+  readonly addJoker?: (rarity?: 'rare' | 'legendary') => boolean;
+  readonly copyRandomJoker?: () => { success: boolean; copiedJokerName?: string };
   readonly canAddJoker?: () => boolean;
   readonly addEditionToRandomJoker?: (edition: string) => boolean;
   readonly destroyOtherJokers?: () => number;
