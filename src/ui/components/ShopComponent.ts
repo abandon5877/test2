@@ -300,6 +300,7 @@ export class ShopComponent {
 
   /**
    * 计算卡牌重叠量 - 完全基于容器大小的响应式计算
+   * 目标：让卡牌填满整个容器，充分利用空间
    * @param cardCount 卡牌数量
    * @param containerWidth 容器宽度
    * @param cardWidth 单张卡牌宽度
@@ -308,24 +309,27 @@ export class ShopComponent {
   private calculateOverlap(cardCount: number, containerWidth: number, cardWidth: number): number {
     if (cardCount <= 1) return 0;
 
-    // 计算可用宽度（留出小边距）
-    const availableWidth = Math.max(0, containerWidth - 4);
+    // 计算可用宽度（不留边距，充分利用空间）
+    const availableWidth = Math.max(0, containerWidth);
     
     // 计算所有卡牌不重叠时的总宽度
     const totalCardsWidth = cardWidth * cardCount;
     
-    // 如果所有卡牌不重叠也能放下，使用轻微重叠（10%）
+    // 如果所有卡牌不重叠也能放下，使用最小重叠（5%）
     if (totalCardsWidth <= availableWidth) {
-      return cardWidth * 0.1;
+      return cardWidth * 0.05;
     }
 
     // 需要重叠才能放下
-    // 计算需要的重叠量：(总宽度 - 可用宽度) / (卡牌数 - 1)
+    // 计算需要的重叠量，让最后一张牌刚好填满容器
+    // 公式：第一张牌完整显示 + (n-1)张牌重叠显示 = 容器宽度
+    // cardWidth + (cardCount - 1) * (cardWidth - overlap) = availableWidth
+    // 解得：overlap = (totalCardsWidth - availableWidth) / (cardCount - 1)
     const requiredOverlap = (totalCardsWidth - availableWidth) / (cardCount - 1);
     
-    // 限制重叠量在合理范围内：10% ~ 60%
-    const minOverlap = cardWidth * 0.1;
-    const maxOverlap = cardWidth * 0.6;
+    // 限制重叠量：最小5%，最大75%（允许更紧密的排列以充分利用空间）
+    const minOverlap = cardWidth * 0.05;
+    const maxOverlap = cardWidth * 0.75;
 
     return Math.max(minOverlap, Math.min(requiredOverlap, maxOverlap));
   }
