@@ -121,6 +121,9 @@ export class HandComponent {
     // 记录当前容器宽度
     this.lastContainerWidth = getElementWidth(this.container);
 
+    // 先把 handArea 添加到 DOM，确保能获取正确的尺寸
+    this.container.appendChild(handArea);
+    
     // 先渲染第一张卡牌到 DOM，获取实际宽度后再计算重叠量
     // 这样可以准确获取 CSS 计算后的卡牌尺寸
     let cardWidth = 70; // 默认估算值
@@ -138,14 +141,20 @@ export class HandComponent {
       firstCardElement.style.visibility = 'hidden'; // 先隐藏，避免闪烁
       handArea.appendChild(firstCardElement);
       
+      // 强制回流以确保尺寸计算正确
+      handArea.offsetHeight;
+      
       // 获取实际卡牌宽度
       const actualWidth = getElementWidth(firstCardElement);
       if (actualWidth > 0) {
         cardWidth = actualWidth;
       }
       
+      // 重新获取容器宽度（此时 handArea 已渲染）
+      const actualCenterWidth = getElementWidth(handArea) || centerWidth;
+      
       // 计算重叠量
-      overlap = this.calculateCardOverlap(centerWidth, totalCards, cardWidth);
+      overlap = this.calculateCardOverlap(actualCenterWidth, totalCards, cardWidth);
       
       // 恢复可见性并设置样式
       firstCardElement.style.visibility = 'visible';
@@ -176,8 +185,6 @@ export class HandComponent {
         this.cardElements.push(cardElement);
       }
     }
-
-    this.container.appendChild(handArea);
   }
 
   /**
