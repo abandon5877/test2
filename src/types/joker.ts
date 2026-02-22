@@ -117,6 +117,7 @@ export interface JokerEffectResult {
   readonly allCardsAreFace?: boolean; // 所有牌变人头牌
   readonly disableBossOnSell?: boolean; // 出售时禁用Boss
   readonly preventDeathAt25?: boolean; // 防止25%死亡
+  readonly copiedJokerId?: string; // 复制的其他小丑牌ID（隐形小丑）
   readonly addSealedCard?: boolean; // 添加封印牌
   readonly allowDuplicates?: boolean; // 允许重复
   readonly doubleProbabilities?: boolean; // 双倍概率
@@ -157,6 +158,9 @@ export interface JokerState {
   roundsHeld?: number; // 持有回合数
   lastHandType?: string; // 上次牌型
   multiplierBonus?: number; // 乘数加成
+  cardsSold?: number; // 卖出的牌数量（篝火）
+  cardsAdded?: number; // 添加的牌数量（全息影像）
+  destroyedFaceCards?: number; // 摧毁的人头牌数量（卡尼奥）
 }
 
 export interface JokerInterface {
@@ -180,6 +184,7 @@ export interface JokerInterface {
   onReroll?(context: JokerEffectContext): JokerEffectResult;
   onBlindSelect?(context: JokerEffectContext): JokerEffectResult;
   onCardAdded?(context: JokerEffectContext): JokerEffectResult;
+  onSell?(context: JokerEffectContext): JokerEffectResult; // 出售时触发（隐形小丑）
   updateState(updates: Partial<JokerState>): void; // 更新状态
   getState(): JokerState; // 获取状态
   setSticker(sticker: StickerType): void; // 设置贴纸
@@ -211,6 +216,7 @@ export interface JokerConfig {
   readonly onBlindSelect?: (context: JokerEffectContext) => JokerEffectResult;
   readonly onEndOfRound?: (context: JokerEffectContext) => JokerEffectResult;
   readonly onCardAdded?: (context: JokerEffectContext) => JokerEffectResult;
+  readonly onSell?: (context: JokerEffectContext) => JokerEffectResult; // 出售时触发（隐形小丑）
 }
 
 export const JOKER_RARITY_COLORS: Readonly<Record<JokerRarity, string>> = {

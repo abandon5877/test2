@@ -209,14 +209,13 @@ export class ScoringSystem {
       heldCardCount: heldCards?.length ?? 0 
     });
     
-    // 修复3: 计算手持卡牌效果（Steel）
+    // 修复3: 计算手持卡牌效果（Steel）- 初始计算，后面会根据哑剧演员效果重新计算
     let heldMultMultiplier = 1;
-    if (heldCards) {
-      for (const card of heldCards) {
-        if (card.enhancement === CardEnhancement.Steel) {
-          heldMultMultiplier *= 1.5;
-        }
-      }
+    const steelCardCount = heldCards
+      ? heldCards.filter(card => card.enhancement === CardEnhancement.Steel).length
+      : 0;
+    if (steelCardCount > 0) {
+      heldMultMultiplier = Math.pow(1.5, steelCardCount);
     }
 
     // 从 jokerSlots 获取小丑牌列表（如果提供了 jokerSlots）
@@ -251,7 +250,7 @@ export class ScoringSystem {
 
     // 检查触发两次效果
     const retriggerEffects = this.checkRetriggerEffects(jokersToCheck);
-    
+
     // 修复3: 累加Lucky金币效果和Glass摧毁
     let totalLuckyMoney = 0;
     const destroyedCards: Card[] = [];
@@ -262,6 +261,8 @@ export class ScoringSystem {
     let glassMultMultiplier = 1;
     // 蜡封金币奖励累加器
     let sealMoneyBonus = 0;
+    // 哑剧演员效果：手牌能力触发2次
+    let heldCardRetrigger = false;
 
     for (let i = 0; i < handResult.scoringCards.length; i++) {
       const card = handResult.scoringCards[i];
@@ -498,6 +499,7 @@ export class ScoringSystem {
         heldChipBonus = heldResult.chipBonus;
         heldMultBonus = heldResult.multBonus;
         heldMultMultiplier = heldResult.multMultiplier;
+        heldCardRetrigger = heldResult.heldCardRetrigger;
         jokerEffects.push(...heldResult.effects);
       }
 
@@ -534,8 +536,13 @@ export class ScoringSystem {
     }
 
     // 修复3: 应用手持卡牌倍率乘数（Steel效果）
+    // 如果哑剧演员效果激活，Steel效果触发两次
+    if (heldCardRetrigger && steelCardCount > 0) {
+      // 哑剧演员效果：Steel卡效果触发两次
+      heldMultMultiplier = Math.pow(1.5, steelCardCount * 2);
+    }
     totalMultiplier *= heldMultMultiplier;
-    
+
     // 应用卡牌版本效果的倍率乘数
     totalMultiplier *= editionMultMultiplier;
     

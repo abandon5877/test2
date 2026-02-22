@@ -21,6 +21,7 @@ import { ConsumableDataManager } from '../data/ConsumableDataManager';
 import { getConsumableById } from '../data/consumables';
 import type { JokerInterface } from '../types/joker';
 import type { ConsumableInterface } from '../types/consumable';
+import { getJokerById } from '../data/jokers';
 import { CardEnhancement } from '../types/card';
 import { ConsumableType } from '../types/consumable';
 import { createModuleLogger } from '../utils/logger';
@@ -749,10 +750,23 @@ export class GameState implements GameStateInterface {
     return false;
   }
 
-  sellJoker(index: number): { success: boolean; sellPrice?: number; error?: string } {
+  sellJoker(index: number): { success: boolean; sellPrice?: number; error?: string; copiedJokerId?: string } {
     const result = JokerSystem.sellJoker(this.jokerSlots, index);
     if (result.success && result.sellPrice) {
       this.money += result.sellPrice;
+
+      // 处理隐形小丑的复制效果
+      if (result.copiedJokerId) {
+        const jokerToCopy = getJokerById(result.copiedJokerId);
+        if (jokerToCopy && this.jokerSlots.getAvailableSlots() > 0) {
+          this.jokerSlots.addJoker(jokerToCopy);
+          logger.info('Invisible Joker copied joker added', {
+            copiedJokerId: result.copiedJokerId,
+            jokerName: jokerToCopy.name
+          });
+        }
+      }
+
       this.recreateHand();
     }
     return result;

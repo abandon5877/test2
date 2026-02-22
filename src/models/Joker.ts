@@ -22,6 +22,7 @@ export class Joker implements JokerInterface {
   onBlindSelectCallback?: (context: JokerEffectContext) => JokerEffectResult;
   onEndOfRoundCallback?: (context: JokerEffectContext) => JokerEffectResult;
   onCardAddedCallback?: (context: JokerEffectContext) => JokerEffectResult;
+  onSellCallback?: (context: JokerEffectContext) => JokerEffectResult; // 出售时触发（隐形小丑）
 
   constructor(config: JokerConfig) {
     this.id = config.id;
@@ -45,6 +46,7 @@ export class Joker implements JokerInterface {
     this.onBlindSelectCallback = config.onBlindSelect;
     this.onEndOfRoundCallback = config.onEndOfRound;
     this.onCardAddedCallback = config.onCardAdded;
+    this.onSellCallback = config.onSell;
   }
 
   updateState(updates: Partial<JokerState>): void {
@@ -192,6 +194,13 @@ export class Joker implements JokerInterface {
     }
     if (this.trigger === JokerTrigger.ON_CARD_ADDED) {
       return this.effect(context);
+    }
+    return {};
+  }
+
+  onSell(context: JokerEffectContext): JokerEffectResult {
+    if (this.onSellCallback) {
+      return this.onSellCallback(context);
     }
     return {};
   }

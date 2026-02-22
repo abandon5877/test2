@@ -249,7 +249,17 @@ export class ShopComponent {
         const result = this.gameState.sellJoker(index);
         if (result.success) {
           this.render();
-          Toast.success(`${joker.name} 已卖出，获得 $${result.sellPrice}！`);
+          let message = `${joker.name} 已卖出，获得 $${result.sellPrice}！`;
+
+          // 显示隐形小丑复制成功的消息
+          if (result.copiedJokerId) {
+            const copiedJoker = jokers.find(j => j.id === result.copiedJokerId);
+            if (copiedJoker) {
+              message += `\n隐形小丑复制了 ${copiedJoker.name}！`;
+            }
+          }
+
+          Toast.success(message);
         } else {
           Toast.error(result.error || '卖出失败！');
         }

@@ -3044,6 +3044,34 @@ export const JOKERS: Joker[] = [
         message: `隐形小丑: ${roundsHeld}回合后可复制`,
         stateUpdate: { roundsHeld }
       };
+    },
+    onSell: (context: JokerEffectContext): JokerEffectResult => {
+      const jokerState = (context as unknown as { jokerState?: { roundsHeld?: number } }).jokerState || {};
+      const roundsHeld = jokerState.roundsHeld || 0;
+
+      // 需要持有2回合后才能复制
+      if (roundsHeld >= 2) {
+        const allJokers = context.allJokers || [];
+        // 排除自己，获取其他小丑牌
+        const otherJokers = allJokers.filter(j => j.id !== 'invisible_joker');
+
+        if (otherJokers.length > 0) {
+          // 随机选择一张小丑牌复制
+          const randomIndex = Math.floor(Math.random() * otherJokers.length);
+          const targetJoker = otherJokers[randomIndex];
+
+          return {
+            copiedJokerId: targetJoker.id,
+            message: `隐形小丑: 复制了 ${targetJoker.name}`
+          };
+        }
+      }
+
+      return {
+        message: roundsHeld < 2
+          ? `隐形小丑: 需要再持有${2 - roundsHeld}回合才能复制`
+          : '隐形小丑: 没有其他小丑可复制'
+      };
     }
   }),
 

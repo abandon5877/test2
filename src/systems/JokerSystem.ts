@@ -1,4 +1,4 @@
-import { JokerInterface, JokerEffectContext, JokerEffectResult } from '../types/joker';
+import { JokerInterface, JokerEffectContext, JokerEffectResult, JokerTrigger } from '../types/joker';
 import { Card } from '../models/Card';
 import { PokerHandType } from '../types/pokerHands';
 import { ScoreResult } from './ScoringSystem';
@@ -25,7 +25,7 @@ export class JokerSystem {
   /**
    * 出售小丑牌
    */
-  static sellJoker(jokerSlots: JokerSlots, index: number): { success: boolean; sellPrice?: number; error?: string } {
+  static sellJoker(jokerSlots: JokerSlots, index: number): { success: boolean; sellPrice?: number; error?: string; copiedJokerId?: string } {
     const jokers = jokerSlots.getJokers();
 
     if (index < 0 || index >= jokers.length) {
@@ -49,15 +49,30 @@ export class JokerSystem {
       sellPrice = 1; // 租赁小丑只能卖$1
     }
 
+    // 处理出售时的回调（隐形小丑）
+    let copiedJokerId: string | undefined;
+    if (joker.onSell) {
+      const context: JokerEffectContext = {
+        ...this.createPositionContext(jokerSlots, index),
+        jokerState: joker.state
+      };
+      const result = joker.onSell(context);
+      if (result.copiedJokerId) {
+        copiedJokerId = result.copiedJokerId;
+        logger.info('Invisible Joker copied joker on sell', { copiedJokerId });
+      }
+    }
+
     // 移除小丑牌
     jokerSlots.removeJoker(index);
     logger.info('Joker sold', {
       jokerId: joker.id,
       jokerName: joker.name,
-      sellPrice
+      sellPrice,
+      copiedJokerId
     });
 
-    return { success: true, sellPrice };
+    return { success: true, sellPrice, copiedJokerId };
   }
 
   /**
@@ -1182,11 +1197,13 @@ export class JokerSystem {
     multBonus: number;
     multMultiplier: number;
     effects: JokerEffectDetail[];
+    heldCardRetrigger: boolean; // 哑剧演员效果：手牌能力触发2次
   } {
     let totalChipBonus = 0;
     let totalMultBonus = 0;
     let totalMultMultiplier = 1;
     const effects: JokerEffectDetail[] = [];
+    let heldCardRetrigger = false; // 哑剧演员效果
 
     const jokers = jokerSlots.getJokers();
 
@@ -1200,6 +1217,28 @@ export class JokerSystem {
 
       // 添加jokerState到context
       (context as unknown as { jokerState: typeof joker.state }).jokerState = joker.state;
+
+      // 0. 处理独立触发器的小丑（如哑剧演员）
+      if (joker.trigger === JokerTrigger.ON_INDEPENDENT && joker.effect) {
+        const result = joker.effect(context);
+
+        // 检查是否有heldCardRetrigger效果（哑剧演员）
+        if (result.heldCardRetrigger) {
+          heldCardRetrigger = true;
+        }
+
+        if (result.message) {
+          effects.push({
+            jokerName: joker.name,
+            effect: result.message,
+            chipBonus: result.chipBonus,
+            multBonus: result.multBonus,
+            multMultiplier: result.multMultiplier
+          });
+        }
+
+        this.applyEffectResult(joker, result);
+      }
 
       // 1. 处理小丑自身的 onHeld 效果
       if (joker.onHeld) {
@@ -1281,7 +1320,8 @@ export class JokerSystem {
       chipBonus: totalChipBonus,
       multBonus: totalMultBonus,
       multMultiplier: totalMultMultiplier,
-      effects
+      effects,
+      heldCardRetrigger
     };
   }
 
