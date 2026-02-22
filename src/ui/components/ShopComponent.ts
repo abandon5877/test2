@@ -709,8 +709,9 @@ export class ShopComponent {
       // 使用 ResizeObserver 在容器大小确定后计算重叠量
       const applyJokerOverlap = () => {
         const containerWidth = jokersContainer.clientWidth;
-        // 从实际渲染的卡片获取宽度
-        const cardWidth = jokerCards[0]?.clientWidth || 90;
+        // 从实际渲染的卡片获取宽度（使用getBoundingClientRect获取更准确的外部宽度）
+        const cardRect = jokerCards[0]?.getBoundingClientRect();
+        const cardWidth = cardRect?.width || 90;
         if (containerWidth > 0 && cardWidth > 0) {
           const overlap = this.calculateOverlap(jokers.length, containerWidth, cardWidth);
           jokerCards.forEach((card, index) => {
@@ -778,8 +779,9 @@ export class ShopComponent {
       // 使用 ResizeObserver 在容器大小确定后计算重叠量
       const applyConsumableOverlap = () => {
         const containerWidth = consumablesContainer.clientWidth;
-        // 从实际渲染的卡片获取宽度
-        const cardWidth = consumableCards[0]?.clientWidth || 90;
+        // 从实际渲染的卡片获取宽度（使用getBoundingClientRect获取更准确的外部宽度）
+        const cardRect = consumableCards[0]?.getBoundingClientRect();
+        const cardWidth = cardRect?.width || 90;
         if (containerWidth > 0 && cardWidth > 0) {
           const overlap = this.calculateOverlap(consumables.length, containerWidth, cardWidth);
           consumableCards.forEach((card, index) => {
