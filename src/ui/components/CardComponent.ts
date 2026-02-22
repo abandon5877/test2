@@ -2,7 +2,7 @@ import { Card } from '../../models/Card';
 import { Suit, CardEnhancement, SealType, CardEdition } from '../../types/card';
 import { JokerDetailModal } from './JokerDetailModal';
 import { Joker } from '../../models/Joker';
-import { JokerRarity, JokerTrigger } from '../../types/joker';
+import { JokerRarity, JokerTrigger, JokerEdition } from '../../types/joker';
 
 export class CardComponent {
   private static suitSymbols: Record<Suit, string> = {
@@ -83,6 +83,40 @@ export class CardComponent {
     [CardEdition.Holographic]: '✨',
     [CardEdition.Polychrome]: '🌈',
     [CardEdition.Negative]: '🌑'
+  };
+
+  // 小丑牌版本颜色
+  private static jokerEditionColors: Record<JokerEdition, { bg: string; border: string; shadow: string }> = {
+    [JokerEdition.None]: { bg: '', border: '', shadow: '' },
+    [JokerEdition.Foil]: { 
+      bg: 'linear-gradient(135deg, rgba(192,192,192,0.2) 0%, rgba(220,220,220,0.3) 50%, rgba(192,192,192,0.2) 100%)', 
+      border: '#c0c0c0',
+      shadow: '0 0 10px rgba(192,192,192,0.6), inset 0 0 20px rgba(255,255,255,0.2)'
+    },
+    [JokerEdition.Holographic]: { 
+      bg: 'linear-gradient(135deg, rgba(233,30,99,0.2) 0%, rgba(156,39,176,0.3) 50%, rgba(63,81,181,0.2) 100%)', 
+      border: '#e91e63',
+      shadow: '0 0 15px rgba(233,30,99,0.7), inset 0 0 20px rgba(255,255,255,0.2)'
+    },
+    [JokerEdition.Polychrome]: { 
+      bg: 'linear-gradient(135deg, rgba(255,0,0,0.15) 0%, rgba(255,165,0,0.2) 20%, rgba(255,255,0,0.2) 40%, rgba(0,255,0,0.2) 60%, rgba(0,0,255,0.2) 80%, rgba(238,130,238,0.15) 100%)', 
+      border: '#f39c12',
+      shadow: '0 0 15px rgba(243,156,18,0.7), inset 0 0 20px rgba(255,255,255,0.2)'
+    },
+    [JokerEdition.Negative]: { 
+      bg: 'linear-gradient(135deg, rgba(0,0,0,0.6) 0%, rgba(44,62,80,0.7) 50%, rgba(0,0,0,0.6) 100%)', 
+      border: '#2c3e50',
+      shadow: '0 0 15px rgba(44,62,80,0.8), inset 0 0 20px rgba(255,255,255,0.1)'
+    }
+  };
+
+  // 小丑牌版本图标
+  private static jokerEditionIcons: Record<JokerEdition, string> = {
+    [JokerEdition.None]: '',
+    [JokerEdition.Foil]: '🥈',
+    [JokerEdition.Holographic]: '✨',
+    [JokerEdition.Polychrome]: '🌈',
+    [JokerEdition.Negative]: '🌑'
   };
 
   /**
@@ -240,10 +274,17 @@ export class CardComponent {
     rarity: string;
     cost: number;
     trigger?: string;
+    edition?: JokerEdition;
   }): HTMLElement {
     const cardElement = document.createElement('div');
     cardElement.className = `joker-card ${joker.rarity}`;
     cardElement.dataset.jokerId = joker.id;
+
+    // 应用小丑牌版本视觉效果
+    const edition = joker.edition || JokerEdition.None;
+    if (edition !== JokerEdition.None) {
+      this.applyJokerEditionVisuals(cardElement, edition);
+    }
 
     const icon = document.createElement('div');
     icon.className = 'joker-icon';
@@ -267,6 +308,24 @@ export class CardComponent {
     cardElement.appendChild(description);
     cardElement.appendChild(cost);
 
+    // 添加版本标记
+    if (edition !== JokerEdition.None) {
+      const editionBadge = document.createElement('div');
+      editionBadge.className = 'joker-edition-badge';
+      editionBadge.style.cssText = `
+        position: absolute;
+        top: 4px;
+        right: 4px;
+        font-size: 18px;
+        z-index: 10;
+        filter: drop-shadow(0 0 3px rgba(0, 0, 0, 0.8));
+        animation: edition-glow 2s ease-in-out infinite;
+      `;
+      editionBadge.textContent = this.jokerEditionIcons[edition];
+      editionBadge.title = this.getJokerEditionName(edition);
+      cardElement.appendChild(editionBadge);
+    }
+
     // 点击查看详情
     cardElement.addEventListener('click', () => {
       this.showJokerDetail(joker);
@@ -276,6 +335,31 @@ export class CardComponent {
     cardElement.title = `点击查看详情: ${joker.name}`;
 
     return cardElement;
+  }
+
+  /**
+   * 应用小丑牌版本视觉效果
+   */
+  private static applyJokerEditionVisuals(element: HTMLElement, edition: JokerEdition): void {
+    if (edition === JokerEdition.None) return;
+
+    const colors = this.jokerEditionColors[edition];
+    
+    // 应用背景渐变
+    element.style.background = colors.bg;
+    
+    // 应用边框发光效果
+    element.style.borderColor = colors.border;
+    element.style.boxShadow = colors.shadow;
+    
+    // 添加特殊动画效果
+    if (edition === JokerEdition.Holographic) {
+      element.classList.add('holographic-effect');
+    } else if (edition === JokerEdition.Polychrome) {
+      element.classList.add('polychrome-effect');
+    } else if (edition === JokerEdition.Foil) {
+      element.classList.add('foil-effect');
+    }
   }
 
   /**
@@ -317,10 +401,19 @@ export class CardComponent {
     description: string;
     type: string;
     cost: number;
+    isNegative?: boolean;
   }, showCost: boolean = true): HTMLElement {
     const cardElement = document.createElement('div');
     cardElement.className = `consumable-card ${consumable.type}`;
     cardElement.dataset.consumableId = consumable.id;
+
+    // 应用负片效果
+    if (consumable.isNegative) {
+      cardElement.classList.add('negative-consumable');
+      cardElement.style.border = '2px solid #9b59b6';
+      cardElement.style.boxShadow = '0 0 10px rgba(155, 89, 182, 0.5), inset 0 0 20px rgba(155, 89, 182, 0.1)';
+      cardElement.style.background = 'linear-gradient(135deg, rgba(155, 89, 182, 0.1) 0%, rgba(0, 0, 0, 0.8) 100%)';
+    }
 
     const icon = document.createElement('div');
     icon.className = 'consumable-icon';
@@ -352,8 +445,25 @@ export class CardComponent {
       cardElement.appendChild(cost);
     }
 
+    // 添加负片标记
+    if (consumable.isNegative) {
+      const negativeBadge = document.createElement('div');
+      negativeBadge.className = 'negative-badge';
+      negativeBadge.style.cssText = `
+        position: absolute;
+        top: 4px;
+        right: 4px;
+        font-size: 16px;
+        z-index: 10;
+        animation: negative-pulse 2s infinite;
+      `;
+      negativeBadge.textContent = '🌑';
+      negativeBadge.title = '负片 (不占用槽位)';
+      cardElement.appendChild(negativeBadge);
+    }
+
     // 悬停提示
-    cardElement.title = `${consumable.name}: ${consumable.description}`;
+    cardElement.title = `${consumable.name}: ${consumable.description}${consumable.isNegative ? ' [负片]' : ''}`;
 
     return cardElement;
   }
@@ -435,6 +545,20 @@ export class CardComponent {
       [CardEdition.Holographic]: '全息 (+10倍率)',
       [CardEdition.Polychrome]: '多彩 (×1.5倍率)',
       [CardEdition.Negative]: '负片 (+1小丑槽位)'
+    };
+    return names[edition];
+  }
+
+  /**
+   * 获取小丑牌版本名称
+   */
+  private static getJokerEditionName(edition: JokerEdition): string {
+    const names: Record<JokerEdition, string> = {
+      [JokerEdition.None]: '无',
+      [JokerEdition.Foil]: '闪箔 (+50筹码)',
+      [JokerEdition.Holographic]: '全息 (+10倍率)',
+      [JokerEdition.Polychrome]: '多彩 (×1.5倍率)',
+      [JokerEdition.Negative]: '负片 (+1小丑槽位)'
     };
     return names[edition];
   }

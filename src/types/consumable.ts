@@ -49,6 +49,7 @@ export interface ConsumableInterface {
   readonly type: ConsumableType;
   readonly cost: number;
   readonly useCondition?: string; // 使用条件描述
+  readonly isNegative?: boolean; // 负片效果：不占用槽位
   use(context: ConsumableEffectContext): ConsumableEffectResult;
   canUse(context: ConsumableEffectContext): boolean;
   clone(): ConsumableInterface;

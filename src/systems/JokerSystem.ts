@@ -111,7 +111,6 @@ export class JokerSystem {
 
     for (let i = 0; i < jokers.length; i++) {
       const joker = jokers[i];
-      if (!joker.onScored) continue;
 
       const context: JokerEffectContext = {
         scoredCards,
@@ -124,26 +123,83 @@ export class JokerSystem {
       // 添加jokerState到context
       (context as unknown as { jokerState: typeof joker.state }).jokerState = joker.state;
 
-      const result = joker.onScored(context);
+      // 1. 处理小丑自身的 onScored 效果
+      if (joker.onScored) {
+        const result = joker.onScored(context);
 
-      if (result.chipBonus || result.multBonus || result.multMultiplier || result.moneyBonus || result.message) {
-        totalChipBonus += result.chipBonus || 0;
-        totalMultBonus += result.multBonus || 0;
-        if (result.multMultiplier) {
-          totalMultMultiplier *= result.multMultiplier;
+        if (result.chipBonus || result.multBonus || result.multMultiplier || result.moneyBonus || result.message) {
+          totalChipBonus += result.chipBonus || 0;
+          totalMultBonus += result.multBonus || 0;
+          if (result.multMultiplier) {
+            totalMultMultiplier *= result.multMultiplier;
+          }
+
+          effects.push({
+            jokerName: joker.name,
+            effect: result.message || '触发效果',
+            chipBonus: result.chipBonus,
+            multBonus: result.multBonus,
+            multMultiplier: result.multMultiplier,
+            moneyBonus: result.moneyBonus
+          });
         }
 
-        effects.push({
-          jokerName: joker.name,
-          effect: result.message || '触发效果',
-          chipBonus: result.chipBonus,
-          multBonus: result.multBonus,
-          multMultiplier: result.multMultiplier,
-          moneyBonus: result.moneyBonus
-        });
+        this.applyEffectResult(joker, result);
       }
 
-      this.applyEffectResult(joker, result);
+      // 2. 处理蓝图的复制效果（复制右侧小丑的 onScored）
+      if (joker.id === 'blueprint' && i < jokers.length - 1) {
+        const rightJoker = jokers[i + 1];
+        if (rightJoker && rightJoker.id !== 'blueprint' && rightJoker.onScored) {
+          const result = rightJoker.onScored(context);
+
+          if (result.chipBonus || result.multBonus || result.multMultiplier || result.moneyBonus || result.message) {
+            totalChipBonus += result.chipBonus || 0;
+            totalMultBonus += result.multBonus || 0;
+            if (result.multMultiplier) {
+              totalMultMultiplier *= result.multMultiplier;
+            }
+
+            effects.push({
+              jokerName: joker.name,
+              effect: `蓝图复制 [${rightJoker.name}]: ${result.message || '触发效果'}`,
+              chipBonus: result.chipBonus,
+              multBonus: result.multBonus,
+              multMultiplier: result.multMultiplier,
+              moneyBonus: result.moneyBonus
+            });
+          }
+
+          this.applyEffectResult(joker, result);
+        }
+      }
+
+      // 3. 处理头脑风暴的复制效果（复制最左侧小丑的 onScored）
+      if (joker.id === 'brainstorm' && jokers.length > 1) {
+        const leftmostJoker = jokers[0];
+        if (leftmostJoker && leftmostJoker.id !== 'brainstorm' && leftmostJoker.onScored) {
+          const result = leftmostJoker.onScored(context);
+
+          if (result.chipBonus || result.multBonus || result.multMultiplier || result.moneyBonus || result.message) {
+            totalChipBonus += result.chipBonus || 0;
+            totalMultBonus += result.multBonus || 0;
+            if (result.multMultiplier) {
+              totalMultMultiplier *= result.multMultiplier;
+            }
+
+            effects.push({
+              jokerName: joker.name,
+              effect: `头脑风暴复制 [${leftmostJoker.name}]: ${result.message || '触发效果'}`,
+              chipBonus: result.chipBonus,
+              multBonus: result.multBonus,
+              multMultiplier: result.multMultiplier,
+              moneyBonus: result.moneyBonus
+            });
+          }
+
+          this.applyEffectResult(joker, result);
+        }
+      }
     }
 
     return {
@@ -186,11 +242,6 @@ export class JokerSystem {
     console.log('[JokerSystem] processHandPlayed循环开始, 小丑数量:', jokers.length);
     for (let i = 0; i < jokers.length; i++) {
       const joker = jokers[i];
-      console.log(`[JokerSystem] 检查小丑[${i}]:`, { id: joker.id, name: joker.name, trigger: joker.trigger, hasOnHandPlayed: 'onHandPlayed' in joker, type: typeof (joker as any).onHandPlayed });
-      if (!('onHandPlayed' in joker) || typeof (joker as any).onHandPlayed !== 'function') {
-        console.log(`[JokerSystem] 小丑[${i}]跳过: 没有onHandPlayed方法`);
-        continue;
-      }
 
       const context: JokerEffectContext = {
         scoredCards,
@@ -210,27 +261,86 @@ export class JokerSystem {
       // 添加jokerState到context
       (context as unknown as { jokerState: typeof joker.state }).jokerState = joker.state;
 
-      console.log(`[JokerSystem] 调用小丑[${i}] onHandPlayed, handType:`, handType);
-      const result = joker.onHandPlayed!(context);
-      console.log(`[JokerSystem] 小丑[${i}] onHandPlayed返回:`, result);
+      // 1. 处理小丑自身的 onHandPlayed 效果
+      if ('onHandPlayed' in joker && typeof (joker as any).onHandPlayed === 'function') {
+        console.log(`[JokerSystem] 调用小丑[${i}] onHandPlayed, handType:`, handType);
+        const result = joker.onHandPlayed!(context);
+        console.log(`[JokerSystem] 小丑[${i}] onHandPlayed返回:`, result);
 
-      if (result.chipBonus || result.multBonus || result.multMultiplier || result.message) {
-        totalChipBonus += result.chipBonus || 0;
-        totalMultBonus += result.multBonus || 0;
-        if (result.multMultiplier) {
-          totalMultMultiplier *= result.multMultiplier;
+        if (result.chipBonus || result.multBonus || result.multMultiplier || result.message) {
+          totalChipBonus += result.chipBonus || 0;
+          totalMultBonus += result.multBonus || 0;
+          if (result.multMultiplier) {
+            totalMultMultiplier *= result.multMultiplier;
+          }
+
+          effects.push({
+            jokerName: joker.name,
+            effect: result.message || '触发效果',
+            chipBonus: result.chipBonus,
+            multBonus: result.multBonus,
+            multMultiplier: result.multMultiplier
+          });
         }
 
-        effects.push({
-          jokerName: joker.name,
-          effect: result.message || '触发效果',
-          chipBonus: result.chipBonus,
-          multBonus: result.multBonus,
-          multMultiplier: result.multMultiplier
-        });
+        this.applyEffectResult(joker, result);
       }
 
-      this.applyEffectResult(joker, result);
+      // 2. 处理蓝图的复制效果（复制右侧小丑的 onHandPlayed）
+      if (joker.id === 'blueprint' && i < jokers.length - 1) {
+        const rightJoker = jokers[i + 1];
+        if (rightJoker && rightJoker.id !== 'blueprint' && 'onHandPlayed' in rightJoker && typeof (rightJoker as any).onHandPlayed === 'function') {
+          console.log(`[JokerSystem] 蓝图[${i}] 复制右侧小丑[${i + 1}] onHandPlayed:`, rightJoker.name);
+          const result = rightJoker.onHandPlayed!(context);
+          console.log(`[JokerSystem] 蓝图复制 onHandPlayed返回:`, result);
+
+          if (result.chipBonus || result.multBonus || result.multMultiplier || result.message) {
+            totalChipBonus += result.chipBonus || 0;
+            totalMultBonus += result.multBonus || 0;
+            if (result.multMultiplier) {
+              totalMultMultiplier *= result.multMultiplier;
+            }
+
+            effects.push({
+              jokerName: joker.name,
+              effect: `蓝图复制 [${rightJoker.name}]: ${result.message || '触发效果'}`,
+              chipBonus: result.chipBonus,
+              multBonus: result.multBonus,
+              multMultiplier: result.multMultiplier
+            });
+          }
+
+          this.applyEffectResult(joker, result);
+        }
+      }
+
+      // 3. 处理头脑风暴的复制效果（复制最左侧小丑的 onHandPlayed）
+      if (joker.id === 'brainstorm' && jokers.length > 1) {
+        const leftmostJoker = jokers[0];
+        if (leftmostJoker && leftmostJoker.id !== 'brainstorm' && 'onHandPlayed' in leftmostJoker && typeof (leftmostJoker as any).onHandPlayed === 'function') {
+          console.log(`[JokerSystem] 头脑风暴[${i}] 复制最左侧小丑 onHandPlayed:`, leftmostJoker.name);
+          const result = leftmostJoker.onHandPlayed!(context);
+          console.log(`[JokerSystem] 头脑风暴复制 onHandPlayed返回:`, result);
+
+          if (result.chipBonus || result.multBonus || result.multMultiplier || result.message) {
+            totalChipBonus += result.chipBonus || 0;
+            totalMultBonus += result.multBonus || 0;
+            if (result.multMultiplier) {
+              totalMultMultiplier *= result.multMultiplier;
+            }
+
+            effects.push({
+              jokerName: joker.name,
+              effect: `头脑风暴复制 [${leftmostJoker.name}]: ${result.message || '触发效果'}`,
+              chipBonus: result.chipBonus,
+              multBonus: result.multBonus,
+              multMultiplier: result.multMultiplier
+            });
+          }
+
+          this.applyEffectResult(joker, result);
+        }
+      }
     }
 
     return {
@@ -255,26 +365,91 @@ export class JokerSystem {
     let totalMultMultiplier = 1;
     const effects: JokerEffectDetail[] = [];
 
-    const context: JokerEffectContext = {};
+    const jokers = jokerSlots.getJokers();
 
-    for (const joker of jokerSlots.getJokers()) {
-      if (!joker.onPlay) continue;
-      const result = joker.onPlay(context);
+    for (let i = 0; i < jokers.length; i++) {
+      const joker = jokers[i];
 
-      if (result.chipBonus || result.multBonus || result.multMultiplier || result.message) {
-        totalChipBonus += result.chipBonus || 0;
-        totalMultBonus += result.multBonus || 0;
-        if (result.multMultiplier) {
-          totalMultMultiplier *= result.multMultiplier;
+      const context: JokerEffectContext = {
+        ...this.createPositionContext(jokerSlots, i)
+      };
+
+      // 添加jokerState到context
+      (context as unknown as { jokerState: typeof joker.state }).jokerState = joker.state;
+
+      // 1. 处理小丑自身的 onPlay 效果
+      if (joker.onPlay) {
+        const result = joker.onPlay(context);
+
+        if (result.chipBonus || result.multBonus || result.multMultiplier || result.message) {
+          totalChipBonus += result.chipBonus || 0;
+          totalMultBonus += result.multBonus || 0;
+          if (result.multMultiplier) {
+            totalMultMultiplier *= result.multMultiplier;
+          }
+
+          effects.push({
+            jokerName: joker.name,
+            effect: result.message || '触发效果',
+            chipBonus: result.chipBonus,
+            multBonus: result.multBonus,
+            multMultiplier: result.multMultiplier
+          });
         }
 
-        effects.push({
-          jokerName: joker.name,
-          effect: result.message || '触发效果',
-          chipBonus: result.chipBonus,
-          multBonus: result.multBonus,
-          multMultiplier: result.multMultiplier
-        });
+        this.applyEffectResult(joker, result);
+      }
+
+      // 2. 处理蓝图的复制效果（复制右侧小丑的 onPlay）
+      if (joker.id === 'blueprint' && i < jokers.length - 1) {
+        const rightJoker = jokers[i + 1];
+        if (rightJoker && rightJoker.id !== 'blueprint' && rightJoker.onPlay) {
+          const result = rightJoker.onPlay(context);
+
+          if (result.chipBonus || result.multBonus || result.multMultiplier || result.message) {
+            totalChipBonus += result.chipBonus || 0;
+            totalMultBonus += result.multBonus || 0;
+            if (result.multMultiplier) {
+              totalMultMultiplier *= result.multMultiplier;
+            }
+
+            effects.push({
+              jokerName: joker.name,
+              effect: `蓝图复制 [${rightJoker.name}]: ${result.message || '触发效果'}`,
+              chipBonus: result.chipBonus,
+              multBonus: result.multBonus,
+              multMultiplier: result.multMultiplier
+            });
+          }
+
+          this.applyEffectResult(joker, result);
+        }
+      }
+
+      // 3. 处理头脑风暴的复制效果（复制最左侧小丑的 onPlay）
+      if (joker.id === 'brainstorm' && jokers.length > 1) {
+        const leftmostJoker = jokers[0];
+        if (leftmostJoker && leftmostJoker.id !== 'brainstorm' && leftmostJoker.onPlay) {
+          const result = leftmostJoker.onPlay(context);
+
+          if (result.chipBonus || result.multBonus || result.multMultiplier || result.message) {
+            totalChipBonus += result.chipBonus || 0;
+            totalMultBonus += result.multBonus || 0;
+            if (result.multMultiplier) {
+              totalMultMultiplier *= result.multMultiplier;
+            }
+
+            effects.push({
+              jokerName: joker.name,
+              effect: `头脑风暴复制 [${leftmostJoker.name}]: ${result.message || '触发效果'}`,
+              chipBonus: result.chipBonus,
+              multBonus: result.multBonus,
+              multMultiplier: result.multMultiplier
+            });
+          }
+
+          this.applyEffectResult(joker, result);
+        }
       }
     }
 
@@ -303,47 +478,137 @@ export class JokerSystem {
 
     for (let i = jokers.length - 1; i >= 0; i--) {
       const joker = jokers[i];
-      if (!joker.onEndRound) continue;
 
       // 添加jokerState到context
       (context as unknown as { jokerState: typeof joker.state }).jokerState = joker.state;
 
-      const result = joker.onEndRound(context);
+      // 1. 处理小丑自身的 onEndRound 效果
+      if (joker.onEndRound) {
+        const result = joker.onEndRound(context);
 
-      // 处理状态更新
-      if (result.stateUpdate) {
-        joker.updateState(result.stateUpdate);
+        // 处理状态更新
+        if (result.stateUpdate) {
+          joker.updateState(result.stateUpdate);
+        }
+
+        // 处理自我摧毁
+        if (result.destroySelf) {
+          destroyedJokers.push(i);
+          jokerSlots.removeJoker(i);
+        }
+
+        // 处理摧毁右侧小丑
+        if (result.destroyRightJoker && i < jokers.length - 1) {
+          const rightIndex = i + 1;
+          destroyedJokers.push(rightIndex);
+          jokerSlots.removeJoker(rightIndex);
+        }
+
+        // 处理摧毁随机小丑（不包括自己）
+        if (result.destroyRandomJoker && jokers.length > 1) {
+          const otherIndices = jokers.map((_, idx) => idx).filter(idx => idx !== i);
+          const randomIndex = otherIndices[Math.floor(Math.random() * otherIndices.length)];
+          destroyedJokers.push(randomIndex);
+          jokerSlots.removeJoker(randomIndex);
+        }
+
+        if (result.moneyBonus || result.message) {
+          totalMoneyBonus += result.moneyBonus || 0;
+
+          effects.push({
+            jokerName: joker.name,
+            effect: result.message || '触发效果',
+            moneyBonus: result.moneyBonus
+          });
+        }
       }
 
-      // 处理自我摧毁
-      if (result.destroySelf) {
-        destroyedJokers.push(i);
-        jokerSlots.removeJoker(i);
+      // 2. 处理蓝图的复制效果（复制右侧小丑的 onEndRound）
+      if (joker.id === 'blueprint' && i < jokers.length - 1) {
+        const rightJoker = jokers[i + 1];
+        if (rightJoker && rightJoker.id !== 'blueprint' && rightJoker.onEndRound) {
+          const result = rightJoker.onEndRound(context);
+
+          // 处理状态更新
+          if (result.stateUpdate) {
+            joker.updateState(result.stateUpdate);
+          }
+
+          // 处理自我摧毁（蓝图复制时，摧毁的是自己）
+          if (result.destroySelf) {
+            destroyedJokers.push(i);
+            jokerSlots.removeJoker(i);
+          }
+
+          // 处理摧毁右侧小丑
+          if (result.destroyRightJoker && i < jokers.length - 1) {
+            const rightIndex = i + 1;
+            destroyedJokers.push(rightIndex);
+            jokerSlots.removeJoker(rightIndex);
+          }
+
+          // 处理摧毁随机小丑（不包括自己）
+          if (result.destroyRandomJoker && jokers.length > 1) {
+            const otherIndices = jokers.map((_, idx) => idx).filter(idx => idx !== i);
+            const randomIndex = otherIndices[Math.floor(Math.random() * otherIndices.length)];
+            destroyedJokers.push(randomIndex);
+            jokerSlots.removeJoker(randomIndex);
+          }
+
+          if (result.moneyBonus || result.message) {
+            totalMoneyBonus += result.moneyBonus || 0;
+
+            effects.push({
+              jokerName: joker.name,
+              effect: `蓝图复制 [${rightJoker.name}]: ${result.message || '触发效果'}`,
+              moneyBonus: result.moneyBonus
+            });
+          }
+        }
       }
 
-      // 处理摧毁右侧小丑
-      if (result.destroyRightJoker && i < jokers.length - 1) {
-        const rightIndex = i + 1;
-        destroyedJokers.push(rightIndex);
-        jokerSlots.removeJoker(rightIndex);
-      }
+      // 3. 处理头脑风暴的复制效果（复制最左侧小丑的 onEndRound）
+      if (joker.id === 'brainstorm' && jokers.length > 1) {
+        const leftmostJoker = jokers[0];
+        if (leftmostJoker && leftmostJoker.id !== 'brainstorm' && leftmostJoker.onEndRound) {
+          const result = leftmostJoker.onEndRound(context);
 
-      // 处理摧毁随机小丑（不包括自己）
-      if (result.destroyRandomJoker && jokers.length > 1) {
-        const otherIndices = jokers.map((_, idx) => idx).filter(idx => idx !== i);
-        const randomIndex = otherIndices[Math.floor(Math.random() * otherIndices.length)];
-        destroyedJokers.push(randomIndex);
-        jokerSlots.removeJoker(randomIndex);
-      }
+          // 处理状态更新
+          if (result.stateUpdate) {
+            joker.updateState(result.stateUpdate);
+          }
 
-      if (result.moneyBonus || result.message) {
-        totalMoneyBonus += result.moneyBonus || 0;
+          // 处理自我摧毁（头脑风暴复制时，摧毁的是自己）
+          if (result.destroySelf) {
+            destroyedJokers.push(i);
+            jokerSlots.removeJoker(i);
+          }
 
-        effects.push({
-          jokerName: joker.name,
-          effect: result.message || '触发效果',
-          moneyBonus: result.moneyBonus
-        });
+          // 处理摧毁右侧小丑
+          if (result.destroyRightJoker && i < jokers.length - 1) {
+            const rightIndex = i + 1;
+            destroyedJokers.push(rightIndex);
+            jokerSlots.removeJoker(rightIndex);
+          }
+
+          // 处理摧毁随机小丑（不包括自己）
+          if (result.destroyRandomJoker && jokers.length > 1) {
+            const otherIndices = jokers.map((_, idx) => idx).filter(idx => idx !== i);
+            const randomIndex = otherIndices[Math.floor(Math.random() * otherIndices.length)];
+            destroyedJokers.push(randomIndex);
+            jokerSlots.removeJoker(randomIndex);
+          }
+
+          if (result.moneyBonus || result.message) {
+            totalMoneyBonus += result.moneyBonus || 0;
+
+            effects.push({
+              jokerName: joker.name,
+              effect: `头脑风暴复制 [${leftmostJoker.name}]: ${result.message || '触发效果'}`,
+              moneyBonus: result.moneyBonus
+            });
+          }
+        }
       }
     }
 
@@ -365,19 +630,65 @@ export class JokerSystem {
   } {
     const effects: JokerEffectDetail[] = [];
 
-    const context: JokerEffectContext = {
-      card
-    };
+    const jokers = jokerSlots.getJokers();
 
-    for (const joker of jokerSlots.getJokers()) {
-      if (!joker.onCardAdded) continue;
-      const result = joker.onCardAdded(context);
+    for (let i = 0; i < jokers.length; i++) {
+      const joker = jokers[i];
 
-      if (result.message) {
-        effects.push({
-          jokerName: joker.name,
-          effect: result.message
-        });
+      const context: JokerEffectContext = {
+        card,
+        ...this.createPositionContext(jokerSlots, i)
+      };
+
+      // 添加jokerState到context
+      (context as unknown as { jokerState: typeof joker.state }).jokerState = joker.state;
+
+      // 1. 处理小丑自身的 onCardAdded 效果
+      if (joker.onCardAdded) {
+        const result = joker.onCardAdded(context);
+
+        if (result.message) {
+          effects.push({
+            jokerName: joker.name,
+            effect: result.message
+          });
+        }
+
+        this.applyEffectResult(joker, result);
+      }
+
+      // 2. 处理蓝图的复制效果（复制右侧小丑）
+      if (joker.id === 'blueprint' && i < jokers.length - 1) {
+        const rightJoker = jokers[i + 1];
+        if (rightJoker && rightJoker.id !== 'blueprint' && rightJoker.onCardAdded) {
+          const result = rightJoker.onCardAdded(context);
+
+          if (result.message) {
+            effects.push({
+              jokerName: joker.name,
+              effect: `蓝图复制 [${rightJoker.name}]: ${result.message}`
+            });
+          }
+
+          this.applyEffectResult(joker, result);
+        }
+      }
+
+      // 3. 处理头脑风暴的复制效果（复制最左侧小丑）
+      if (joker.id === 'brainstorm' && jokers.length > 1) {
+        const leftmostJoker = jokers[0];
+        if (leftmostJoker && leftmostJoker.id !== 'brainstorm' && leftmostJoker.onCardAdded) {
+          const result = leftmostJoker.onCardAdded(context);
+
+          if (result.message) {
+            effects.push({
+              jokerName: joker.name,
+              effect: `头脑风暴复制 [${leftmostJoker.name}]: ${result.message}`
+            });
+          }
+
+          this.applyEffectResult(joker, result);
+        }
       }
     }
 
@@ -398,32 +709,83 @@ export class JokerSystem {
 
     const jokers = jokerSlots.getJokers();
 
-    for (const joker of jokers) {
-      if (!joker.onReroll) continue;
+    for (let i = 0; i < jokers.length; i++) {
+      const joker = jokers[i];
 
       const context: JokerEffectContext = {
-        ...this.createPositionContext(jokerSlots, jokers.indexOf(joker))
+        ...this.createPositionContext(jokerSlots, i)
       };
 
       // 添加jokerState到context
       (context as unknown as { jokerState: typeof joker.state }).jokerState = joker.state;
 
-      const result = joker.onReroll(context);
+      // 1. 处理小丑自身的 onReroll 效果
+      if (joker.onReroll) {
+        const result = joker.onReroll(context);
 
-      // 处理状态更新
-      if (result.stateUpdate) {
-        joker.updateState(result.stateUpdate);
-      }
-
-      if (result.freeReroll || result.message) {
-        if (result.freeReroll) {
-          hasFreeReroll = true;
+        // 处理状态更新
+        if (result.stateUpdate) {
+          joker.updateState(result.stateUpdate);
         }
 
-        effects.push({
-          jokerName: joker.name,
-          effect: result.message || '触发效果'
-        });
+        if (result.freeReroll || result.message) {
+          if (result.freeReroll) {
+            hasFreeReroll = true;
+          }
+
+          effects.push({
+            jokerName: joker.name,
+            effect: result.message || '触发效果'
+          });
+        }
+      }
+
+      // 2. 处理蓝图的复制效果（复制右侧小丑的 onReroll）
+      if (joker.id === 'blueprint' && i < jokers.length - 1) {
+        const rightJoker = jokers[i + 1];
+        if (rightJoker && rightJoker.id !== 'blueprint' && rightJoker.onReroll) {
+          const result = rightJoker.onReroll(context);
+
+          // 处理状态更新
+          if (result.stateUpdate) {
+            joker.updateState(result.stateUpdate);
+          }
+
+          if (result.freeReroll || result.message) {
+            if (result.freeReroll) {
+              hasFreeReroll = true;
+            }
+
+            effects.push({
+              jokerName: joker.name,
+              effect: `蓝图复制 [${rightJoker.name}]: ${result.message || '触发效果'}`
+            });
+          }
+        }
+      }
+
+      // 3. 处理头脑风暴的复制效果（复制最左侧小丑的 onReroll）
+      if (joker.id === 'brainstorm' && jokers.length > 1) {
+        const leftmostJoker = jokers[0];
+        if (leftmostJoker && leftmostJoker.id !== 'brainstorm' && leftmostJoker.onReroll) {
+          const result = leftmostJoker.onReroll(context);
+
+          // 处理状态更新
+          if (result.stateUpdate) {
+            joker.updateState(result.stateUpdate);
+          }
+
+          if (result.freeReroll || result.message) {
+            if (result.freeReroll) {
+              hasFreeReroll = true;
+            }
+
+            effects.push({
+              jokerName: joker.name,
+              effect: `头脑风暴复制 [${leftmostJoker.name}]: ${result.message || '触发效果'}`
+            });
+          }
+        }
       }
     }
 
@@ -435,6 +797,8 @@ export class JokerSystem {
 
   /**
    * 处理盲注选择
+   * 处理 ON_BLIND_SELECT 触发器的小丑牌效果
+   * 同时处理蓝图和头脑风暴的复制效果
    */
   static processBlindSelect(
     jokerSlots: JokerSlots,
@@ -460,7 +824,6 @@ export class JokerSystem {
 
     for (let i = 0; i < jokers.length; i++) {
       const joker = jokers[i];
-      if (!joker.onBlindSelect) continue;
 
       const context: JokerEffectContext = {
         blindType,
@@ -468,33 +831,115 @@ export class JokerSystem {
         ...this.createPositionContext(jokerSlots, i)
       };
 
-      const result = joker.onBlindSelect(context);
+      // 添加jokerState到context
+      (context as unknown as { jokerState: typeof joker.state }).jokerState = joker.state;
 
-      if (result.tarotBonus) {
-        totalTarotBonus += result.tarotBonus;
-      }
-      if (result.jokerBonus) {
-        totalJokerBonus += result.jokerBonus;
-      }
-      if (result.handBonus) {
-        totalHandBonus += result.handBonus;
-      }
-      if (result.discardReset) {
-        hasDiscardReset = true;
-      }
-      if (result.multMultiplier) {
-        totalMultMultiplier *= result.multMultiplier;
-      }
-      if (result.multBonus) {
-        totalMultBonus += result.multBonus;
+      // 1. 处理小丑自身的 onBlindSelect 效果
+      if (joker.onBlindSelect) {
+        const result = joker.onBlindSelect(context);
+
+        if (result.tarotBonus) {
+          totalTarotBonus += result.tarotBonus;
+        }
+        if (result.jokerBonus) {
+          totalJokerBonus += result.jokerBonus;
+        }
+        if (result.handBonus) {
+          totalHandBonus += result.handBonus;
+        }
+        if (result.discardReset) {
+          hasDiscardReset = true;
+        }
+        if (result.multMultiplier) {
+          totalMultMultiplier *= result.multMultiplier;
+        }
+        if (result.multBonus) {
+          totalMultBonus += result.multBonus;
+        }
+
+        if (result.message) {
+          effects.push({
+            jokerName: joker.name,
+            effect: result.message,
+            multMultiplier: result.multMultiplier
+          });
+        }
+
+        this.applyEffectResult(joker, result);
       }
 
-      if (result.message) {
-        effects.push({
-          jokerName: joker.name,
-          effect: result.message,
-          multMultiplier: result.multMultiplier
-        });
+      // 2. 处理蓝图的复制效果（复制右侧小丑）
+      if (joker.id === 'blueprint' && i < jokers.length - 1) {
+        const rightJoker = jokers[i + 1];
+        if (rightJoker && rightJoker.id !== 'blueprint' && rightJoker.onBlindSelect) {
+          const result = rightJoker.onBlindSelect(context);
+
+          if (result.tarotBonus) {
+            totalTarotBonus += result.tarotBonus;
+          }
+          if (result.jokerBonus) {
+            totalJokerBonus += result.jokerBonus;
+          }
+          if (result.handBonus) {
+            totalHandBonus += result.handBonus;
+          }
+          if (result.discardReset) {
+            hasDiscardReset = true;
+          }
+          if (result.multMultiplier) {
+            totalMultMultiplier *= result.multMultiplier;
+          }
+          if (result.multBonus) {
+            totalMultBonus += result.multBonus;
+          }
+
+          if (result.message) {
+            effects.push({
+              jokerName: joker.name,
+              effect: `蓝图复制 [${rightJoker.name}]: ${result.message}`,
+              multMultiplier: result.multMultiplier
+            });
+          }
+
+          this.applyEffectResult(joker, result);
+        }
+      }
+
+      // 3. 处理头脑风暴的复制效果（复制最左侧小丑）
+      if (joker.id === 'brainstorm' && jokers.length > 1) {
+        const leftmostJoker = jokers[0];
+        if (leftmostJoker && leftmostJoker.id !== 'brainstorm' && leftmostJoker.onBlindSelect) {
+          const result = leftmostJoker.onBlindSelect(context);
+
+          if (result.tarotBonus) {
+            totalTarotBonus += result.tarotBonus;
+          }
+          if (result.jokerBonus) {
+            totalJokerBonus += result.jokerBonus;
+          }
+          if (result.handBonus) {
+            totalHandBonus += result.handBonus;
+          }
+          if (result.discardReset) {
+            hasDiscardReset = true;
+          }
+          if (result.multMultiplier) {
+            totalMultMultiplier *= result.multMultiplier;
+          }
+          if (result.multBonus) {
+            totalMultBonus += result.multBonus;
+          }
+
+          if (result.message) {
+            effects.push({
+              jokerName: joker.name,
+              effect: `头脑风暴复制 [${leftmostJoker.name}]: ${result.message}`,
+              multMultiplier: result.multMultiplier
+            });
+          }
+
+          this.applyEffectResult(joker, result);
+        }
       }
     }
 
@@ -512,22 +957,22 @@ export class JokerSystem {
   /**
    * 处理离开商店
    * 处理 ON_SHOP_EXIT 触发器的小丑牌效果（如佩尔科）
+   * 同时处理蓝图和头脑风暴的复制效果
    */
   static processShopExit(
     jokerSlots: JokerSlots,
     consumables: unknown[]
   ): {
     effects: JokerEffectDetail[];
-    copiedConsumableId?: string;
+    copiedConsumableIds: string[];
   } {
     const effects: JokerEffectDetail[] = [];
-    let copiedConsumableId: string | undefined;
+    const copiedConsumableIds: string[] = [];
 
     const jokers = jokerSlots.getJokers();
 
     for (let i = 0; i < jokers.length; i++) {
       const joker = jokers[i];
-      if (joker.trigger !== 'on_shop_exit') continue;
 
       const context: JokerEffectContext = {
         consumables,
@@ -537,26 +982,70 @@ export class JokerSystem {
       // 添加jokerState到context
       (context as unknown as { jokerState: typeof joker.state }).jokerState = joker.state;
 
-      const result = joker.effect(context);
+      // 1. 处理小丑自身的 ON_SHOP_EXIT 效果
+      if (joker.trigger === 'on_shop_exit') {
+        const result = joker.effect(context);
 
-      if (result.message) {
-        effects.push({
-          jokerName: joker.name,
-          effect: result.message
-        });
+        if (result.message) {
+          effects.push({
+            jokerName: joker.name,
+            effect: result.message
+          });
+        }
+
+        if (result.copiedConsumableId) {
+          copiedConsumableIds.push(result.copiedConsumableId);
+        }
+
+        this.applyEffectResult(joker, result);
       }
 
-      // 处理佩尔科的复制效果
-      if (result.copiedConsumableId) {
-        copiedConsumableId = result.copiedConsumableId;
+      // 2. 处理蓝图的复制效果（复制右侧小丑）
+      if (joker.id === 'blueprint' && i < jokers.length - 1) {
+        const rightJoker = jokers[i + 1];
+        if (rightJoker && rightJoker.id !== 'blueprint' && rightJoker.trigger === 'on_shop_exit') {
+          const result = rightJoker.effect(context);
+
+          if (result.message) {
+            effects.push({
+              jokerName: joker.name,
+              effect: `蓝图复制 [${rightJoker.name}]: ${result.message}`
+            });
+          }
+
+          if (result.copiedConsumableId) {
+            copiedConsumableIds.push(result.copiedConsumableId);
+          }
+
+          this.applyEffectResult(joker, result);
+        }
       }
 
-      this.applyEffectResult(joker, result);
+      // 3. 处理头脑风暴的复制效果（复制最左侧小丑）
+      if (joker.id === 'brainstorm' && jokers.length > 1) {
+        const leftmostJoker = jokers[0];
+        if (leftmostJoker && leftmostJoker.id !== 'brainstorm' && leftmostJoker.trigger === 'on_shop_exit') {
+          const result = leftmostJoker.effect(context);
+
+          if (result.message) {
+            effects.push({
+              jokerName: joker.name,
+              effect: `头脑风暴复制 [${leftmostJoker.name}]: ${result.message}`
+            });
+          }
+
+          if (result.copiedConsumableId) {
+            copiedConsumableIds.push(result.copiedConsumableId);
+          }
+
+          this.applyEffectResult(joker, result);
+        }
+      }
     }
 
     return {
       effects,
-      copiedConsumableId
+      copiedConsumableIds
     };
   }
 
@@ -584,7 +1073,6 @@ export class JokerSystem {
 
     for (let i = 0; i < jokers.length; i++) {
       const joker = jokers[i];
-      if (!joker.onDiscard) continue;
 
       const context: JokerEffectContext = {
         discardedCards,
@@ -595,27 +1083,86 @@ export class JokerSystem {
       // 添加jokerState到context
       (context as unknown as { jokerState: typeof joker.state }).jokerState = joker.state;
 
-      const result = joker.onDiscard(context);
+      // 1. 处理小丑自身的 onDiscard 效果
+      if (joker.onDiscard) {
+        const result = joker.onDiscard(context);
 
-      if (result.chipBonus || result.multBonus || result.multMultiplier || result.moneyBonus || result.message) {
-        totalChipBonus += result.chipBonus || 0;
-        totalMultBonus += result.multBonus || 0;
-        if (result.multMultiplier) {
-          totalMultMultiplier *= result.multMultiplier;
+        if (result.chipBonus || result.multBonus || result.multMultiplier || result.moneyBonus || result.message) {
+          totalChipBonus += result.chipBonus || 0;
+          totalMultBonus += result.multBonus || 0;
+          if (result.multMultiplier) {
+            totalMultMultiplier *= result.multMultiplier;
+          }
+          totalMoneyBonus += result.moneyBonus || 0;
+
+          effects.push({
+            jokerName: joker.name,
+            effect: result.message || '触发效果',
+            chipBonus: result.chipBonus,
+            multBonus: result.multBonus,
+            multMultiplier: result.multMultiplier,
+            moneyBonus: result.moneyBonus
+          });
         }
-        totalMoneyBonus += result.moneyBonus || 0;
 
-        effects.push({
-          jokerName: joker.name,
-          effect: result.message || '触发效果',
-          chipBonus: result.chipBonus,
-          multBonus: result.multBonus,
-          multMultiplier: result.multMultiplier,
-          moneyBonus: result.moneyBonus
-        });
+        this.applyEffectResult(joker, result);
       }
 
-      this.applyEffectResult(joker, result);
+      // 2. 处理蓝图的复制效果（复制右侧小丑）
+      if (joker.id === 'blueprint' && i < jokers.length - 1) {
+        const rightJoker = jokers[i + 1];
+        if (rightJoker && rightJoker.id !== 'blueprint' && rightJoker.onDiscard) {
+          const result = rightJoker.onDiscard(context);
+
+          if (result.chipBonus || result.multBonus || result.multMultiplier || result.moneyBonus || result.message) {
+            totalChipBonus += result.chipBonus || 0;
+            totalMultBonus += result.multBonus || 0;
+            if (result.multMultiplier) {
+              totalMultMultiplier *= result.multMultiplier;
+            }
+            totalMoneyBonus += result.moneyBonus || 0;
+
+            effects.push({
+              jokerName: joker.name,
+              effect: `蓝图复制 [${rightJoker.name}]: ${result.message || '触发效果'}`,
+              chipBonus: result.chipBonus,
+              multBonus: result.multBonus,
+              multMultiplier: result.multMultiplier,
+              moneyBonus: result.moneyBonus
+            });
+          }
+
+          this.applyEffectResult(joker, result);
+        }
+      }
+
+      // 3. 处理头脑风暴的复制效果（复制最左侧小丑）
+      if (joker.id === 'brainstorm' && jokers.length > 1) {
+        const leftmostJoker = jokers[0];
+        if (leftmostJoker && leftmostJoker.id !== 'brainstorm' && leftmostJoker.onDiscard) {
+          const result = leftmostJoker.onDiscard(context);
+
+          if (result.chipBonus || result.multBonus || result.multMultiplier || result.moneyBonus || result.message) {
+            totalChipBonus += result.chipBonus || 0;
+            totalMultBonus += result.multBonus || 0;
+            if (result.multMultiplier) {
+              totalMultMultiplier *= result.multMultiplier;
+            }
+            totalMoneyBonus += result.moneyBonus || 0;
+
+            effects.push({
+              jokerName: joker.name,
+              effect: `头脑风暴复制 [${leftmostJoker.name}]: ${result.message || '触发效果'}`,
+              chipBonus: result.chipBonus,
+              multBonus: result.multBonus,
+              multMultiplier: result.multMultiplier,
+              moneyBonus: result.moneyBonus
+            });
+          }
+
+          this.applyEffectResult(joker, result);
+        }
+      }
     }
 
     return {
@@ -645,29 +1192,88 @@ export class JokerSystem {
 
     for (let i = 0; i < jokers.length; i++) {
       const joker = jokers[i];
-      if (!joker.onHeld) continue;
 
       const context: JokerEffectContext = {
         heldCards,
         ...this.createPositionContext(jokerSlots, i)
       };
 
-      const result = joker.onHeld(context);
+      // 添加jokerState到context
+      (context as unknown as { jokerState: typeof joker.state }).jokerState = joker.state;
 
-      if (result.chipBonus || result.multBonus || result.multMultiplier || result.message) {
-        totalChipBonus += result.chipBonus || 0;
-        totalMultBonus += result.multBonus || 0;
-        if (result.multMultiplier) {
-          totalMultMultiplier *= result.multMultiplier;
+      // 1. 处理小丑自身的 onHeld 效果
+      if (joker.onHeld) {
+        const result = joker.onHeld(context);
+
+        if (result.chipBonus || result.multBonus || result.multMultiplier || result.message) {
+          totalChipBonus += result.chipBonus || 0;
+          totalMultBonus += result.multBonus || 0;
+          if (result.multMultiplier) {
+            totalMultMultiplier *= result.multMultiplier;
+          }
+
+          effects.push({
+            jokerName: joker.name,
+            effect: result.message || '触发效果',
+            chipBonus: result.chipBonus,
+            multBonus: result.multBonus,
+            multMultiplier: result.multMultiplier
+          });
         }
 
-        effects.push({
-          jokerName: joker.name,
-          effect: result.message || '触发效果',
-          chipBonus: result.chipBonus,
-          multBonus: result.multBonus,
-          multMultiplier: result.multMultiplier
-        });
+        this.applyEffectResult(joker, result);
+      }
+
+      // 2. 处理蓝图的复制效果（复制右侧小丑的 onHeld）
+      if (joker.id === 'blueprint' && i < jokers.length - 1) {
+        const rightJoker = jokers[i + 1];
+        if (rightJoker && rightJoker.id !== 'blueprint' && rightJoker.onHeld) {
+          const result = rightJoker.onHeld(context);
+
+          if (result.chipBonus || result.multBonus || result.multMultiplier || result.message) {
+            totalChipBonus += result.chipBonus || 0;
+            totalMultBonus += result.multBonus || 0;
+            if (result.multMultiplier) {
+              totalMultMultiplier *= result.multMultiplier;
+            }
+
+            effects.push({
+              jokerName: joker.name,
+              effect: `蓝图复制 [${rightJoker.name}]: ${result.message || '触发效果'}`,
+              chipBonus: result.chipBonus,
+              multBonus: result.multBonus,
+              multMultiplier: result.multMultiplier
+            });
+          }
+
+          this.applyEffectResult(joker, result);
+        }
+      }
+
+      // 3. 处理头脑风暴的复制效果（复制最左侧小丑的 onHeld）
+      if (joker.id === 'brainstorm' && jokers.length > 1) {
+        const leftmostJoker = jokers[0];
+        if (leftmostJoker && leftmostJoker.id !== 'brainstorm' && leftmostJoker.onHeld) {
+          const result = leftmostJoker.onHeld(context);
+
+          if (result.chipBonus || result.multBonus || result.multMultiplier || result.message) {
+            totalChipBonus += result.chipBonus || 0;
+            totalMultBonus += result.multBonus || 0;
+            if (result.multMultiplier) {
+              totalMultMultiplier *= result.multMultiplier;
+            }
+
+            effects.push({
+              jokerName: joker.name,
+              effect: `头脑风暴复制 [${leftmostJoker.name}]: ${result.message || '触发效果'}`,
+              chipBonus: result.chipBonus,
+              multBonus: result.multBonus,
+              multMultiplier: result.multMultiplier
+            });
+          }
+
+          this.applyEffectResult(joker, result);
+        }
       }
     }
 
@@ -692,8 +1298,8 @@ export class JokerSystem {
     discardsUsed?: number,
     deckSize?: number,
     initialDeckSize?: number,
-    handsRemaining?: number, // 剩余手牌数（用于acrobat等）
-    mostPlayedHand?: PokerHandType | null // 最常出的牌型（用于obelisk）
+    handsRemaining?: number,
+    mostPlayedHand?: PokerHandType | null
   ): ProcessedScoreResult {
     const jokerEffects: JokerEffectDetail[] = [];
     let totalChipBonus = 0;
@@ -787,7 +1393,7 @@ export class JokerSystem {
       chipBonus: baseResult.chipBonus + totalChipBonus,
       multBonus: baseResult.multBonus + totalMultBonus,
       totalChips: Math.floor(finalChips),
-      totalMultiplier: finalMult, // 保留小数倍率，支持Polychrome等效果
+      totalMultiplier: finalMult,
       jokerEffects,
       totalMoneyEarned
     };

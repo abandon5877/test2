@@ -828,7 +828,8 @@ export class GameBoard {
         name: joker.name,
         description: joker.description,
         rarity: joker.rarity,
-        cost: joker.cost
+        cost: joker.cost,
+        edition: joker.edition
       });
       
       jokerCard.draggable = jokers.length > 1;
@@ -1151,7 +1152,8 @@ export class GameBoard {
         name: consumable.name,
         description: consumable.description,
         type: consumable.type,
-        cost: consumable.cost
+        cost: consumable.cost,
+        isNegative: (consumable as any).isNegative
       });
       
       consumableCard.style.cursor = 'pointer';
@@ -1170,10 +1172,17 @@ export class GameBoard {
       consumablesArea.appendChild(consumableCard);
     });
 
-    // 更新标题中的数量
+    // 更新标题中的数量（区分负片牌）
     const consumablesTitle = consumablesArea.parentElement?.querySelector('h3');
     if (consumablesTitle) {
-      consumablesTitle.textContent = `🎴 消耗牌 (${this.gameState.getConsumableCount()}/${this.gameState.getMaxConsumableSlots()})`;
+      const nonNegativeCount = consumables.filter(c => !(c as any).isNegative).length;
+      const totalCount = consumables.length;
+      const negativeCount = totalCount - nonNegativeCount;
+      let titleText = `🎴 消耗牌 (${nonNegativeCount}/${this.gameState.getMaxConsumableSlots()})`;
+      if (negativeCount > 0) {
+        titleText += ` (+${negativeCount}负片)`;
+      }
+      consumablesTitle.textContent = titleText;
     }
   }
 

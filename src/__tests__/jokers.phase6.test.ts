@@ -351,10 +351,11 @@ describe('阶段6: 其他效果补全测试', () => {
       expect(result.effects).toHaveLength(1);
       expect(result.effects[0].jokerName).toBe('佩克欧');
       expect(result.effects[0].effect).toContain('佩尔科: 复制了');
-      
+
       // 验证复制了塔罗牌或行星牌（不是幻灵牌）
-      expect(result.copiedConsumableId).toBeDefined();
-      expect(['the_fool', 'pluto']).toContain(result.copiedConsumableId);
+      expect(result.copiedConsumableIds).toBeDefined();
+      expect(result.copiedConsumableIds.length).toBeGreaterThan(0);
+      expect(['the_fool', 'pluto']).toContain(result.copiedConsumableIds[0]);
     });
 
     it('没有塔罗/行星牌时不应该复制', () => {
@@ -401,7 +402,7 @@ describe('阶段6: 其他效果补全测试', () => {
       // 验证效果被触发但没有复制
       expect(result.effects).toHaveLength(1);
       expect(result.effects[0].effect).toBe('佩尔科: 没有塔罗/行星牌可复制');
-      expect(result.copiedConsumableId).toBeUndefined();
+      expect(result.copiedConsumableIds).toHaveLength(0);
     });
   });
 });

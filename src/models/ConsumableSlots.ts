@@ -24,16 +24,35 @@ export class ConsumableSlots {
   }
 
   /**
+   * 获取非负片消耗牌数量（用于槽位限制检查）
+   */
+  getNonNegativeConsumableCount(): number {
+    return this.consumables.filter(c => !c.isNegative).length;
+  }
+
+  /**
    * 添加消耗牌
    */
   addConsumable(consumable: ConsumableInterface): boolean {
-    if (this.consumables.length >= this.maxSlots) {
+    // 负片牌总是可以添加，不占用槽位
+    if (consumable.isNegative) {
+      this.consumables.push(consumable);
+      logger.info('负片消耗牌添加成功', {
+        consumableId: consumable.id,
+        consumableName: consumable.name
+      });
+      return true;
+    }
+
+    // 非负片牌受槽位限制
+    if (this.getNonNegativeConsumableCount() >= this.maxSlots) {
       logger.warn('Cannot add consumable: max slots reached', {
-        current: this.consumables.length,
+        current: this.getNonNegativeConsumableCount(),
         max: this.maxSlots
       });
       return false;
     }
+
     this.consumables.push(consumable);
     logger.info('Consumable added', {
       consumableId: consumable.id,
@@ -107,10 +126,17 @@ export class ConsumableSlots {
   }
 
   /**
-   * 检查是否还有空槽位
+   * 检查是否还有空槽位（只考虑非负片牌）
    */
   hasAvailableSlot(): boolean {
-    return this.consumables.length < this.maxSlots;
+    return this.getNonNegativeConsumableCount() < this.maxSlots;
+  }
+
+  /**
+   * 获取消耗牌总数量（包括负片牌）
+   */
+  getTotalConsumableCount(): number {
+    return this.consumables.length;
   }
 
   /**

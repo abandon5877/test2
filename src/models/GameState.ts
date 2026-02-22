@@ -577,7 +577,7 @@ export class GameState implements GameStateInterface {
     }
   }
 
-  exitShop(): { success: boolean; copiedConsumableId?: string; message?: string } {
+  exitShop(): { success: boolean; copiedConsumableIds?: string[]; message?: string } {
     if (this.phase !== GamePhase.SHOP) {
       return { success: false, message: '不在商店阶段' };
     }
@@ -586,13 +586,24 @@ export class GameState implements GameStateInterface {
     const consumables = this.consumableSlots.getConsumables();
     const shopExitResult = JokerSystem.processShopExit(this.jokerSlots, [...consumables]);
 
-    // 如果有复制的消耗牌，添加到消耗牌槽位
-    if (shopExitResult.copiedConsumableId) {
-      const copiedConsumable = getConsumableById(shopExitResult.copiedConsumableId);
-      if (copiedConsumable) {
-        const added = this.consumableSlots.addConsumable(copiedConsumable.clone());
-        if (!added) {
-          logger.warn('佩尔科: 消耗牌槽位已满，无法复制');
+    // 处理所有复制的消耗牌（支持多次复制，如蓝图+佩尔科）
+    if (shopExitResult.copiedConsumableIds && shopExitResult.copiedConsumableIds.length > 0) {
+      for (const copiedId of shopExitResult.copiedConsumableIds) {
+        const copiedConsumable = getConsumableById(copiedId);
+        if (copiedConsumable) {
+          // 佩尔科复制的牌带有负片效果，不占用槽位
+          const negativeConsumable = copiedConsumable.clone();
+          (negativeConsumable as any).isNegative = true;
+
+          const added = this.consumableSlots.addConsumable(negativeConsumable);
+          if (!added) {
+            logger.warn('佩尔科: 无法添加负片消耗牌', { copiedId });
+          } else {
+            logger.info('佩尔科: 成功复制负片消耗牌', {
+              name: negativeConsumable.name,
+              id: negativeConsumable.id
+            });
+          }
         }
       }
     }
@@ -602,7 +613,7 @@ export class GameState implements GameStateInterface {
 
     return {
       success: true,
-      copiedConsumableId: shopExitResult.copiedConsumableId,
+      copiedConsumableIds: shopExitResult.copiedConsumableIds,
       message: shopExitResult.effects.length > 0 ? shopExitResult.effects.map(e => e.effect).join(', ') : undefined
     };
   }
