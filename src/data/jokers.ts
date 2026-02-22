@@ -115,19 +115,8 @@ export const JOKERS: Joker[] = [
     description: '复制右侧小丑牌的能力',
     rarity: JokerRarity.RARE,
     cost: 8,
-    trigger: JokerTrigger.ON_HAND_PLAYED,
-    effect: (context: JokerEffectContext): JokerEffectResult => {
-      const rightJoker = context.rightJokers?.[0];
-      if (rightJoker && rightJoker.id !== 'blueprint') {
-        // 复制右侧小丑的效果
-        const result = rightJoker.effect(context);
-        return {
-          ...result,
-          message: `蓝图复制 [${rightJoker.name}]: ${result.message || '触发效果'}`
-        };
-      }
-      return {};
-    }
+    trigger: JokerTrigger.ON_INDEPENDENT, // 使用独立触发器，在JokerSystem中专门处理
+    effect: () => ({})
   }),
 
   new Joker({
