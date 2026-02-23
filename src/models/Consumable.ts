@@ -10,6 +10,7 @@ export class Consumable implements ConsumableInterface {
   private useFunction: (context: ConsumableEffectContext) => ConsumableEffectResult;
   private canUseFunction?: (context: ConsumableEffectContext) => boolean;
   sellValueBonus: number; // 礼品卡等增加的售价加成
+  isNegative?: boolean; // 负片效果：消耗牌槽位+1
 
   constructor(config: ConsumableConfig) {
     this.id = config.id;
@@ -21,6 +22,7 @@ export class Consumable implements ConsumableInterface {
     this.useFunction = config.use;
     this.canUseFunction = config.canUse;
     this.sellValueBonus = 0; // 初始售价为0
+    this.isNegative = config.isNegative;
   }
 
   /**

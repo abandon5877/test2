@@ -68,6 +68,7 @@ export interface ConsumableConfig {
   readonly use: (context: ConsumableEffectContext) => ConsumableEffectResult;
   readonly canUse?: (context: ConsumableEffectContext) => boolean;
   readonly useCondition?: string; // 使用条件描述
+  readonly isNegative?: boolean; // 负片效果：消耗牌槽位+1
 }
 
 export const CONSUMABLE_TYPE_NAMES: Readonly<Record<ConsumableType, string>> = {
