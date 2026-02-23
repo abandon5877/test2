@@ -1041,7 +1041,7 @@ export class JokerSystem {
       // 添加jokerState到context
       (context as unknown as { jokerState: typeof joker.state }).jokerState = joker.state;
 
-      // 0. 处理独立触发器的小丑（如哑剧演员）
+      // 0. 处理独立触发器的小丑（如哑剧演员、特技演员）
       if (joker.trigger === JokerTrigger.ON_INDEPENDENT && joker.effect) {
         const result = joker.effect(context);
 
@@ -1050,10 +1050,15 @@ export class JokerSystem {
           accumulator.heldCardRetrigger = true;
         }
 
-        if (result.message) {
+        // 累加筹码和倍率加成
+        if (result.chipBonus) accumulator.chipBonus += result.chipBonus;
+        if (result.multBonus) accumulator.multBonus += result.multBonus;
+        if (result.multMultiplier) accumulator.multMultiplier *= result.multMultiplier;
+
+        if (result.message || result.chipBonus || result.multBonus || result.multMultiplier) {
           accumulator.effects.push({
             jokerName: joker.name,
-            effect: result.message,
+            effect: result.message || '触发效果',
             chipBonus: result.chipBonus,
             multBonus: result.multBonus,
             multMultiplier: result.multMultiplier
