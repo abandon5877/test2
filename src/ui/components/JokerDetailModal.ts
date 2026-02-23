@@ -1,4 +1,4 @@
-import { JOKER_RARITY_COLORS, type JokerRarity } from '../../types/joker';
+import { JOKER_RARITY_COLORS, type JokerRarity, JokerEdition } from '../../types/joker';
 import type { Joker } from '../../models/Joker';
 
 export interface JokerDetailOptions {
@@ -99,13 +99,32 @@ export class JokerDetailModal {
       border-radius: 2vh;
       font-size: clamp(14px, 2.5vh, 20px);
       font-weight: bold;
-      margin-bottom: 2vh;
+      margin-bottom: 1vh;
       background: ${rarityColor}33;
       color: ${rarityColor};
       width: fit-content;
     `;
     rarityLabel.textContent = this.getRarityText(joker.rarity);
     modal.appendChild(rarityLabel);
+
+    // 版本标签（如果有）
+    if (joker.edition && joker.edition !== JokerEdition.None) {
+      const editionLabel = document.createElement('div');
+      const editionInfo = this.getEditionInfo(joker.edition);
+      editionLabel.style.cssText = `
+        display: inline-block;
+        padding: 1vh 2vw;
+        border-radius: 2vh;
+        font-size: clamp(14px, 2.5vh, 20px);
+        font-weight: bold;
+        margin-bottom: 2vh;
+        background: ${editionInfo.color}33;
+        color: ${editionInfo.color};
+        width: fit-content;
+      `;
+      editionLabel.textContent = editionInfo.name;
+      modal.appendChild(editionLabel);
+    }
 
     // 效果描述
     const desc = document.createElement('div');
@@ -214,6 +233,17 @@ export class JokerDetailModal {
       legendary: '传说'
     };
     return rarityMap[rarity] || '普通';
+  }
+
+  private getEditionInfo(edition: JokerEdition): { name: string; color: string } {
+    const editionMap: Record<JokerEdition, { name: string; color: string }> = {
+      [JokerEdition.None]: { name: '无', color: '#9ca3af' },
+      [JokerEdition.Foil]: { name: '闪箔 (+50筹码)', color: '#60a5fa' },
+      [JokerEdition.Holographic]: { name: '全息 (+10倍率)', color: '#c084fc' },
+      [JokerEdition.Polychrome]: { name: '多彩 (×1.5倍率)', color: '#fbbf24' },
+      [JokerEdition.Negative]: { name: '负片 (+1小丑槽位)', color: '#ef4444' }
+    };
+    return editionMap[edition] || { name: '无', color: '#9ca3af' };
   }
 
   close(): void {
