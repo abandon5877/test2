@@ -19,6 +19,7 @@ import { getRandomJoker } from '../../data/jokers';
 import { getConsumableById } from '../../data/consumables';
 import { Storage } from '../../utils/storage';
 import { PokerHandType } from '../../types/pokerHands';
+import { ConsumableHelper } from '../../utils/consumableHelper';
 
 export interface ShopItem {
   id: string;
@@ -46,6 +47,7 @@ export class ShopComponent {
   private itemDetailModal: Modal | null = null;
   private jokerDetailModal: JokerDetailModal;
   private consumableDetailModal: ConsumableDetailModal;
+  private consumableHelper: ConsumableHelper;
 
   /**
    * 获取刷新费用（从 gameState.shop 读取）
@@ -64,6 +66,14 @@ export class ShopComponent {
     this.deckOverviewModal = new DeckOverviewModal(gameState);
     this.itemDetailModal = new Modal();
     this.jokerDetailModal = JokerDetailModal.getInstance();
+    this.consumableHelper = new ConsumableHelper(gameState, {
+      onToast: (msg, type) => {
+        if (type === 'success') Toast.success(msg);
+        else if (type === 'warning') Toast.warning(msg);
+        else Toast.error(msg);
+      },
+      onRender: () => this.render()
+    });
     this.consumableDetailModal = ConsumableDetailModal.getInstance();
     console.log('[ShopComponent.constructor] gameState.shop:', gameState.shop);
     this.render();
@@ -1121,223 +1131,9 @@ ${description}
 
   // ========== 消耗牌使用 ==========
   private handleUseConsumable(index: number): void {
-    const consumables = this.gameState.consumables;
-    if (index < 0 || index >= consumables.length) return;
-
-    const consumable = consumables[index];
-    console.log('[ShopComponent] 使用消耗牌:', consumable.id, consumable.name);
-
-    // 创建使用上下文
-    const context = {
-      gameState: {
-        money: this.gameState.money,
-        hands: this.gameState.handsRemaining,
-        discards: this.gameState.discardsRemaining
-      },
-      selectedCards: this.gameState.cardPile.hand.getSelectedCards(),
-      deck: this.gameState.cardPile.deck,
-      jokers: this.gameState.jokers,
-      lastUsedConsumable: this.gameState.lastUsedConsumable ?? undefined,
-      addJoker: (rarity?: 'rare' | 'legendary'): boolean => {
-        console.log('[ShopComponent] addJoker 被调用, rarity:', rarity);
-        const joker = getRandomJoker();
-        console.log('[ShopComponent] 生成的随机小丑牌:', joker.id, joker.name);
-        if (rarity) {
-          (joker as Joker).rarity = rarity as JokerRarity;
-        }
-        const success = this.gameState.addJoker(joker);
-        console.log('[ShopComponent] addJoker 结果:', success);
-        return success;
-      },
-      canAddJoker: (): boolean => {
-        const availableSlots = this.gameState.getJokerSlots().getAvailableSlots();
-        console.log('[ShopComponent] canAddJoker 检查, 可用槽位:', availableSlots);
-        return availableSlots > 0;
-      },
-      addEditionToRandomJoker: (edition: string): boolean => {
-        console.log('[ShopComponent] addEditionToRandomJoker 被调用, edition:', edition);
-        const jokers = this.gameState.jokers;
-        const eligibleJokers = jokers.filter(j => j.edition === JokerEdition.None);
-        if (eligibleJokers.length === 0) return false;
-        
-        const randomIndex = Math.floor(Math.random() * eligibleJokers.length);
-        const targetJoker = eligibleJokers[randomIndex];
-        const actualIndex = this.gameState.jokers.indexOf(targetJoker);
-        
-        if (actualIndex >= 0) {
-          const joker = this.gameState.jokers[actualIndex] as Joker;
-          joker.edition = edition as JokerEdition;
-          console.log('[ShopComponent] 已为小丑牌添加版本:', joker.name, edition);
-          return true;
-        }
-        return false;
-      },
-      destroyOtherJokers: (): number => {
-        console.log('[ShopComponent] destroyOtherJokers 被调用');
-        const jokers = this.gameState.jokers;
-        if (jokers.length <= 1) return 0;
-
-        // 找到被复制的小丑索引（最后添加的那个）
-        const copiedJokerIndex = jokers.length - 1;
-        let destroyedCount = 0;
-
-        for (let i = jokers.length - 1; i >= 0; i--) {
-          // 跳过被复制的小丑，销毁其他所有小丑
-          if (i !== copiedJokerIndex) {
-            const joker = jokers[i] as Joker;
-            // 永恒小丑不能被摧毁
-            if (joker.sticker !== 'eternal') {
-              this.gameState.removeJoker(i);
-              destroyedCount++;
-            }
-          }
-        }
-        console.log('[ShopComponent] 已销毁小丑牌数量:', destroyedCount);
-        return destroyedCount;
-      },
-      copyRandomJoker: (): { success: boolean; copiedJokerName?: string } => {
-        console.log('[ShopComponent] copyRandomJoker 被调用');
-        const jokers = this.gameState.jokers;
-        if (jokers.length === 0) {
-          return { success: false };
-        }
-
-        // 随机选择一个小丑
-        const randomIndex = Math.floor(Math.random() * jokers.length);
-        const jokerToCopy = jokers[randomIndex] as Joker;
-
-        console.log('[ShopComponent] 选择复制的小丑:', jokerToCopy.name);
-
-        // 克隆小丑
-        const clonedJoker = jokerToCopy.clone() as Joker;
-
-        // 官方规则：负片版本不会被复制
-        if (clonedJoker.edition === JokerEdition.Negative) {
-          clonedJoker.edition = JokerEdition.None;
-        }
-
-        // 添加到小丑槽位
-        const success = this.gameState.addJoker(clonedJoker);
-        console.log('[ShopComponent] 复制小丑结果:', success, clonedJoker.name);
-
-        return {
-          success,
-          copiedJokerName: success ? clonedJoker.name : undefined
-        };
-      }
-    };
-
-    // 检查是否可以使用
-    const canUse = consumable.canUse(context);
-    console.log('[ShopComponent] canUse 结果:', canUse);
-    if (!canUse) {
-      Toast.warning('当前条件不满足，无法使用此消耗牌');
-      return;
-    }
-
-    // 使用消耗牌
-    console.log('[ShopComponent] 调用 consumable.use()');
-    const result = consumable.use(context);
-    console.log('[ShopComponent] use 结果:', result);
-
-    if (result.success) {
-      // 处理星球牌升级
-      if (result.handTypeUpgrade) {
-        console.log('[ShopComponent] 升级牌型:', result.handTypeUpgrade);
-        this.gameState.handLevelState.upgradeHand(result.handTypeUpgrade as PokerHandType);
-      }
-
-      // 处理黑洞牌升级所有牌型
-      if (result.upgradeAllHandLevels) {
-        console.log('[ShopComponent] 升级所有牌型');
-        this.gameState.handLevelState.upgradeAll();
-      }
-
-      // 处理受影响的卡牌（如火祭/使魔/冷酷摧毁的卡牌）
-      if (result.affectedCards && result.affectedCards.length > 0) {
-        console.log('[ShopComponent] 处理受影响的卡牌:', result.affectedCards.length);
-        const handCards = this.gameState.cardPile.hand.getCards();
-        const indicesToRemove: number[] = [];
-        for (const card of result.affectedCards) {
-          // 找到卡牌在手牌中的索引
-          const index = handCards.findIndex(c => c === card);
-          if (index !== -1) {
-            indicesToRemove.push(index);
-          }
-        }
-        // 从手牌中移除卡牌（摧毁，不进弃牌堆）
-        if (indicesToRemove.length > 0) {
-          this.gameState.cardPile.hand.removeCards(indicesToRemove);
-        }
-        console.log('[ShopComponent] 已摧毁卡牌:', result.affectedCards.map(c => c.toString()));
-      }
-
-      // 处理新添加的卡牌（如使魔/冷酷/咒语添加的卡牌）
-      if (result.newCards && result.newCards.length > 0) {
-        console.log('[ShopComponent] 添加新卡牌到手牌:', result.newCards.length);
-        for (const card of result.newCards) {
-          this.gameState.cardPile.hand.addCard(card);
-        }
-        console.log('[ShopComponent] 已添加卡牌:', result.newCards.map(c => c.toString()));
-      }
-
-      // 更新最后使用的消耗牌（用于愚者效果）
-      this.gameState.lastUsedConsumable = { id: consumable.id, type: consumable.type };
-      console.log('[ShopComponent] 更新 lastUsedConsumable:', this.gameState.lastUsedConsumable);
-
-      // 处理新生成的消耗牌（如女祭司生成的星球牌）
-      if (result.newConsumableIds && result.newConsumableIds.length > 0) {
-        console.log('[ShopComponent] 生成新的消耗牌:', result.newConsumableIds);
-        let addedCount = 0;
-        let skippedCount = 0;
-        
-        for (const consumableId of result.newConsumableIds) {
-          // 检查是否还有空槽位
-          if (!this.gameState.hasAvailableConsumableSlot()) {
-            console.log('[ShopComponent] 消耗牌槽位已满，跳过:', consumableId);
-            skippedCount++;
-            continue;
-          }
-          
-          const newConsumable = getConsumableById(consumableId);
-          if (newConsumable) {
-            const success = this.gameState.addConsumable(newConsumable);
-            if (success) {
-              console.log('[ShopComponent] 添加消耗牌成功:', consumableId);
-              addedCount++;
-            } else {
-              console.log('[ShopComponent] 添加消耗牌失败:', consumableId);
-              skippedCount++;
-            }
-          } else {
-            console.warn('[ShopComponent] 找不到消耗牌:', consumableId);
-            skippedCount++;
-          }
-        }
-        
-        if (skippedCount > 0) {
-          Toast.warning(`生成${result.newConsumableIds.length}张消耗牌，成功添加${addedCount}张，${skippedCount}张因槽位已满被跳过`);
-        } else {
-          Toast.success(`成功生成${addedCount}张消耗牌`);
-        }
-      }
-
-      // 从消耗牌槽中移除
-      console.log('[ShopComponent] 准备移除消耗牌, index:', index);
-      const removed = this.gameState.removeConsumable(index);
-      console.log('[ShopComponent] 移除消耗牌结果:', removed ? removed.id : 'none');
-
-      // 自动保存
+    const success = this.consumableHelper.useConsumable(index);
+    if (success) {
       Storage.autoSave(this.gameState);
-      console.log('[ShopComponent] 使用消耗牌后自动保存完成');
-
-      this.render();
-
-      if (result.message && (!result.newConsumableIds || result.newConsumableIds.length === 0)) {
-        Toast.success(result.message);
-      }
-    } else {
-      Toast.error(result.message || '使用失败');
     }
   }
 

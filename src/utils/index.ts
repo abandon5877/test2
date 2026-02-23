@@ -45,3 +45,5 @@ export {
   countCardsMatchingSuit,
   type EffectiveSuit
 } from './suitUtils';
+
+export { ConsumableHelper, type ConsumableCallbacks } from './consumableHelper';

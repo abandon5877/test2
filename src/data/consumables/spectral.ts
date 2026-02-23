@@ -287,8 +287,6 @@ export const SPECTRAL_CONSUMABLES: Consumable[] = [
         return { success: false, message: '小丑牌槽位已满' };
       }
 
-      const moneyLost = context.money || 0;
-
       let jokerAdded = false;
       if (context.addJoker) {
         jokerAdded = context.addJoker('rare');
@@ -297,7 +295,7 @@ export const SPECTRAL_CONSUMABLES: Consumable[] = [
       return {
         success: true,
         message: jokerAdded ? '怨灵: 创建稀有小丑，金钱设为$0' : '怨灵: 金钱设为$0（小丑槽位已满）',
-        moneyChange: -moneyLost
+        setMoney: 0
       };
     },
     canUse: (context: ConsumableEffectContext): boolean => {

@@ -804,7 +804,8 @@ class Game {
   private handleSortByRank(): void {
     this.gameState.cardPile.hand.sortByRank();
     if (this.currentComponent instanceof GameBoard) {
-      this.currentComponent.refreshHandOnly();
+      // 排序时禁用动画，避免卡牌乱抖
+      this.currentComponent.refreshHandOnly(true);
     }
     Storage.autoSave(this.gameState);
   }
@@ -815,7 +816,8 @@ class Game {
   private handleSortBySuit(): void {
     this.gameState.cardPile.hand.sortBySuit();
     if (this.currentComponent instanceof GameBoard) {
-      this.currentComponent.refreshHandOnly();
+      // 排序时禁用动画，避免卡牌乱抖
+      this.currentComponent.refreshHandOnly(true);
     }
     Storage.autoSave(this.gameState);
   }

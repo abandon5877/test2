@@ -69,10 +69,134 @@ export class HandComponent {
 
   /**
    * 更新手牌数据
+   * @param hand - 新的手牌数据
+   * @param disableAnimation - 是否禁用动画（用于排序等操作，避免卡牌乱抖）
    */
-  setHand(hand: Hand): void {
+  setHand(hand: Hand, disableAnimation: boolean = false): void {
     this.hand = hand;
-    this.render();
+    if (disableAnimation) {
+      // 排序时禁用动画，避免卡牌乱抖
+      this.renderWithoutAnimation();
+    } else {
+      this.render();
+    }
+  }
+
+  /**
+   * 渲染手牌（无动画版本，用于排序等操作）
+   */
+  private renderWithoutAnimation(): void {
+    this.container.innerHTML = '';
+    this.cardElements = [];
+
+    // 创建手牌区域
+    const handArea = document.createElement('div');
+    handArea.className = 'hand-area';
+    handArea.style.display = 'flex';
+    handArea.style.justifyContent = 'center';
+    handArea.style.alignItems = 'center';
+    handArea.style.width = '100%';
+    handArea.style.height = '100%';
+
+    const cards = this.hand.getCards();
+    const selectedIndices = this.hand.getSelectedIndices();
+    const totalCards = cards.length;
+
+    // 获取中间区域实际宽度
+    const centerPanel = this.container.closest('.game-layout-center') as HTMLElement;
+    
+    // 优先使用 game-layout-center 的宽度，其次是容器自身
+    let centerWidth = getElementWidth(this.container);
+    if (centerPanel) {
+      const centerPanelWidth = getElementWidth(centerPanel);
+      if (centerPanelWidth > 0) {
+        centerWidth = centerPanelWidth;
+      }
+    }
+    
+    // 确保最小宽度（防止计算错误）
+    centerWidth = Math.max(200, centerWidth);
+    
+    // 记录当前容器宽度
+    this.lastContainerWidth = getElementWidth(this.container);
+
+    // 先把 handArea 添加到 DOM，确保能获取正确的尺寸
+    this.container.appendChild(handArea);
+    
+    // 先渲染第一张卡牌到 DOM，获取实际宽度后再计算重叠量
+    let cardWidth = 70; // 默认估算值
+    let overlap = 0;
+    
+    // 渲染第一张卡牌
+    if (cards.length > 0) {
+      const firstCard = cards[0];
+      const isFirstSelected = selectedIndices.has(0);
+      const isFirstDisabled = this.bossState ? BossSystem.isCardDisabled(this.bossState, firstCard) : false;
+      const firstCardElement = CardComponent.renderCard(firstCard, isFirstSelected, isFirstDisabled);
+
+      // 临时添加到 DOM 以获取实际尺寸
+      firstCardElement.style.position = 'relative';
+      firstCardElement.style.flexShrink = '0';
+      handArea.appendChild(firstCardElement);
+
+      // 强制回流以确保尺寸计算正确
+      handArea.offsetHeight;
+
+      // 获取实际卡牌宽度
+      const actualWidth = getElementWidth(firstCardElement);
+      if (actualWidth > 0) {
+        cardWidth = actualWidth;
+      }
+
+      // 重新获取容器宽度（此时 handArea 已渲染）
+      const actualCenterWidth = getElementWidth(handArea) || centerWidth;
+
+      // 计算重叠量
+      overlap = this.calculateCardOverlap(actualCenterWidth, totalCards, cardWidth);
+
+      // 设置样式（排序时永久禁用动画）
+      firstCardElement.style.zIndex = '0';
+      firstCardElement.style.transition = 'none';
+      this.setCardVisualState(firstCardElement, 0, isFirstSelected, totalCards);
+      firstCardElement.addEventListener('click', () => this.handleCardClick(0));
+      this.cardElements.push(firstCardElement);
+
+      // 渲染剩余卡牌
+      for (let index = 1; index < cards.length; index++) {
+        const card = cards[index];
+        const isSelected = selectedIndices.has(index);
+        const isDisabled = this.bossState ? BossSystem.isCardDisabled(this.bossState, card) : false;
+        const cardElement = CardComponent.renderCard(card, isSelected, isDisabled);
+        
+        // 设置卡牌样式（排序时永久禁用动画）
+        cardElement.style.position = 'relative';
+        cardElement.style.flexShrink = '0';
+        cardElement.style.marginLeft = `-${overlap}px`;
+        cardElement.style.zIndex = String(index);
+        cardElement.style.transition = 'none';
+        
+        // 统一设置卡牌视觉状态
+        this.setCardVisualState(cardElement, index, isSelected, totalCards);
+        
+        // 添加点击事件
+        cardElement.addEventListener('click', () => this.handleCardClick(index));
+        
+        handArea.appendChild(cardElement);
+        this.cardElements.push(cardElement);
+      }
+      
+      // 排序操作不启用动画，保持 transition: none
+      // 但延迟后添加 transition-enabled 类，以便后续点击时有动画
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          this.cardElements.forEach(cardElement => {
+            // 移除内联 transition，让 CSS 类控制过渡效果
+            cardElement.style.transition = '';
+            cardElement.classList.add('transition-enabled');
+          });
+        }, 100);
+      });
+    }
   }
 
   /**
@@ -204,6 +328,8 @@ export class HandComponent {
       requestAnimationFrame(() => {
         setTimeout(() => {
           this.cardElements.forEach(cardElement => {
+            // 移除内联 transition，让 CSS 类控制过渡效果
+            cardElement.style.transition = '';
             cardElement.classList.add('transition-enabled');
           });
         }, 100);
@@ -256,6 +382,11 @@ export class HandComponent {
     // 更新UI
     const cardElement = this.cardElements[index];
     if (cardElement) {
+      // 确保动画已启用（玩家点击时肯定已经渲染完成）
+      // 移除内联的 transition: none，让 CSS 类控制过渡效果
+      cardElement.style.transition = '';
+      cardElement.classList.add('transition-enabled');
+      
       CardComponent.setSelected(cardElement, isSelected);
       // 统一设置卡牌视觉状态
       this.setCardVisualState(cardElement, index, isSelected, totalCards);

@@ -886,6 +886,10 @@ export class GameState implements GameStateInterface {
     return false;
   }
 
+  setMoney(amount: number): void {
+    this.money = amount;
+  }
+
   sellJoker(index: number): { success: boolean; sellPrice?: number; error?: string; copiedJokerId?: string } {
     const result = JokerSystem.sellJoker(this.jokerSlots, index);
     if (result.success && result.sellPrice) {

@@ -37,6 +37,7 @@ export interface ConsumableEffectResult {
   readonly affectedCards?: readonly Card[];
   readonly newCards?: readonly Card[];
   readonly moneyChange?: number;
+  readonly setMoney?: number; // 直接设置金钱数值（优先级高于 moneyChange）
   readonly newConsumableIds?: readonly string[];
   readonly copiedConsumableId?: string;
   readonly handTypeUpgrade?: string; // 需要升级的牌型（星球牌使用）

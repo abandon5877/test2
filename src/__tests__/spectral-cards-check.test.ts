@@ -377,12 +377,12 @@ describe('Spectral Cards Check and Test', () => {
       expect(handSizeDecreased).toBe(true);
     });
 
-    it('Wraith should return moneyChange to set money to 0', () => {
+    it('Wraith should return setMoney to 0', () => {
       const wraith = CONSUMABLES.find(c => c.id === 'spectral_wraith');
-      
+
       const result = wraith!.use({ money: 100 });
       expect(result.success).toBe(true);
-      expect(result.moneyChange).toBe(-100);
+      expect(result.setMoney).toBe(0);
     });
 
     it('Ectoplasm should add negative edition to random joker and decrease hand size', () => {
