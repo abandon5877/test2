@@ -38,30 +38,70 @@ describe('Voucher游戏状态测试', () => {
   });
 
   describe('Grabber/Nacho Tong - 出牌次数', () => {
-    it('Grabber应该在Shop中记录', () => {
+    it('Grabber应该增加1次出牌次数', () => {
+      const initialHands = gameState.handsRemaining;
+
       gameState.applyVoucher('voucher_grabber');
 
-      expect(gameState).toBeDefined();
+      expect(gameState.handsRemaining).toBe(initialHands + 1);
     });
 
-    it('Nacho Tong应该在Shop中记录', () => {
+    it('Nacho Tong应该增加2次出牌次数', () => {
+      const initialHands = gameState.handsRemaining;
+
       gameState.applyVoucher('voucher_nacho_tong');
 
-      expect(gameState).toBeDefined();
+      expect(gameState.handsRemaining).toBe(initialHands + 2);
+    });
+
+    it('Grabber应该影响getMaxHandsPerRound', () => {
+      const initialMaxHands = gameState.getMaxHandsPerRound();
+
+      gameState.applyVoucher('voucher_grabber');
+
+      expect(gameState.getMaxHandsPerRound()).toBe(initialMaxHands + 1);
+    });
+
+    it('Nacho Tong应该影响getMaxHandsPerRound', () => {
+      const initialMaxHands = gameState.getMaxHandsPerRound();
+
+      gameState.applyVoucher('voucher_nacho_tong');
+
+      expect(gameState.getMaxHandsPerRound()).toBe(initialMaxHands + 2);
     });
   });
 
   describe('Wasteful/Recyclomancy - 弃牌次数', () => {
-    it('Wasteful应该在Shop中记录', () => {
+    it('Wasteful应该增加1次弃牌次数', () => {
+      const initialDiscards = gameState.discardsRemaining;
+
       gameState.applyVoucher('voucher_wasteful');
 
-      expect(gameState).toBeDefined();
+      expect(gameState.discardsRemaining).toBe(initialDiscards + 1);
     });
 
-    it('Recyclomancy应该在Shop中记录', () => {
+    it('Recyclomancy应该增加2次弃牌次数', () => {
+      const initialDiscards = gameState.discardsRemaining;
+
       gameState.applyVoucher('voucher_recyclomancy');
 
-      expect(gameState).toBeDefined();
+      expect(gameState.discardsRemaining).toBe(initialDiscards + 2);
+    });
+
+    it('Wasteful应该影响getMaxDiscardsPerRound', () => {
+      const initialMaxDiscards = gameState.getMaxDiscardsPerRound();
+
+      gameState.applyVoucher('voucher_wasteful');
+
+      expect(gameState.getMaxDiscardsPerRound()).toBe(initialMaxDiscards + 1);
+    });
+
+    it('Recyclomancy应该影响getMaxDiscardsPerRound', () => {
+      const initialMaxDiscards = gameState.getMaxDiscardsPerRound();
+
+      gameState.applyVoucher('voucher_recyclomancy');
+
+      expect(gameState.getMaxDiscardsPerRound()).toBe(initialMaxDiscards + 2);
     });
   });
 });

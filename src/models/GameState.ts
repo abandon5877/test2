@@ -71,6 +71,8 @@ export class GameState implements GameStateInterface {
     totalDiscardsUsed: number;
   };
   private extraHandSizeFromVouchers: number = 0;
+  private extraHandsFromVouchers: number = 0;
+  private extraDiscardsFromVouchers: number = 0;
   lastUsedConsumable: { id: string; type: ConsumableType } | null = null;
 
   constructor(config: Partial<GameConfig> = {}) {
@@ -98,7 +100,7 @@ export class GameState implements GameStateInterface {
     this.ante = this.config.startingAnte;
     this.money = this.config.startingMoney;
     this.handsRemaining = this.getMaxHandsPerRound();
-    this.discardsRemaining = this.config.maxDiscardsPerRound;
+    this.discardsRemaining = this.getMaxDiscardsPerRound();
     this.currentScore = 0;
     this.roundScore = 0;
     this.consumableSlots = new ConsumableSlots(2);
@@ -114,6 +116,8 @@ export class GameState implements GameStateInterface {
       totalDiscardsUsed: 0
     };
     this.extraHandSizeFromVouchers = 0;
+    this.extraHandsFromVouchers = 0;
+    this.extraDiscardsFromVouchers = 0;
     
     // 重置Boss选择状态并初始化盲注配置
     this.bossSelectionState.reset();
@@ -179,7 +183,7 @@ export class GameState implements GameStateInterface {
     this.phase = GamePhase.PLAYING;
     this.roundScore = 0;
     this.handsRemaining = this.getMaxHandsPerRound();
-    this.discardsRemaining = this.config.maxDiscardsPerRound;
+    this.discardsRemaining = this.getMaxDiscardsPerRound();
     this.roundStats = this.createEmptyRoundStats();
     this.playedHandTypes.clear();
 
@@ -958,7 +962,22 @@ export class GameState implements GameStateInterface {
   }
 
   getMaxHandsPerRound(): number {
-    return this.config.maxHandsPerRound + this.getExtraHandsFromJokers();
+    return this.config.maxHandsPerRound + this.getExtraHandsFromJokers() + this.extraHandsFromVouchers;
+  }
+
+  getExtraDiscardsFromJokers(): number {
+    let extraDiscards = 0;
+    for (const joker of this.jokers) {
+      if (joker.effect) {
+        const result = joker.effect({});
+        extraDiscards += result.extraDiscards || 0;
+      }
+    }
+    return extraDiscards;
+  }
+
+  getMaxDiscardsPerRound(): number {
+    return this.config.maxDiscardsPerRound + this.getExtraDiscardsFromJokers() + this.extraDiscardsFromVouchers;
   }
 
   /**
@@ -986,7 +1005,7 @@ export class GameState implements GameStateInterface {
     if (this.currentBlind) {
       this.roundScore = 0;
       this.handsRemaining = this.getMaxHandsPerRound();
-      this.discardsRemaining = this.config.maxDiscardsPerRound;
+      this.discardsRemaining = this.getMaxDiscardsPerRound();
       this.roundStats = this.createEmptyRoundStats();
       this.playedHandTypes.clear();
       this.dealInitialHand();
@@ -997,7 +1016,7 @@ export class GameState implements GameStateInterface {
     if (this.shop) {
       this.shop.applyVoucher(voucherId);
     }
-    
+
     switch (voucherId) {
       case 'voucher_crystal_ball':
         this.consumableSlots.increaseMaxSlots(1);
@@ -1012,6 +1031,22 @@ export class GameState implements GameStateInterface {
       case 'voucher_palette':
         this.extraHandSizeFromVouchers += 2;
         this.recreateHand();
+        break;
+      case 'voucher_grabber':
+        this.extraHandsFromVouchers += 1;
+        this.handsRemaining++;
+        break;
+      case 'voucher_nacho_tong':
+        this.extraHandsFromVouchers += 2;
+        this.handsRemaining += 2;
+        break;
+      case 'voucher_wasteful':
+        this.extraDiscardsFromVouchers += 1;
+        this.discardsRemaining++;
+        break;
+      case 'voucher_recyclomancy':
+        this.extraDiscardsFromVouchers += 2;
+        this.discardsRemaining += 2;
         break;
     }
   }
