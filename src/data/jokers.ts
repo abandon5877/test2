@@ -763,7 +763,7 @@ export const JOKERS: Joker[] = [
     trigger: JokerTrigger.ON_INDEPENDENT,
     effect: (context: JokerEffectContext): JokerEffectResult => {
       return {
-        extraHandSize: 1,
+        handSizeBonus: 1,
         message: '杂耍者: 手牌上限+1'
       };
     }
@@ -795,7 +795,7 @@ export const JOKERS: Joker[] = [
     trigger: JokerTrigger.ON_INDEPENDENT,
     effect: (context: JokerEffectContext): JokerEffectResult => {
       return {
-        extraHandSize: 2,
+        handSizeBonus: 2,
         extraHands: -1,
         message: '吟游诗人: +2手牌上限，-1出牌次数'
       };

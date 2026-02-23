@@ -91,8 +91,7 @@ export interface JokerEffectResult {
   readonly moneyBonus?: number;
   readonly extraHands?: number;
   readonly extraDiscards?: number;
-  readonly extraHandSize?: number;
-  readonly handSizeBonus?: number; // 手牌上限加成
+  readonly handSizeBonus?: number; // 手牌上限加成（可正可负）
   readonly discardsBonus?: number; // 弃牌奖励
   readonly debtLimit?: number; // 债务限制
   readonly freeReroll?: boolean;
