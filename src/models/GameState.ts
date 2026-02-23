@@ -13,7 +13,7 @@ import { HandLevelState } from './HandLevelState';
 import { CardPile } from './CardPile';
 import { BossSelectionState } from './BossSelectionState';
 import { BossState } from './BossState';
-import { BossSelectionSystem } from '../systems/BossSelectionSystem';
+import { BossSelectionSystem, BossRerollResult } from '../systems/BossSelectionSystem';
 import { BossSystem } from '../systems/BossSystem';
 import { PokerHandDetector } from '../systems/PokerHandDetector';
 import { initializeBlindConfigs, resetBlindConfigs } from '../data/blinds';
@@ -683,6 +683,9 @@ export class GameState implements GameStateInterface {
       BossSystem.clearBoss(this.bossState);
       // 触发新底注开始的事件
       BossSystem.onNewAnte(this.bossState);
+      // 重置Boss重掷次数
+      this.bossSelectionState.resetBossRerollCount();
+      logger.info('New ante started, boss reroll count reset', { ante: this.ante });
       if (this.ante > 8) {
         this.phase = GamePhase.GAME_OVER;
       }
@@ -1130,6 +1133,11 @@ export class GameState implements GameStateInterface {
         this.extraDiscardsFromVouchers += 2;
         this.discardsRemaining += 2;
         break;
+      case 'voucher_retcon':
+        // 导演剪辑版+：设置无限重掷
+        this.bossSelectionState.setUnlimitedRerolls(true);
+        logger.info('Retcon voucher applied: unlimited boss rerolls enabled');
+        break;
     }
   }
 
@@ -1141,6 +1149,58 @@ export class GameState implements GameStateInterface {
       return this.shop.getVouchersUsed();
     }
     return [];
+  }
+
+  /**
+   * 检查是否拥有导演剪辑版优惠券（基础版或升级版）
+   */
+  hasDirectorsCutVoucher(): boolean {
+    const vouchers = this.getVouchersUsed();
+    return vouchers.includes('voucher_directors_cut') || vouchers.includes('voucher_retcon');
+  }
+
+  /**
+   * 检查是否可以重掷Boss盲注
+   */
+  canRerollBoss(): boolean {
+    // 只有在Boss盲注选择阶段才能重掷
+    if (this.phase !== GamePhase.BLIND_SELECT) {
+      return false;
+    }
+    // 只有在Boss盲注位置才能重掷
+    if (this.currentBlindPosition !== BlindType.BOSS_BLIND) {
+      return false;
+    }
+    return BossSelectionSystem.canRerollBoss(
+      this.bossSelectionState,
+      this.hasDirectorsCutVoucher()
+    );
+  }
+
+  /**
+   * 获取剩余重掷次数
+   */
+  getRemainingBossRerolls(): number {
+    return BossSelectionSystem.getRemainingRerolls(
+      this.bossSelectionState,
+      this.hasDirectorsCutVoucher()
+    );
+  }
+
+  /**
+   * 重掷Boss盲注
+   */
+  rerollBoss(): BossRerollResult {
+    if (!this.canRerollBoss()) {
+      return {
+        success: false,
+        message: '无法重掷Boss盲注'
+      };
+    }
+
+    const result = BossSelectionSystem.rerollBoss(this.bossSelectionState, this.ante);
+    logger.info('Boss reroll result', { result });
+    return result;
   }
 
   toString(): string {

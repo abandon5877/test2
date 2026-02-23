@@ -5,6 +5,7 @@ import { Blind } from '../../models/Blind';
 export interface BlindSelectCallbacks {
   onSelectBlind?: (blindType: BlindType) => void;
   onSkipBlind?: () => void;
+  onRerollBoss?: () => void;
 }
 
 export class BlindSelect {
@@ -102,6 +103,29 @@ export class BlindSelect {
     skipButton.textContent = canSkip ? `跳过 (+$${skipReward})` : '不可跳过';
     skipButton.disabled = !canSkip;
     skipButton.addEventListener('click', () => this.handleSkip());
+
+    // 重掷Boss按钮（仅在Boss盲注且有导演剪辑版优惠券时显示）
+    const canRerollBoss = this.gameState.canRerollBoss();
+    const remainingRerolls = this.gameState.getRemainingBossRerolls();
+    const isBossBlind = currentBlindType === BlindType.BOSS_BLIND;
+
+    if (isBossBlind && canRerollBoss) {
+      const rerollButton = document.createElement('button');
+      rerollButton.style.fontSize = 'clamp(1rem, 2.5vw, 1.25rem)';
+      rerollButton.style.height = 'clamp(48px, 9vh, 60px)';
+      rerollButton.style.minWidth = 'clamp(120px, 25vw, 160px)';
+      rerollButton.style.display = 'flex';
+      rerollButton.style.alignItems = 'center';
+      rerollButton.style.justifyContent = 'center';
+      rerollButton.className = 'game-btn game-btn-secondary px-[clamp(20px,4vw,32px)]';
+
+      const rerollText = remainingRerolls === Infinity
+        ? '重掷 Boss (∞)'
+        : `重掷 Boss (${remainingRerolls})`;
+      rerollButton.textContent = rerollText;
+      rerollButton.addEventListener('click', () => this.handleRerollBoss());
+      buttonArea.appendChild(rerollButton);
+    }
 
     // 开始按钮 - 只能开始当前盲注
     const startButton = document.createElement('button');
@@ -303,5 +327,12 @@ export class BlindSelect {
     if (currentBlind?.canSkipBlind()) {
       this.callbacks.onSkipBlind?.();
     }
+  }
+
+  /**
+   * 处理重掷Boss
+   */
+  private handleRerollBoss(): void {
+    this.callbacks.onRerollBoss?.();
   }
 }

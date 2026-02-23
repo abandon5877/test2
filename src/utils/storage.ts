@@ -97,6 +97,13 @@ export interface SaveData {
   shop?: SerializedShop;
   // 修复Boss盲注丢失问题: Boss分配信息存档
   bossAssignments?: Array<[number, string]>;
+  // 导演剪辑版优惠券: Boss重掷状态存档
+  bossSelectionState?: {
+    appearedBosses: string[];
+    currentAnte: number;
+    bossRerollCount: number;
+    hasUnlimitedRerolls: boolean;
+  };
 }
 
 interface SerializedCard {
@@ -153,7 +160,14 @@ export class Storage {
         // 修复1: 保存商店信息
         shop: gameState.shop ? this.serializeShop(gameState.shop) : undefined,
         // 修复Boss盲注丢失问题: 保存Boss分配信息
-        bossAssignments: Array.from(getBossAssignments())
+        bossAssignments: Array.from(getBossAssignments()),
+        // 导演剪辑版优惠券: 保存Boss重掷状态
+        bossSelectionState: gameState.bossSelectionState ? {
+          appearedBosses: gameState.bossSelectionState.getAppearedBosses(),
+          currentAnte: gameState.bossSelectionState.getCurrentAnte(),
+          bossRerollCount: gameState.bossSelectionState.getBossRerollCount(),
+          hasUnlimitedRerolls: gameState.bossSelectionState.hasUnlimitedReroll()
+        } : undefined
       };
 
       localStorage.setItem(SAVE_KEY, JSON.stringify(saveData));
@@ -175,7 +189,14 @@ export class Storage {
       // 修复1: 保存商店信息
       shop: gameState.shop ? this.serializeShop(gameState.shop) : undefined,
       // 修复Boss盲注丢失问题: 保存Boss分配信息
-      bossAssignments: Array.from(getBossAssignments())
+      bossAssignments: Array.from(getBossAssignments()),
+      // 导演剪辑版优惠券: 保存Boss重掷状态
+      bossSelectionState: gameState.bossSelectionState ? {
+        appearedBosses: gameState.bossSelectionState.getAppearedBosses(),
+        currentAnte: gameState.bossSelectionState.getCurrentAnte(),
+        bossRerollCount: gameState.bossSelectionState.getBossRerollCount(),
+        hasUnlimitedRerolls: gameState.bossSelectionState.hasUnlimitedReroll()
+      } : undefined
     };
   }
 
@@ -376,6 +397,22 @@ export class Storage {
       setBossAssignments(bossAssignments);
       logger.info('[Storage.restore] Boss分配已恢复', {
         assignments: saveData.bossAssignments
+      });
+    }
+
+    // 导演剪辑版优惠券: 恢复Boss重掷状态
+    if (saveData.bossSelectionState) {
+      gameState.bossSelectionState.restoreState({
+        appearedBosses: saveData.bossSelectionState.appearedBosses as BossType[],
+        currentAnte: saveData.bossSelectionState.currentAnte,
+        bossRerollCount: saveData.bossSelectionState.bossRerollCount,
+        hasUnlimitedRerolls: saveData.bossSelectionState.hasUnlimitedRerolls
+      });
+      logger.info('[Storage.restore] Boss选择状态已恢复', {
+        appearedCount: saveData.bossSelectionState.appearedBosses.length,
+        currentAnte: saveData.bossSelectionState.currentAnte,
+        bossRerollCount: saveData.bossSelectionState.bossRerollCount,
+        hasUnlimitedRerolls: saveData.bossSelectionState.hasUnlimitedRerolls
       });
     }
 

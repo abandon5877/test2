@@ -282,7 +282,8 @@ class Game {
   private showBlindSelect(): void {
     this.currentComponent = new BlindSelect(this.container, this.gameState, {
       onSelectBlind: (blindType) => this.handleBlindSelect(blindType),
-      onSkipBlind: () => this.handleSkipBlind()
+      onSkipBlind: () => this.handleSkipBlind(),
+      onRerollBoss: () => this.handleRerollBoss()
     });
     
     // 自动保存
@@ -762,6 +763,22 @@ class Game {
       this.showBlindSelect();
     } else {
       showAlert('提示', '只有小盲注可以跳过，且每关只能跳过一次', 'warning');
+    }
+  }
+
+  /**
+   * 处理重掷Boss盲注
+   */
+  private handleRerollBoss(): void {
+    const result = this.gameState.rerollBoss();
+    if (result.success) {
+      Storage.autoSave(this.gameState);
+      // 重新渲染盲注选择界面以显示新Boss
+      this.showBlindSelect();
+      // 显示成功提示
+      Toast.success(result.message);
+    } else {
+      Toast.error(result.message || '无法重掷Boss');
     }
   }
 

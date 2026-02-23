@@ -9,6 +9,8 @@ const logger = createModuleLogger('BossSelectionState');
 export interface BossSelectionStateInterface {
   appearedBosses: BossType[];
   currentAnte: number;
+  bossRerollCount: number; // 当前底注已重掷次数
+  hasUnlimitedRerolls: boolean; // 是否有无限重掷（导演剪辑版+）
 }
 
 /**
@@ -18,6 +20,8 @@ export interface BossSelectionStateInterface {
 export class BossSelectionState {
   private appearedBosses: Set<BossType> = new Set();
   private currentAnte: number = 1;
+  private bossRerollCount: number = 0; // 当前底注已重掷次数
+  private hasUnlimitedRerolls: boolean = false; // 是否有无限重掷（导演剪辑版+）
 
   /**
    * 记录Boss已出现
@@ -107,7 +111,61 @@ export class BossSelectionState {
   reset(): void {
     this.appearedBosses.clear();
     this.currentAnte = 1;
+    this.bossRerollCount = 0;
+    this.hasUnlimitedRerolls = false;
     logger.info('Boss selection state reset');
+  }
+
+  /**
+   * 获取当前底注已重掷次数
+   */
+  getBossRerollCount(): number {
+    return this.bossRerollCount;
+  }
+
+  /**
+   * 增加重掷次数
+   */
+  incrementBossRerollCount(): void {
+    this.bossRerollCount++;
+    logger.info('Boss reroll count incremented', { count: this.bossRerollCount });
+  }
+
+  /**
+   * 重置重掷次数（新底注开始时调用）
+   */
+  resetBossRerollCount(): void {
+    this.bossRerollCount = 0;
+    logger.info('Boss reroll count reset');
+  }
+
+  /**
+   * 检查是否可以重掷Boss
+   * @param hasDirectorsCutVoucher 是否拥有导演剪辑版优惠券
+   */
+  canRerollBoss(hasDirectorsCutVoucher: boolean): boolean {
+    if (this.hasUnlimitedRerolls) {
+      return true;
+    }
+    if (hasDirectorsCutVoucher) {
+      return this.bossRerollCount < 1; // 基础版每底注1次
+    }
+    return false;
+  }
+
+  /**
+   * 设置无限重掷（导演剪辑版+）
+   */
+  setUnlimitedRerolls(unlimited: boolean): void {
+    this.hasUnlimitedRerolls = unlimited;
+    logger.info('Unlimited rerolls set', { unlimited });
+  }
+
+  /**
+   * 检查是否有无限重掷
+   */
+  hasUnlimitedReroll(): boolean {
+    return this.hasUnlimitedRerolls;
   }
 
   /**
@@ -116,7 +174,9 @@ export class BossSelectionState {
   getState(): BossSelectionStateInterface {
     return {
       appearedBosses: Array.from(this.appearedBosses),
-      currentAnte: this.currentAnte
+      currentAnte: this.currentAnte,
+      bossRerollCount: this.bossRerollCount,
+      hasUnlimitedRerolls: this.hasUnlimitedRerolls
     };
   }
 
@@ -126,9 +186,13 @@ export class BossSelectionState {
   restoreState(state: BossSelectionStateInterface): void {
     this.appearedBosses = new Set(state.appearedBosses);
     this.currentAnte = state.currentAnte;
+    this.bossRerollCount = state.bossRerollCount ?? 0;
+    this.hasUnlimitedRerolls = state.hasUnlimitedRerolls ?? false;
     logger.info('Boss selection state restored', {
       appearedCount: this.appearedBosses.size,
-      currentAnte: this.currentAnte
+      currentAnte: this.currentAnte,
+      bossRerollCount: this.bossRerollCount,
+      hasUnlimitedRerolls: this.hasUnlimitedRerolls
     });
   }
 }
