@@ -183,6 +183,7 @@ export interface JokerInterface {
   readonly perishableRounds: number; // 易腐剩余回合数
   readonly isCopyable: boolean; // 是否可被蓝图/头脑风暴复制
   readonly isProbability: boolean; // 是否为概率触发类小丑牌（预览时不计算效果）
+  sellValueBonus: number; // 礼品卡等增加的售价加成
   onScored?(context: JokerEffectContext): JokerEffectResult;
   onHeld?(context: JokerEffectContext): JokerEffectResult;
   onDiscard?(context: JokerEffectContext): JokerEffectResult;
@@ -197,6 +198,8 @@ export interface JokerInterface {
   getState(): JokerState; // 获取状态
   setSticker(sticker: StickerType): void; // 设置贴纸
   setEdition(edition: JokerEdition): void; // 设置版本
+  increaseSellValue(amount: number): void; // 增加售价加成（礼品卡效果）
+  getSellPrice(): number; // 获取总售价（基础售价 + 礼品卡加成）
   getEditionEffects(): { chipBonus: number; multBonus: number; multMultiplier: number; extraSlot: boolean }; // 获取版本效果
   decrementPerishable(): boolean; // 减少易腐回合，返回是否摧毁
   getRentalCost(): number; // 获取租赁成本

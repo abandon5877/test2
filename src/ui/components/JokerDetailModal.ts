@@ -35,16 +35,11 @@ export class JokerDetailModal {
 
     const { joker, index, showSellButton = false, onSell } = options;
     const rarityText = JOKER_RARITY_NAMES[joker.rarity] || joker.rarity;
-    // 计算出售价格 = 购买价格 / 2（向下取整），最低$1
-    let sellPrice = Math.max(1, Math.floor(joker.cost / 2));
+    // 使用小丑牌的getSellPrice方法获取售价（包含礼品卡加成）
+    const sellPrice = joker.getSellPrice();
     const isEternal = joker.sticker === StickerType.Eternal;
     const isRental = joker.sticker === StickerType.Rental;
     const isPerishable = joker.sticker === StickerType.Perishable;
-    
-    // 租赁小丑只能卖$1
-    if (isRental) {
-      sellPrice = 1;
-    }
 
     // 创建遮罩
     this.overlay = document.createElement('div');

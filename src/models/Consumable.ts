@@ -9,6 +9,7 @@ export class Consumable implements ConsumableInterface {
   useCondition?: string; // 使用条件描述
   private useFunction: (context: ConsumableEffectContext) => ConsumableEffectResult;
   private canUseFunction?: (context: ConsumableEffectContext) => boolean;
+  sellValueBonus: number; // 礼品卡等增加的售价加成
 
   constructor(config: ConsumableConfig) {
     this.id = config.id;
@@ -19,6 +20,25 @@ export class Consumable implements ConsumableInterface {
     this.useCondition = config.useCondition;
     this.useFunction = config.use;
     this.canUseFunction = config.canUse;
+    this.sellValueBonus = 0; // 初始售价为0
+  }
+
+  /**
+   * 增加售价加成（礼品卡效果）
+   */
+  increaseSellValue(amount: number): void {
+    this.sellValueBonus += amount;
+  }
+
+  /**
+   * 获取总售价（基础售价 + 礼品卡加成）
+   */
+  getSellPrice(): number {
+    // 基础售价 = cost / 2（向下取整），最低$1
+    const basePrice = Math.max(1, Math.floor(this.cost / 2));
+    
+    // 加上礼品卡等增加的售价加成
+    return basePrice + this.sellValueBonus;
   }
 
   use(context: ConsumableEffectContext): ConsumableEffectResult {

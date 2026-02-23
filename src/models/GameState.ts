@@ -544,9 +544,25 @@ export class GameState implements GameStateInterface {
       this.money += endRoundResult.moneyBonus;
     }
 
-    // 处理礼品卡效果：增加小丑/消耗牌售价
-    if (endRoundResult.increaseSellValue > 0 && this.shop) {
-      this.shop.increaseJokerAndConsumablePrices(endRoundResult.increaseSellValue);
+    // 处理礼品卡效果：增加玩家已拥有的小丑牌和消耗牌的售价
+    if (endRoundResult.increaseSellValue > 0) {
+      // 增加所有小丑牌的售价
+      const jokers = this.jokerSlots.getJokers();
+      jokers.forEach(joker => {
+        joker.increaseSellValue(endRoundResult.increaseSellValue);
+      });
+      
+      // 增加所有消耗牌的售价
+      const consumables = this.consumableSlots.getConsumables();
+      consumables.forEach(consumable => {
+        consumable.increaseSellValue(endRoundResult.increaseSellValue);
+      });
+      
+      logger.info('Gift Card effect applied', {
+        increaseAmount: endRoundResult.increaseSellValue,
+        jokersAffected: jokers.length,
+        consumablesAffected: consumables.length
+      });
     }
 
     logger.info('Blind completed', {
@@ -819,7 +835,8 @@ export class GameState implements GameStateInterface {
       return { success: false, error: 'Invalid consumable index' };
     }
 
-    const sellPrice = Math.ceil(consumable.cost / 2);
+    // 使用消耗牌的getSellPrice方法计算售价（包含礼品卡加成）
+    const sellPrice = consumable.getSellPrice();
     this.consumableSlots.removeConsumable(index);
     this.money += sellPrice;
 

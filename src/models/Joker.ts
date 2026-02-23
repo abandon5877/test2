@@ -14,6 +14,7 @@ export class Joker implements JokerInterface {
   perishableRounds: number;
   isCopyable: boolean;
   isProbability: boolean;
+  sellValueBonus: number; // 礼品卡等增加的售价加成
   // 可选回调
   onScoredCallback?: (context: JokerEffectContext) => JokerEffectResult;
   onHeldCallback?: (context: JokerEffectContext) => JokerEffectResult;
@@ -40,6 +41,7 @@ export class Joker implements JokerInterface {
     this.perishableRounds = this.sticker === StickerType.Perishable ? 5 : 0;
     this.isCopyable = config.isCopyable !== false; // 默认为true
     this.isProbability = config.isProbability === true; // 默认为false
+    this.sellValueBonus = 0; // 初始售价为0
     // 设置可选回调
     this.onScoredCallback = config.onScored;
     this.onHeldCallback = config.onHeld;
@@ -51,6 +53,29 @@ export class Joker implements JokerInterface {
     this.onEndOfRoundCallback = config.onEndOfRound;
     this.onCardAddedCallback = config.onCardAdded;
     this.onSellCallback = config.onSell;
+  }
+
+  /**
+   * 增加售价加成（礼品卡效果）
+   */
+  increaseSellValue(amount: number): void {
+    this.sellValueBonus += amount;
+  }
+
+  /**
+   * 获取总售价（基础售价 + 礼品卡加成）
+   */
+  getSellPrice(): number {
+    // 基础售价 = cost / 2（向下取整），最低$1
+    let basePrice = Math.max(1, Math.floor(this.cost / 2));
+    
+    // 租赁小丑只能卖$1
+    if (this.sticker === StickerType.Rental) {
+      return 1;
+    }
+    
+    // 加上礼品卡等增加的售价加成
+    return basePrice + this.sellValueBonus;
   }
 
   updateState(updates: Partial<JokerState>): void {

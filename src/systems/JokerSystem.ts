@@ -186,13 +186,8 @@ export class JokerSystem {
       return { success: false, error: 'Eternal joker cannot be sold' };
     }
 
-    // 计算出售价格 = 购买价格 / 2（向下取整），最低$1
-    let sellPrice = Math.max(1, Math.floor(joker.cost / 2));
-
-    // 如果是租赁贴纸，不出售价格（因为是租的）
-    if (joker.sticker === 'rental') {
-      sellPrice = 1; // 租赁小丑只能卖$1
-    }
+    // 使用小丑牌的getSellPrice方法计算售价（包含礼品卡加成）
+    const sellPrice = joker.getSellPrice();
 
     // 处理出售时的回调（隐形小丑）
     let copiedJokerId: string | undefined;

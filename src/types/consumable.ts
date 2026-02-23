@@ -51,9 +51,12 @@ export interface ConsumableInterface {
   readonly cost: number;
   readonly useCondition?: string; // 使用条件描述
   readonly isNegative?: boolean; // 负片效果：不占用槽位
+  sellValueBonus: number; // 礼品卡等增加的售价加成
   use(context: ConsumableEffectContext): ConsumableEffectResult;
   canUse(context: ConsumableEffectContext): boolean;
   clone(): ConsumableInterface;
+  increaseSellValue(amount: number): void; // 增加售价加成（礼品卡效果）
+  getSellPrice(): number; // 获取总售价（基础售价 + 礼品卡加成）
 }
 
 export interface ConsumableConfig {
