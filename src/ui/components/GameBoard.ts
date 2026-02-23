@@ -474,7 +474,8 @@ export class GameBoard {
     const jokersTitle = document.createElement('h3');
     jokersTitle.style.fontSize = this.scaled(19);
     jokersTitle.className = 'text-yellow-400 font-bold mb-2 text-center';
-    jokersTitle.textContent = `🤡 小丑牌 (${this.gameState.getJokerCount()}/5)`;
+    const effectiveMaxSlots = this.gameState.getJokerSlots().getEffectiveMaxSlots();
+    jokersTitle.textContent = `🤡 小丑牌 (${this.gameState.getJokerCount()}/${effectiveMaxSlots})`;
     jokersSection.appendChild(jokersTitle);
 
     this.jokersArea = document.createElement('div');
@@ -491,7 +492,8 @@ export class GameBoard {
     const consumablesTitle = document.createElement('h3');
     consumablesTitle.style.fontSize = this.scaled(19);
     consumablesTitle.className = 'text-purple-400 font-bold mb-2 text-center';
-    consumablesTitle.textContent = `🎴 消耗牌 (${this.gameState.getConsumableCount()}/${this.gameState.getMaxConsumableSlots()})`;
+    const effectiveConsumableSlots = this.gameState.getConsumableSlots().getEffectiveMaxSlots();
+    consumablesTitle.textContent = `🎴 消耗牌 (${this.gameState.getConsumableCount()}/${effectiveConsumableSlots})`;
     consumablesSection.appendChild(consumablesTitle);
 
     const consumablesArea = document.createElement('div');

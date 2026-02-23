@@ -281,11 +281,11 @@ export class BlindSelect {
     statsGrid.appendChild(moneyStat);
 
     // 小丑牌数量
-    const jokerStat = this.createStatItem('🤡 小丑牌', `${this.gameState.getJokerCount()}/${this.gameState.getJokerSlots().getAvailableSlots() + this.gameState.getJokerCount()}`);
+    const jokerStat = this.createStatItem('🤡 小丑牌', `${this.gameState.getJokerCount()}/${this.gameState.getJokerSlots().getEffectiveMaxSlots()}`);
     statsGrid.appendChild(jokerStat);
 
     // 消耗牌数量
-    const consumableStat = this.createStatItem('🎴 消耗牌', `${this.gameState.getConsumableCount()}/${this.gameState.getMaxConsumableSlots()}`);
+    const consumableStat = this.createStatItem('🎴 消耗牌', `${this.gameState.getConsumableCount()}/${this.gameState.getConsumableSlots().getEffectiveMaxSlots()}`);
     statsGrid.appendChild(consumableStat);
 
     // 牌堆剩余
