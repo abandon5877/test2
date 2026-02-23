@@ -186,7 +186,6 @@ export class CardComponent {
         font-size: 14px;
         background-color: ${this.enhancementColors[card.enhancement]};
         box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-        z-index: 10;
       `;
       enhancementBadge.textContent = this.enhancementIcons[card.enhancement];
       enhancementBadge.title = this.getEnhancementName(card.enhancement);
@@ -202,7 +201,6 @@ export class CardComponent {
         bottom: -4px;
         left: -4px;
         font-size: 18px;
-        z-index: 10;
         filter: drop-shadow(0 2px 2px rgba(0,0,0,0.5));
       `;
       sealBadge.textContent = this.sealIcons[card.seal];
@@ -228,7 +226,6 @@ export class CardComponent {
         background: ${this.editionColors[card.edition].bg};
         border: 2px solid ${this.editionColors[card.edition].border};
         box-shadow: ${this.editionColors[card.edition].shadow};
-        z-index: 10;
       `;
       editionBadge.textContent = this.editionIcons[card.edition];
       editionBadge.title = this.getEditionName(card.edition);
@@ -426,7 +423,6 @@ export class CardComponent {
         top: 4px;
         right: 4px;
         font-size: 18px;
-        z-index: 10;
         filter: drop-shadow(0 0 3px rgba(0, 0, 0, 0.8));
         animation: edition-glow 2s ease-in-out infinite;
       `;
@@ -766,7 +762,6 @@ export class CardComponent {
         top: 4px;
         right: 4px;
         font-size: 16px;
-        z-index: 10;
         animation: negative-pulse 2s infinite;
       `;
       negativeBadge.textContent = '🌑';
