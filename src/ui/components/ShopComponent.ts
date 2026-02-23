@@ -721,6 +721,7 @@ export class ShopComponent {
           description: joker.description,
           rarity: joker.rarity,
           cost: joker.cost,
+          edition: joker.edition,
           disabled: joker.disabled,
           faceDown: joker.faceDown
         });
@@ -804,7 +805,8 @@ export class ShopComponent {
           name: consumable.name,
           description: consumable.description,
           type: consumable.type,
-          cost: consumable.cost
+          cost: consumable.cost,
+          isNegative: consumable.isNegative
         }, false);
 
         consumableCard.style.cursor = 'pointer';
