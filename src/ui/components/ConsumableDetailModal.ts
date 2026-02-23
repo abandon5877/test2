@@ -31,9 +31,14 @@ export class ConsumableDetailModal {
 
     this.overlay = document.createElement('div');
     this.overlay.className = 'fixed inset-0 bg-black/70 flex items-center justify-center z-50 animate-fade-in';
+    this.overlay.style.padding = '20px';
 
     const modal = document.createElement('div');
     modal.className = 'game-panel max-w-md w-full mx-4 transform scale-100 animate-modal-in';
+    modal.style.maxHeight = 'calc(100vh - 40px)';
+    modal.style.overflowY = 'auto';
+    modal.style.display = 'flex';
+    modal.style.flexDirection = 'column';
 
     // 头部
     const header = document.createElement('div');

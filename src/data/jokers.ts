@@ -353,6 +353,7 @@ export const JOKERS: Joker[] = [
     rarity: JokerRarity.UNCOMMON,
     cost: 5,
     trigger: JokerTrigger.ON_HAND_PLAYED,
+    isProbability: true, // 概率触发类小丑牌
     effect: (context: JokerEffectContext): JokerEffectResult => {
       if (ProbabilitySystem.check(PROBABILITIES.SPACE_JOKER)) {
         return {
@@ -950,6 +951,7 @@ export const JOKERS: Joker[] = [
     rarity: JokerRarity.COMMON,
     cost: 3,
     trigger: JokerTrigger.ON_SCORED,
+    isProbability: true, // 概率触发类小丑牌
     effect: (context: JokerEffectContext): JokerEffectResult => {
       if (!context.scoredCards) return {};
       const faceCount = context.scoredCards.filter(card => card.isFaceCard).length;
@@ -1187,18 +1189,15 @@ export const JOKERS: Joker[] = [
   new Joker({
     id: 'stuntman',
     name: '特技演员',
-    description: '1/5概率+500筹码',
-    rarity: JokerRarity.UNCOMMON,
-    cost: 5,
-    trigger: JokerTrigger.ON_HAND_PLAYED,
-    effect: (context: JokerEffectContext): JokerEffectResult => {
-      if (ProbabilitySystem.check(PROBABILITIES.STUNTMAN)) {
-        return {
-          chipBonus: 500,
-          message: '特技演员: +500筹码'
-        };
-      }
-      return {};
+    description: '+250筹码，-2手牌上限',
+    rarity: JokerRarity.RARE,
+    cost: 7,
+    trigger: JokerTrigger.ON_INDEPENDENT,
+    effect: (): JokerEffectResult => {
+      return {
+        chipBonus: 250,
+        handSizeBonus: -2
+      };
     }
   }),
 

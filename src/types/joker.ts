@@ -182,6 +182,7 @@ export interface JokerInterface {
   readonly edition: JokerEdition; // 版本类型
   readonly perishableRounds: number; // 易腐剩余回合数
   readonly isCopyable: boolean; // 是否可被蓝图/头脑风暴复制
+  readonly isProbability: boolean; // 是否为概率触发类小丑牌（预览时不计算效果）
   onScored?(context: JokerEffectContext): JokerEffectResult;
   onHeld?(context: JokerEffectContext): JokerEffectResult;
   onDiscard?(context: JokerEffectContext): JokerEffectResult;
@@ -262,6 +263,12 @@ export interface JokerConfig {
    * 默认为true
    */
   readonly isCopyable?: boolean;
+  /**
+   * 是否为概率触发类小丑牌
+   * 预览时不计算其效果
+   * 默认为false
+   */
+  readonly isProbability?: boolean;
 }
 
 export const JOKER_RARITY_COLORS: Readonly<Record<JokerRarity, string>> = {

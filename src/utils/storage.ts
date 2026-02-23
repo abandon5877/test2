@@ -76,6 +76,16 @@ export interface SaveData {
       startingMoney: number;
       startingAnte: number;
     };
+    // Boss状态存档
+    bossState?: {
+      currentBoss: string | null;
+      playedHandTypes: string[];
+      firstHandPlayed: boolean;
+      handLevelsReduced: Record<string, number>;
+      cardsPlayedThisAnte: string[];
+      mostPlayedHand: string | null;
+      handPlayCounts: Record<string, number>;
+    };
   };
   // 修复1: 商店信息存档
   shop?: SerializedShop;
@@ -307,6 +317,23 @@ export class Storage {
       (gameState as any).globalCounters = { ...data.globalCounters };
     }
 
+    // 修复5: 恢复Boss状态
+    if (data.bossState) {
+      const bossStateInterface = {
+        currentBoss: data.bossState.currentBoss as any,
+        playedHandTypes: data.bossState.playedHandTypes as any[],
+        firstHandPlayed: data.bossState.firstHandPlayed,
+        handLevelsReduced: data.bossState.handLevelsReduced,
+        cardsPlayedThisAnte: data.bossState.cardsPlayedThisAnte,
+        mostPlayedHand: data.bossState.mostPlayedHand as any,
+        handPlayCounts: data.bossState.handPlayCounts
+      };
+      gameState.bossState.restoreState(bossStateInterface);
+      logger.info('[Storage.restoreGameState] Boss状态已恢复', { 
+        currentBoss: data.bossState.currentBoss 
+      });
+    }
+
     return gameState;
   }
 
@@ -397,7 +424,17 @@ export class Storage {
         maxDiscardsPerRound: (gameState as any).config?.maxDiscardsPerRound ?? 3,
         startingMoney: (gameState as any).config?.startingMoney ?? 4,
         startingAnte: (gameState as any).config?.startingAnte ?? 1
-      }
+      },
+      // 保存Boss状态
+      bossState: gameState.bossState ? {
+        currentBoss: gameState.bossState.getCurrentBoss(),
+        playedHandTypes: Array.from((gameState.bossState as any).playedHandTypes || []),
+        firstHandPlayed: (gameState.bossState as any).firstHandPlayed || false,
+        handLevelsReduced: Object.fromEntries((gameState.bossState as any).handLevelsReduced || new Map()),
+        cardsPlayedThisAnte: Array.from((gameState.bossState as any).cardsPlayedThisAnte || []),
+        mostPlayedHand: (gameState.bossState as any).mostPlayedHand || null,
+        handPlayCounts: Object.fromEntries((gameState.bossState as any).handPlayCounts || new Map())
+      } : undefined
     };
   }
 

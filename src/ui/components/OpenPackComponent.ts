@@ -342,10 +342,8 @@ export class OpenPackComponent {
         consumable: card,
         index: -1,
         onUse: () => {
-          // 使用消耗牌时，将其标记为已选择
-          this.selectedIndices.add(index);
-          this.callbacks.onCardSelected(card, 'use');
-          this.render(); // 重新渲染以更新选择状态
+          // 使用消耗牌时，调用 handleConsumableUse 方法
+          this.handleConsumableUse(card, index);
         },
         onSell: undefined
       });
@@ -443,8 +441,7 @@ export class OpenPackComponent {
 
     useButton.addEventListener('click', (e) => {
       e.stopPropagation();
-      this.selectedIndices.add(index);
-      this.callbacks.onCardSelected(consumable, 'use');
+      this.handleConsumableUse(consumable, index);
     });
     useButton.addEventListener('mouseenter', () => {
       useButton.style.transform = 'scale(1.05)';
@@ -456,6 +453,104 @@ export class OpenPackComponent {
     });
 
     return useButton;
+  }
+
+  /**
+   * 处理消耗牌使用
+   * 使用后会从开包界面移除该牌，并减少可选择数量
+   */
+  private handleConsumableUse(consumable: Consumable, index: number): void {
+    // 先检查是否可以使用
+    const context = {
+      gameState: {
+        money: this.gameState.money,
+        hands: this.gameState.handsRemaining,
+        discards: this.gameState.discardsRemaining
+      },
+      selectedCards: this.gameState.cardPile.hand.getSelectedCards(),
+      deck: this.gameState.cardPile.deck,
+      handCards: this.gameState.cardPile.hand.getCards(),
+      jokers: this.gameState.jokers.map(joker => {
+        let sellPrice = Math.max(1, Math.floor(joker.cost / 2));
+        if (joker.sticker === 'rental') {
+          sellPrice = 1;
+        }
+        return {
+          edition: joker.edition,
+          hasEdition: joker.edition !== 'none',
+          sellPrice: sellPrice,
+          sticker: joker.sticker
+        };
+      }),
+      money: this.gameState.money,
+      handLevelState: this.gameState.handLevelState
+    };
+
+    // 检查使用条件
+    if (!consumable.canUse(context)) {
+      // 无法使用，显示提示并放入槽位
+      Toast.warning(`${consumable.name} 当前无法使用，已放入消耗牌槽位`);
+      this.callbacks.onCardSelected(consumable, 'keep');
+      
+      // 从 revealedCards 中移除该牌（因为已经放入槽位）
+      this.revealedCards.splice(index, 1);
+      this.revealedStates.splice(index, 1);
+      
+      // 更新 selectedIndices
+      const newSelectedIndices = new Set<number>();
+      this.selectedIndices.forEach(selectedIndex => {
+        if (selectedIndex < index) {
+          newSelectedIndices.add(selectedIndex);
+        } else if (selectedIndex > index) {
+          newSelectedIndices.add(selectedIndex - 1);
+        }
+      });
+      this.selectedIndices = newSelectedIndices;
+      
+      // 减少可选择数量
+      this.pack = { ...this.pack, selectCount: Math.max(0, this.pack.selectCount - 1) };
+      
+      // 重新渲染或关闭
+      if (this.pack.selectCount === 0 || this.revealedCards.length === 0) {
+        this.callbacks.onClose();
+      } else {
+        this.render();
+      }
+      return;
+    }
+
+    // 调用回调函数使用消耗牌
+    this.callbacks.onCardSelected(consumable, 'use');
+    
+    // 从 revealedCards 中移除已使用的牌
+    this.revealedCards.splice(index, 1);
+    this.revealedStates.splice(index, 1);
+    
+    // 更新 selectedIndices（因为数组长度变了，索引需要调整）
+    const newSelectedIndices = new Set<number>();
+    this.selectedIndices.forEach(selectedIndex => {
+      if (selectedIndex < index) {
+        newSelectedIndices.add(selectedIndex);
+      } else if (selectedIndex > index) {
+        newSelectedIndices.add(selectedIndex - 1);
+      }
+      // 如果 selectedIndex === index，说明这张牌被使用了，不加入新集合
+    });
+    this.selectedIndices = newSelectedIndices;
+    
+    // 减少 pack.selectCount，表示已经选择了一张
+    this.pack = { ...this.pack, selectCount: Math.max(0, this.pack.selectCount - 1) };
+    
+    // 显示反馈
+    Toast.success(`使用了 ${consumable.name}`);
+    
+    // 如果所有可选牌都已使用/选择，或者没有牌了，关闭界面
+    if (this.pack.selectCount === 0 || this.revealedCards.length === 0) {
+      this.callbacks.onClose();
+    } else {
+      // 重新渲染界面
+      this.render();
+    }
   }
 
   /**

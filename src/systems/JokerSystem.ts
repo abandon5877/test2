@@ -292,6 +292,8 @@ export class JokerSystem {
    * @param context 效果上下文
    * @param accumulator 结果累加器
    * @param effectPrefix 效果消息前缀（用于复制效果）
+   * @param consumableSlots 消耗牌槽位（可选）
+   * @param isPreview 是否为预览模式（预览时不更新状态）
    */
   private static processJokerEffect(
     joker: JokerInterface,
@@ -299,9 +301,15 @@ export class JokerSystem {
     context: JokerEffectContext,
     accumulator: EffectAccumulator,
     effectPrefix?: string,
-    consumableSlots?: ConsumableSlots
+    consumableSlots?: ConsumableSlots,
+    isPreview = false
   ): void {
     if (!callback) return;
+
+    // 预览模式下跳过概率触发类小丑牌的效果
+    if (isPreview && joker.isProbability) {
+      return;
+    }
 
     let result = callback.call(joker, context);
 
@@ -341,8 +349,8 @@ export class JokerSystem {
       });
     }
 
-    // 处理状态更新
-    if (result.stateUpdate) {
+    // 处理状态更新（预览模式下不更新状态）
+    if (result.stateUpdate && !isPreview) {
       joker.updateState(result.stateUpdate);
     }
   }
@@ -357,6 +365,7 @@ export class JokerSystem {
    * @param jokerIndex 当前小丑在槽位中的索引
    * @param jokers 所有小丑牌数组
    * @param consumableSlots 消耗牌槽位（可选）
+   * @param isPreview 是否为预览模式（预览时不更新状态）
    */
   private static processCopyEffect(
     joker: JokerInterface,
@@ -366,7 +375,8 @@ export class JokerSystem {
     accumulator: EffectAccumulator,
     jokerIndex: number,
     jokers: readonly JokerInterface[],
-    consumableSlots?: ConsumableSlots
+    consumableSlots?: ConsumableSlots,
+    isPreview = false
   ): void {
     // 获取目标小丑
     const targetJoker = copyType === 'blueprint'
@@ -374,6 +384,11 @@ export class JokerSystem {
       : CopyEffectHelper.getBrainstormTarget(jokerIndex, jokers);
 
     if (!targetJoker) return;
+
+    // 预览模式下跳过概率触发类小丑牌的效果
+    if (isPreview && targetJoker.isProbability) {
+      return;
+    }
 
     // 获取目标小丑的回调函数
     const callback = targetJoker[callbackName] as ((context: JokerEffectContext) => JokerEffectResult) | undefined;
@@ -423,8 +438,8 @@ export class JokerSystem {
       });
     }
 
-    // 处理状态更新 - 复制效果只更新复制小丑的状态
-    if (result.stateUpdate) {
+    // 处理状态更新 - 复制效果只更新复制小丑的状态（预览模式下不更新）
+    if (result.stateUpdate && !isPreview) {
       joker.updateState(result.stateUpdate);
     }
   }
@@ -486,6 +501,7 @@ export class JokerSystem {
 
   /**
    * 处理出牌
+   * @param isPreview 是否为预览模式（预览时不更新状态）
    */
   static processHandPlayed(
     jokerSlots: JokerSlots,
@@ -501,7 +517,8 @@ export class JokerSystem {
     handsRemaining?: number,
     mostPlayedHand?: PokerHandType | null,
     consumableSlots?: ConsumableSlots,
-    handTypeHistoryCount?: number
+    handTypeHistoryCount?: number,
+    isPreview = false
   ): {
     chipBonus: number;
     multBonus: number;
@@ -511,7 +528,7 @@ export class JokerSystem {
     const accumulator = this.createEffectAccumulator();
     const jokers = jokerSlots.getJokers();
 
-    console.log('[JokerSystem] processHandPlayed循环开始, 小丑数量:', jokers.length);
+    console.log('[JokerSystem] processHandPlayed循环开始, 小丑数量:', jokers.length, '预览模式:', isPreview);
     for (let i = 0; i < jokers.length; i++) {
       const joker = jokers[i];
 
@@ -537,17 +554,17 @@ export class JokerSystem {
       // 1. 处理小丑自身的 onHandPlayed 效果
       if ('onHandPlayed' in joker && typeof (joker as any).onHandPlayed === 'function') {
         console.log(`[JokerSystem] 调用小丑[${i}] onHandPlayed, handType:`, handType);
-        this.processJokerEffect(joker, joker.onHandPlayed, context, accumulator, undefined, consumableSlots);
+        this.processJokerEffect(joker, joker.onHandPlayed, context, accumulator, undefined, consumableSlots, isPreview);
       }
 
       // 2. 处理蓝图的复制效果
       if (joker.id === 'blueprint') {
-        this.processCopyEffect(joker, 'blueprint', 'onHandPlayed', context, accumulator, i, jokers, consumableSlots);
+        this.processCopyEffect(joker, 'blueprint', 'onHandPlayed', context, accumulator, i, jokers, consumableSlots, isPreview);
       }
 
       // 3. 处理头脑风暴的复制效果
       if (joker.id === 'brainstorm') {
-        this.processCopyEffect(joker, 'brainstorm', 'onHandPlayed', context, accumulator, i, jokers, consumableSlots);
+        this.processCopyEffect(joker, 'brainstorm', 'onHandPlayed', context, accumulator, i, jokers, consumableSlots, isPreview);
       }
     }
 
@@ -1061,6 +1078,7 @@ export class JokerSystem {
 
   /**
    * 计算最终得分
+   * @param isPreview 是否为预览模式（预览时不更新状态）
    */
   static calculateFinalScore(
     jokerSlots: JokerSlots,
@@ -1074,7 +1092,8 @@ export class JokerSystem {
     initialDeckSize?: number,
     handsRemaining?: number,
     mostPlayedHand?: PokerHandType | null,
-    handTypeHistoryCount?: number
+    handTypeHistoryCount?: number,
+    isPreview = false
   ): ProcessedScoreResult {
     const jokerEffects: JokerEffectDetail[] = [];
     let totalChipBonus = 0;
@@ -1084,7 +1103,7 @@ export class JokerSystem {
 
     const jokers = jokerSlots.getJokers();
 
-    console.log('[JokerSystem] calculateFinalScore开始, 小丑数量:', jokers.length);
+    console.log('[JokerSystem] calculateFinalScore开始, 小丑数量:', jokers.length, '预览模式:', isPreview);
     console.log('[JokerSystem] 小丑列表:', jokers.map(j => ({ id: j.id, name: j.name, trigger: j.trigger, edition: j.edition })));
 
     // 应用小丑牌版本效果 (Foil/Holographic/Polychrome)
@@ -1147,7 +1166,8 @@ export class JokerSystem {
       handsRemaining,
       mostPlayedHand,
       undefined, // consumableSlots
-      handTypeHistoryCount
+      handTypeHistoryCount,
+      isPreview
     );
     console.log('[JokerSystem] processHandPlayed结果:', { chipBonus: handPlayedResult.chipBonus, multBonus: handPlayedResult.multBonus, multMultiplier: handPlayedResult.multMultiplier, effects: handPlayedResult.effects });
     totalChipBonus += handPlayedResult.chipBonus;

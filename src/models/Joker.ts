@@ -13,6 +13,7 @@ export class Joker implements JokerInterface {
   edition: JokerEdition;
   perishableRounds: number;
   isCopyable: boolean;
+  isProbability: boolean;
   // 可选回调
   onScoredCallback?: (context: JokerEffectContext) => JokerEffectResult;
   onHeldCallback?: (context: JokerEffectContext) => JokerEffectResult;
@@ -38,6 +39,7 @@ export class Joker implements JokerInterface {
     this.edition = config.edition || JokerEdition.None;
     this.perishableRounds = this.sticker === StickerType.Perishable ? 5 : 0;
     this.isCopyable = config.isCopyable !== false; // 默认为true
+    this.isProbability = config.isProbability === true; // 默认为false
     // 设置可选回调
     this.onScoredCallback = config.onScored;
     this.onHeldCallback = config.onHeld;

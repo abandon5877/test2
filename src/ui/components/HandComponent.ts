@@ -185,11 +185,14 @@ export class HandComponent {
         this.cardElements.push(cardElement);
       }
       
-      // 延迟恢复动画，避免初始渲染时的闪烁
+      // 延迟启用过渡动画，避免初始渲染时的抖动
+      // 使用 requestAnimationFrame + setTimeout 确保在渲染稳定后才启用
       requestAnimationFrame(() => {
-        this.cardElements.forEach(cardElement => {
-          cardElement.style.transition = '';
-        });
+        setTimeout(() => {
+          this.cardElements.forEach(cardElement => {
+            cardElement.classList.add('transition-enabled');
+          });
+        }, 100);
       });
     }
   }

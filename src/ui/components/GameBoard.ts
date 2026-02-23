@@ -317,14 +317,16 @@ export class GameBoard {
     `;
     panel.appendChild(deckSection);
 
-    // 利息提示
+    // 利息提示 - 显示当前利息和上限
     const interestSection = document.createElement('div');
     interestSection.className = 'game-panel';
     interestSection.id = 'interest-section';
-    const currentInterest = Math.min(Math.floor(this.gameState.money / 5), this.gameState.getInterestCap?.() ?? 5);
+    const interestCap = this.gameState.getInterestCap?.() ?? 5;
+    const currentInterest = Math.min(Math.floor(this.gameState.money / 5), interestCap);
     interestSection.innerHTML = `
       <div class="text-gray-400 text-center" style="font-size: ${this.scaled(19)}">利息</div>
-      <div class="text-green-400 font-bold text-center" style="font-size: ${this.scaled(23)}" id="interest-info">+$${currentInterest}</div>
+      <div class="text-green-400 font-bold text-center" style="font-size: ${this.scaled(23)}" id="interest-info">+$${currentInterest}/${interestCap}</div>
+      <div class="text-gray-500 text-center" style="font-size: ${this.scaled(14)}" id="interest-hint">每$5得$1</div>
     `;
     panel.appendChild(interestSection);
 
@@ -876,6 +878,14 @@ export class GameBoard {
       const remainingCards = this.gameState.cardPile.deck?.remaining() ?? 52;
       deckCount.textContent = String(remainingCards);
     }
+
+    // 更新利息显示
+    const interestInfo = document.getElementById('interest-info');
+    if (interestInfo) {
+      const interestCap = this.gameState.getInterestCap?.() ?? 5;
+      const currentInterest = Math.min(Math.floor(this.gameState.money / 5), interestCap);
+      interestInfo.textContent = `+$${currentInterest}/${interestCap}`;
+    }
   }
 
   /**
@@ -962,7 +972,7 @@ export class GameBoard {
       const selectedIndices = this.gameState.cardPile.hand.getSelectedIndices();
       const heldCards = handCards.filter((_, index) => !selectedIndices.has(index));
 
-      const scoreResult = ScoringSystem.calculate(selectedCards, detectionResult.handType, gameState, heldCards, this.gameState.getJokerSlots());
+      const scoreResult = ScoringSystem.calculate(selectedCards, detectionResult.handType, gameState, heldCards, this.gameState.getJokerSlots(), undefined, undefined, undefined, undefined, undefined, undefined, undefined, true, this.gameState.getHandLevelState());
 
       // 左列：牌型名称
       handTypeEl.textContent = baseValue.displayName;
@@ -985,6 +995,7 @@ export class GameBoard {
       }
 
       // 右列第二行：预计分数
+      // 注意：预览时不计算概率触发类小丑牌的效果
       totalScoreEl.textContent = `预计: ${scoreResult.totalChips} × ${scoreResult.totalMultiplier} = ${scoreResult.totalScore}`;
     } else {
       handTypeEl.textContent = '无效牌型';
@@ -1542,6 +1553,20 @@ export class GameBoard {
     console.log('[GameBoard] 使用消耗牌:', consumable.id, consumable.name);
 
     // 创建使用上下文
+    // 计算每个小丑牌的售价（用于节制塔罗牌）
+    const jokersWithSellPrice = this.gameState.jokers.map(joker => {
+      let sellPrice = Math.max(1, Math.floor(joker.cost / 2));
+      if (joker.sticker === 'rental') {
+        sellPrice = 1;
+      }
+      return {
+        edition: joker.edition,
+        hasEdition: joker.edition !== 'none',
+        sellPrice: sellPrice,
+        sticker: joker.sticker
+      };
+    });
+
     const context = {
       gameState: {
         money: this.gameState.money,
@@ -1552,7 +1577,7 @@ export class GameBoard {
       deck: this.gameState.cardPile.deck,
       handCards: this.gameState.cardPile.hand.getCards(),
       money: this.gameState.money,
-      jokers: this.gameState.jokers,
+      jokers: jokersWithSellPrice,
       lastUsedConsumable: this.gameState.lastUsedConsumable ?? undefined,
       addJoker: (rarity?: 'rare' | 'legendary'): boolean => {
         console.log('[GameBoard] addJoker 被调用, rarity:', rarity);
@@ -1678,6 +1703,34 @@ export class GameBoard {
       if (result.upgradeAllHandLevels) {
         console.log('[GameBoard] 升级所有牌型');
         this.gameState.handLevelState.upgradeAll();
+      }
+
+      // 处理受影响的卡牌（如火祭/使魔/冷酷摧毁的卡牌）
+      if (result.affectedCards && result.affectedCards.length > 0) {
+        console.log('[GameBoard] 处理受影响的卡牌:', result.affectedCards.length);
+        const handCards = this.gameState.cardPile.hand.getCards();
+        const indicesToRemove: number[] = [];
+        for (const card of result.affectedCards) {
+          // 找到卡牌在手牌中的索引
+          const index = handCards.findIndex(c => c === card);
+          if (index !== -1) {
+            indicesToRemove.push(index);
+          }
+        }
+        // 从手牌中移除卡牌（摧毁，不进弃牌堆）
+        if (indicesToRemove.length > 0) {
+          this.gameState.cardPile.hand.removeCards(indicesToRemove);
+        }
+        console.log('[GameBoard] 已摧毁卡牌:', result.affectedCards.map(c => c.toString()));
+      }
+
+      // 处理新添加的卡牌（如使魔/冷酷/咒语添加的卡牌）
+      if (result.newCards && result.newCards.length > 0) {
+        console.log('[GameBoard] 添加新卡牌到手牌:', result.newCards.length);
+        for (const card of result.newCards) {
+          this.gameState.cardPile.hand.addCard(card);
+        }
+        console.log('[GameBoard] 已添加卡牌:', result.newCards.map(c => c.toString()));
       }
 
       // 更新最后使用的消耗牌（用于愚者效果）

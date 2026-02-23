@@ -23,14 +23,17 @@ export class HandLevelState {
 
   constructor() {
     // 初始化所有牌型等级为1级
-    Object.values(PokerHandType).forEach(handType => {
+    // 使用Object.values()获取枚举的所有值
+    const handTypes = Object.values(PokerHandType);
+    
+    handTypes.forEach(handType => {
       this.handLevels.set(handType, {
         level: 1,
         totalChipBonus: 0,
         totalMultBonus: 0
       });
     });
-    logger.info('HandLevelState initialized');
+    logger.info('HandLevelState initialized', { handTypesCount: handTypes.length });
   }
 
   /**

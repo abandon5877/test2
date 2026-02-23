@@ -5,6 +5,9 @@ import { CardEnhancement, CardEdition, SealType } from '../types/card';
 import { JokerSystem, type JokerEffectDetail } from './JokerSystem';
 import type { JokerInterface } from '../types/joker';
 import type { JokerSlots } from '../models/JokerSlots';
+import type { HandLevelState } from '../models/HandLevelState';
+import type { BossState } from '../models/BossState';
+import { BossSystem } from './BossSystem';
 import { SealSystem } from './SealSystem';
 import { createModuleLogger } from '../utils/logger';
 import { ProbabilitySystem, PROBABILITIES } from './ProbabilitySystem';
@@ -198,7 +201,10 @@ export class ScoringSystem {
     discardsUsed?: number, // 本回合已弃牌次数（用于yorick等）
     handsRemaining?: number, // 剩余手牌数（用于acrobat等）
     mostPlayedHand?: PokerHandType | null, // 最常出的牌型（用于obelisk）
-    handTypeHistoryCount?: number // 当前牌型的历史出牌次数（用于Supernova）
+    handTypeHistoryCount?: number, // 当前牌型的历史出牌次数（用于Supernova）
+    isPreview = false, // 是否为预览模式（预览时不更新小丑牌状态）
+    handLevelState?: HandLevelState, // 牌型等级状态（用于牌型升级）
+    bossState?: BossState // Boss状态（用于柱子等Boss效果）
   ): ScoreResult {
     if (cards.length === 0) {
       logger.warn('Calculate called with empty cards');
@@ -248,6 +254,19 @@ export class ScoringSystem {
     let baseMultiplier = handResult.baseMultiplier;
     let multBonus = 0;
 
+    // 应用牌型升级效果
+    if (handLevelState) {
+      const handLevel = handLevelState.getHandLevel(handResult.handType);
+      baseChips += handLevel.totalChipBonus;
+      baseMultiplier += handLevel.totalMultBonus;
+      logger.debug('牌型升级效果已应用', {
+        handType: handResult.handType,
+        level: handLevel.level,
+        chipBonus: handLevel.totalChipBonus,
+        multBonus: handLevel.totalMultBonus
+      });
+    }
+
     const cardDetails: CardScoreDetail[] = [];
 
     // 检查触发两次效果
@@ -272,6 +291,22 @@ export class ScoringSystem {
       let cardChipBonus = cardBaseChips;
       let cardMultBonus = 0;
       const enhancements: string[] = [];
+
+      // 检查卡牌是否失效（Boss效果，如柱子）
+      const isDebuffed = bossState ? BossSystem.isCardDebuffed(bossState, card) : false;
+
+      if (isDebuffed) {
+        // 卡牌失效，只保留基础筹码值，不应用任何附加效果
+        enhancements.push('失效 (Boss效果)');
+        cardDetails.push({
+          card: card.toString(),
+          baseChips: cardBaseChips,
+          chipBonus: 0,
+          multBonus: 0,
+          enhancements
+        });
+        continue; // 跳过此卡牌的后续效果计算
+      }
 
       // 计算卡牌版本效果
       const editionEffects = this.calculateCardEditionEffects(card);
@@ -530,7 +565,8 @@ export class ScoringSystem {
         initialDeckSize,
         handsRemaining,
         mostPlayedHand,
-        handTypeHistoryCount
+        handTypeHistoryCount,
+        isPreview
       );
 
       totalChips = jokerResult.totalChips;

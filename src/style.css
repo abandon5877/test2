@@ -349,7 +349,13 @@ body {
 
 .hand-container .card {
   /* margin-left 由 JavaScript 动态计算设置，不在 CSS 中固定 */
-  transition: all 0.2s ease;
+  /* 初始状态禁用过渡，避免初始渲染时的抖动 */
+  transition: none;
+}
+
+/* 启用过渡动画的状态 - 由 JavaScript 在初始渲染完成后添加 */
+.hand-container .card.transition-enabled {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .hand-container .card:first-child {
@@ -1174,6 +1180,11 @@ html, body, #app {
   transition: all 0.3s ease;
   position: relative;
   flex-shrink: 0;
+  margin-left: calc(-1 * clamp(35px, 3.5vw, 50px));
+}
+
+.consumables-area .consumable-card:first-child {
+  margin-left: 0;
 }
 
 .consumables-area .consumable-card:hover {

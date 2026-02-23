@@ -234,7 +234,13 @@ export class ShopComponent {
     if (index < 0 || index >= jokers.length) return;
 
     const joker = jokers[index];
-    const sellPrice = Math.ceil(joker.cost / 2);
+    // 使用与JokerSystem.sellJoker相同的计算逻辑：向下取整，最低$1
+    let sellPrice = Math.max(1, Math.floor(joker.cost / 2));
+    
+    // 租赁小丑只能卖$1
+    if (joker.sticker === 'rental') {
+      sellPrice = 1;
+    }
 
     // 检查是否为永恒贴纸
     if (joker.sticker === 'eternal') {
@@ -1243,6 +1249,34 @@ ${description}
       if (result.upgradeAllHandLevels) {
         console.log('[ShopComponent] 升级所有牌型');
         this.gameState.handLevelState.upgradeAll();
+      }
+
+      // 处理受影响的卡牌（如火祭/使魔/冷酷摧毁的卡牌）
+      if (result.affectedCards && result.affectedCards.length > 0) {
+        console.log('[ShopComponent] 处理受影响的卡牌:', result.affectedCards.length);
+        const handCards = this.gameState.cardPile.hand.getCards();
+        const indicesToRemove: number[] = [];
+        for (const card of result.affectedCards) {
+          // 找到卡牌在手牌中的索引
+          const index = handCards.findIndex(c => c === card);
+          if (index !== -1) {
+            indicesToRemove.push(index);
+          }
+        }
+        // 从手牌中移除卡牌（摧毁，不进弃牌堆）
+        if (indicesToRemove.length > 0) {
+          this.gameState.cardPile.hand.removeCards(indicesToRemove);
+        }
+        console.log('[ShopComponent] 已摧毁卡牌:', result.affectedCards.map(c => c.toString()));
+      }
+
+      // 处理新添加的卡牌（如使魔/冷酷/咒语添加的卡牌）
+      if (result.newCards && result.newCards.length > 0) {
+        console.log('[ShopComponent] 添加新卡牌到手牌:', result.newCards.length);
+        for (const card of result.newCards) {
+          this.gameState.cardPile.hand.addCard(card);
+        }
+        console.log('[ShopComponent] 已添加卡牌:', result.newCards.map(c => c.toString()));
       }
 
       // 更新最后使用的消耗牌（用于愚者效果）

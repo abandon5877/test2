@@ -252,6 +252,8 @@ export class CardComponent {
       element.classList.add('polychrome-effect');
     } else if (edition === CardEdition.Foil) {
       element.classList.add('foil-effect');
+    } else if (edition === CardEdition.Negative) {
+      element.classList.add('negative-effect');
     }
   }
 
@@ -432,6 +434,8 @@ export class CardComponent {
       element.classList.add('polychrome-effect');
     } else if (edition === JokerEdition.Foil) {
       element.classList.add('foil-effect');
+    } else if (edition === JokerEdition.Negative) {
+      element.classList.add('negative-effect');
     }
   }
 

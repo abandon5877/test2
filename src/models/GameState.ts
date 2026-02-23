@@ -344,7 +344,7 @@ export class GameState implements GameStateInterface {
     const tempScoreResult = ScoringSystem.calculate(selectedCards);
     const handTypeHistoryCount = this.getHandTypeHistoryCount(tempScoreResult.handType);
 
-    const scoreResult = ScoringSystem.calculate(selectedCards, undefined, gameState, heldCards, this.jokerSlots, currentTotalCards, initialDeckSize, handsPlayed, discardsUsed, handsRemaining, mostPlayedHand, handTypeHistoryCount);
+    const scoreResult = ScoringSystem.calculate(selectedCards, undefined, gameState, heldCards, this.jokerSlots, currentTotalCards, initialDeckSize, handsPlayed, discardsUsed, handsRemaining, mostPlayedHand, handTypeHistoryCount, false, this.handLevelState, this.bossState);
 
     this.playedHandTypes.add(scoreResult.handType);
     // 更新牌型历史统计（用于Supernova）
@@ -371,6 +371,9 @@ export class GameState implements GameStateInterface {
     } else {
       this.cardPile.playSelected();
     }
+    
+    // 记录已出的牌（用于柱子Boss效果）
+    BossSystem.afterPlayHand(this.bossState, selectedCards, scoreResult.handType);
     
     this.drawCards(selectedCards.length);
 
@@ -583,6 +586,10 @@ export class GameState implements GameStateInterface {
     } else if (this.currentBlindPosition === BlindType.BOSS_BLIND) {
       this.ante++;
       this.currentBlindPosition = BlindType.SMALL_BLIND;
+      // 进入新底注，清除Boss状态
+      BossSystem.clearBoss(this.bossState);
+      // 触发新底注开始的事件
+      BossSystem.onNewAnte(this.bossState);
       if (this.ante > 8) {
         this.phase = GamePhase.GAME_OVER;
       }
@@ -897,6 +904,10 @@ export class GameState implements GameStateInterface {
 
   getInterestCap(): number {
     return 20 + this.jokerSlots.getInterestCapBonus();
+  }
+
+  getHandLevelState(): HandLevelState {
+    return this.handLevelState;
   }
 
   getLastPlayScore(): number {
