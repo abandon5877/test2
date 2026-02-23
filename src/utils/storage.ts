@@ -12,6 +12,7 @@ import type { BossStateInterface } from '../models/BossState';
 import { BOOSTER_PACKS, VOUCHERS, type BoosterPack } from '../data/consumables/index';
 import { ScoringSystem } from '../systems/ScoringSystem';
 import { GamePhase, BossType } from '../types/game';
+import { ConsumableType } from '../types/consumable';
 import type { BlindType } from '../types/game';
 import type { Suit, Rank, CardEnhancement, SealType } from '../types/card';
 import { getJokerById } from '../data/jokers';
@@ -77,6 +78,15 @@ export interface SaveData {
       extraHandsFromVouchers: number; // 出牌次数增加
       extraDiscardsFromVouchers: number; // 弃牌次数增加
     };
+    // 修复6: 上次使用的消耗牌（用于愚者塔罗牌）
+    lastUsedConsumable: { id: string; type: ConsumableType } | null;
+    // 修复7: 牌型历史统计（用于Supernova小丑牌）
+    handTypeHistory: Record<string, number>;
+    // 修复8: 当前正在开的卡包
+    currentPack: {
+      packId: string;
+      revealedCards: SerializedCard[];
+    } | null;
     config: {
       maxHandSize: number;
       maxHandsPerRound: number;
@@ -397,6 +407,30 @@ export class Storage {
       });
     }
 
+    // 修复6: 恢复上次使用的消耗牌
+    if (data.lastUsedConsumable) {
+      (gameState as any).lastUsedConsumable = data.lastUsedConsumable;
+    }
+
+    // 修复7: 恢复牌型历史统计
+    if (data.handTypeHistory) {
+      (gameState as any).handTypeHistory = new Map(Object.entries(data.handTypeHistory));
+    }
+
+    // 修复8: 恢复当前正在开的卡包
+    if (data.currentPack && data.currentPack.packId) {
+      // 需要重新获取卡包数据
+      const pack = BOOSTER_PACKS.find(p => p.id === data.currentPack?.packId);
+      if (pack) {
+        (gameState as any).currentPack = {
+          pack: pack,
+          revealedCards: data.currentPack.revealedCards.map(cardData =>
+              new Card(cardData.suit, cardData.rank, cardData.enhancement, cardData.seal)
+            )
+        };
+      }
+    }
+
     return gameState;
   }
 
@@ -523,6 +557,15 @@ export class Storage {
         extraHandsFromVouchers: (gameState as any).extraHandsFromVouchers ?? 0,
         extraDiscardsFromVouchers: (gameState as any).extraDiscardsFromVouchers ?? 0
       },
+      // 修复6: 保存上次使用的消耗牌
+      lastUsedConsumable: (gameState as any).lastUsedConsumable ?? null,
+      // 修复7: 保存牌型历史统计
+      handTypeHistory: Object.fromEntries((gameState as any).handTypeHistory || new Map()),
+      // 修复8: 保存当前正在开的卡包
+      currentPack: (gameState as any).currentPack ? {
+        packId: (gameState as any).currentPack.pack?.id || '',
+        revealedCards: (gameState as any).currentPack.revealedCards?.map((card: Card) => this.serializeCard(card)) || []
+      } : null,
       config: {
         maxHandSize: (gameState as any).config?.maxHandSize ?? 8,
         maxHandsPerRound: (gameState as any).config?.maxHandsPerRound ?? 4,
