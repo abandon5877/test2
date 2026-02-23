@@ -174,6 +174,13 @@ export class Storage {
 
   static save(gameState: GameState): boolean {
     try {
+      console.log('[Storage.save] 开始保存游戏存档');
+      const jokers = (gameState.jokers as unknown as Joker[]);
+      console.log(`[Storage.save] 小丑牌数量: ${jokers.length}`);
+      jokers.forEach((joker, i) => {
+        console.log(`[Storage.save] 小丑牌[${i}]: id=${joker.id}, name=${joker.name}, sticker=${joker.sticker}, edition=${joker.edition}, sellValueBonus=${joker.sellValueBonus}`);
+      });
+
       const saveData: SaveData = {
         version: this.CURRENT_VERSION,
         timestamp: Date.now(),
@@ -192,6 +199,7 @@ export class Storage {
       };
 
       localStorage.setItem(SAVE_KEY, JSON.stringify(saveData));
+      console.log('[Storage.save] 游戏存档保存成功');
       return true;
     } catch (error) {
       console.error('保存游戏失败:', error);
@@ -242,8 +250,20 @@ export class Storage {
   }
 
   static restoreGameState(saveData: SaveData): GameState {
+    console.log('[Storage.restoreGameState] 开始恢复游戏存档');
     const gameState = new GameState();
     const data = saveData.gameState;
+
+    // 修复Boss盲注问题: 先恢复Boss分配信息，这样在恢复currentBlind时才能正确获取Boss类型
+    if (saveData.bossAssignments && saveData.bossAssignments.length > 0) {
+      const bossAssignments = new Map<number, BossType>(
+        saveData.bossAssignments.map(([ante, bossType]) => [ante, bossType as BossType])
+      );
+      setBossAssignments(bossAssignments);
+      logger.info('[Storage.restoreGameState] Boss分配已恢复', {
+        assignments: saveData.bossAssignments
+      });
+    }
 
     gameState.phase = data.phase;
     gameState.ante = data.ante;
@@ -253,10 +273,13 @@ export class Storage {
     gameState.roundScore = data.roundScore;
 
     // 恢复当前盲注位置
+    console.log(`[Storage.restoreGameState] 恢复盲注位置: ${data.currentBlindPosition}`);
     (gameState as any).currentBlindPosition = data.currentBlindPosition;
 
     if (data.currentBlind) {
+      console.log(`[Storage.restoreGameState] 恢复当前盲注: type=${data.currentBlind.type}, ante=${data.currentBlind.ante}`);
       gameState.currentBlind = Blind.create(data.currentBlind.ante, data.currentBlind.type);
+      console.log(`[Storage.restoreGameState] 当前盲注创建完成: boss=${gameState.currentBlind?.bossType || '无'}`);
     }
 
     // 修复5: 先恢复优惠券效果字段（必须在恢复小丑牌和计算剩余次数之前）
@@ -273,8 +296,10 @@ export class Storage {
 
     // 先恢复小丑牌，这样 getMaxHandSize() 才能正确计算
     // 修复3: 恢复小丑牌完整信息（贴纸、版本、状态等）
+    console.log(`[Storage.restoreGameState] 开始恢复小丑牌, 存档中小丑牌数量: ${data.jokers.length}`);
     const restoredJokers = data.jokers
-      .map(jokerData => {
+      .map((jokerData, index) => {
+        console.log(`[Storage.restoreGameState] 恢复小丑牌[${index}]: id=${jokerData.id}, sticker=${jokerData.sticker}, edition=${jokerData.edition}, sellValueBonus=${jokerData.sellValueBonus}`);
         const joker = getJokerById(jokerData.id);
         if (joker) {
           // 恢复贴纸
@@ -305,11 +330,15 @@ export class Storage {
           if (jokerData.sellValueBonus !== undefined) {
             joker.sellValueBonus = jokerData.sellValueBonus;
           }
+          console.log(`[Storage.restoreGameState] 小丑牌[${index}]恢复完成: name=${joker.name}, 最终sellValueBonus=${joker.sellValueBonus}`);
+        } else {
+          console.warn(`[Storage.restoreGameState] 无法找到小丑牌: id=${jokerData.id}`);
         }
         return joker;
       })
       .filter((joker): joker is Joker => joker !== undefined);
 
+    console.log(`[Storage.restoreGameState] 成功恢复小丑牌数量: ${restoredJokers.length}`);
     for (const joker of restoredJokers) {
       gameState.getJokerSlots().addJoker(joker);
     }
@@ -328,10 +357,36 @@ export class Storage {
       gameState.cardPile = new CardPile(gameState.getMaxHandSize());
     }
 
+    // 修复Boss效果问题: 先恢复Boss状态，这样在计算handsRemaining和discardsRemaining时才能正确应用Boss效果
+    if (data.bossState) {
+      const bossStateInterface: BossStateInterface = {
+        currentBoss: data.bossState.currentBoss as any,
+        playedHandTypes: data.bossState.playedHandTypes as any[],
+        firstHandPlayed: data.bossState.firstHandPlayed,
+        handLevelsReduced: data.bossState.handLevelsReduced,
+        cardsPlayedThisAnte: data.bossState.cardsPlayedThisAnte,
+        mostPlayedHand: data.bossState.mostPlayedHand as any,
+        handPlayCounts: data.bossState.handPlayCounts,
+        jokerSold: data.bossState.jokerSold ?? false,
+        disabledJokerIndex: data.bossState.disabledJokerIndex ?? null,
+        requiredCardId: data.bossState.requiredCardId ?? null
+      };
+      gameState.bossState.restoreState(bossStateInterface);
+      logger.info('[Storage.restoreGameState] Boss状态已恢复（提前到计算剩余次数之前）', {
+        currentBoss: data.bossState.currentBoss
+      });
+    }
+
     // 重新计算出牌次数（考虑小丑牌效果）
     const maxHands = gameState.getMaxHandsPerRound();
     // 如果存档中的出牌次数大于最大值，则使用最大值
     gameState.handsRemaining = Math.min(data.handsRemaining, maxHands);
+
+    // 重新计算弃牌次数（考虑小丑牌效果）
+    const maxDiscards = gameState.getMaxDiscardsPerRound();
+    // 如果存档中的弃牌次数大于最大值，则使用最大值
+    gameState.discardsRemaining = Math.min(data.discardsRemaining, maxDiscards);
+    console.log(`[Storage.restoreGameState] 恢复弃牌次数: 存档=${data.discardsRemaining}, 最大值=${maxDiscards}, 最终=${gameState.discardsRemaining}`);
 
     // 恢复消耗牌槽位数量
     const maxConsumableSlots = data.maxConsumableSlots ?? 2;
@@ -409,25 +464,7 @@ export class Storage {
       (gameState as any).globalCounters = { ...data.globalCounters };
     }
 
-    // 修复5: 恢复Boss状态
-    if (data.bossState) {
-      const bossStateInterface: BossStateInterface = {
-        currentBoss: data.bossState.currentBoss as any,
-        playedHandTypes: data.bossState.playedHandTypes as any[],
-        firstHandPlayed: data.bossState.firstHandPlayed,
-        handLevelsReduced: data.bossState.handLevelsReduced,
-        cardsPlayedThisAnte: data.bossState.cardsPlayedThisAnte,
-        mostPlayedHand: data.bossState.mostPlayedHand as any,
-        handPlayCounts: data.bossState.handPlayCounts,
-        jokerSold: data.bossState.jokerSold ?? false,
-        disabledJokerIndex: data.bossState.disabledJokerIndex ?? null,
-        requiredCardId: data.bossState.requiredCardId ?? null
-      };
-      gameState.bossState.restoreState(bossStateInterface);
-      logger.info('[Storage.restoreGameState] Boss状态已恢复', {
-        currentBoss: data.bossState.currentBoss
-      });
-    }
+    // 修复5: Boss状态已在上面提前恢复，这里不再需要
 
     // 修复6: 恢复上次使用的消耗牌
     if (data.lastUsedConsumable) {
@@ -465,20 +502,12 @@ export class Storage {
 
   /**
    * 恢复游戏状态（包含Boss分配）
+   * 注意：Boss分配现在已在restoreGameState中恢复，这里不再重复
    */
   static restore(saveData: SaveData): GameState {
     const gameState = this.restoreGameState(saveData);
 
-    // 修复Boss盲注丢失问题: 恢复Boss分配信息
-    if (saveData.bossAssignments && saveData.bossAssignments.length > 0) {
-      const bossAssignments = new Map<number, BossType>(
-        saveData.bossAssignments.map(([ante, bossType]) => [ante, bossType as BossType])
-      );
-      setBossAssignments(bossAssignments);
-      logger.info('[Storage.restore] Boss分配已恢复', {
-        assignments: saveData.bossAssignments
-      });
-    }
+    // Boss分配已在restoreGameState中恢复，这里只需要记录日志
 
     // 导演剪辑版优惠券: 恢复Boss重掷状态
     if (saveData.bossSelectionState) {
@@ -630,7 +659,7 @@ export class Storage {
   }
 
   private static serializeJoker(joker: Joker): SerializedJoker {
-    return {
+    const serialized = {
       id: joker.id,
       // 修复3: 补充小丑牌完整信息
       sticker: joker.sticker,
@@ -641,6 +670,8 @@ export class Storage {
       faceDown: joker.faceDown, // 保存翻面状态
       sellValueBonus: joker.sellValueBonus // 保存售价加成
     };
+    console.log(`[Storage.serializeJoker] id=${joker.id}, name=${joker.name}, sellValueBonus=${joker.sellValueBonus}`);
+    return serialized;
   }
 
   private static serializeConsumable(consumable: Consumable): SerializedConsumable {

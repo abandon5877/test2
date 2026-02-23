@@ -332,66 +332,7 @@ export class GameBoard {
 
     this.refresh();
 
-    // 显示当前Boss提示
-    this.showCurrentBossTip();
-  }
-
-  /**
-   * 显示当前Boss的提示信息
-   */
-  private showCurrentBossTip(): void {
-    const currentBoss = this.gameState.bossState.getCurrentBoss();
-    if (!currentBoss) return;
-
-    const bossConfig = BossSystem.getBossConfig(currentBoss);
-    if (!bossConfig) return;
-
-    // 根据Boss类型显示不同的提示
-    switch (currentBoss) {
-      case BossType.WALL:
-        Toast.warning(`⚠️ ${bossConfig.name}Boss: 目标分数为正常的4倍！`);
-        break;
-      case BossType.VIOLET_VESSEL:
-        Toast.warning(`⚠️ ${bossConfig.name}Boss: 目标分数为正常的6倍！`);
-        break;
-      case BossType.NEEDLE:
-        Toast.warning(`⚠️ ${bossConfig.name}Boss: 只能出牌1次！`);
-        break;
-      case BossType.WATER:
-        Toast.warning(`⚠️ ${bossConfig.name}Boss: 没有弃牌机会！`);
-        break;
-      case BossType.MANACLE:
-        Toast.info(`ℹ️ ${bossConfig.name}Boss: 手牌上限-1`);
-        break;
-      case BossType.TOOTH:
-        Toast.info(`ℹ️ ${bossConfig.name}Boss: 每张出牌扣$1`);
-        break;
-      case BossType.FLINT:
-        Toast.info(`ℹ️ ${bossConfig.name}Boss: 基础筹码和倍率减半`);
-        break;
-      case BossType.SERPENT:
-        Toast.info(`ℹ️ ${bossConfig.name}Boss: 出牌/弃牌后只抽3张牌`);
-        break;
-      case BossType.EYE:
-        Toast.info(`ℹ️ ${bossConfig.name}Boss: 不能重复打出相同牌型`);
-        break;
-      case BossType.MOUTH:
-        Toast.info(`ℹ️ ${bossConfig.name}Boss: 本回合只能出一种牌型`);
-        break;
-      case BossType.PSYCHIC:
-        Toast.info(`ℹ️ ${bossConfig.name}Boss: 必须正好打出5张牌`);
-        break;
-      case BossType.OX:
-        Toast.warning(`⚠️ ${bossConfig.name}Boss: 打出最常用牌型时金钱归零！`);
-        break;
-      case BossType.CLUB:
-      case BossType.GOAD:
-      case BossType.HEAD:
-      case BossType.WINDOW:
-      case BossType.PLANT:
-        Toast.info(`ℹ️ ${bossConfig.name}Boss: ${bossConfig.description}`);
-        break;
-    }
+    // Boss提示已移除
   }
 
   /**

@@ -242,13 +242,8 @@ export class ShopComponent {
     if (index < 0 || index >= jokers.length) return;
 
     const joker = jokers[index];
-    // 使用与JokerSystem.sellJoker相同的计算逻辑：向下取整，最低$1
-    let sellPrice = Math.max(1, Math.floor(joker.cost / 2));
-
-    // 租赁小丑只能卖$1
-    if (joker.sticker === 'rental') {
-      sellPrice = 1;
-    }
+    // 使用小丑牌的getSellPrice方法计算售价（包含礼品卡加成）
+    const sellPrice = joker.getSellPrice();
 
     // 检查是否为永恒贴纸
     if (joker.sticker === 'eternal') {
@@ -262,10 +257,12 @@ export class ShopComponent {
       () => {
         const result = this.gameState.sellJoker(index);
         if (result.success) {
-          // 只刷新右侧区域，避免关闭开包界面
+          // 刷新右侧区域（小丑牌和消耗牌）
           this.refreshRightPanel();
           // 刷新左侧金钱显示
           this.refreshLeftPanelMoney();
+          // 刷新商品价格标签颜色（不重新创建中间区域，避免关闭开包界面）
+          this.refreshShopItemPrices();
 
           let message = `${joker.name} 已卖出，获得 $${result.sellPrice}！`;
 
@@ -278,6 +275,10 @@ export class ShopComponent {
           }
 
           Toast.success(message);
+
+          // 卖完小丑后自动存档
+          Storage.autoSave(this.gameState);
+          console.log('[ShopComponent.sellJoker] 卖完小丑后自动存档完成');
         } else {
           Toast.error(result.error || '卖出失败！');
         }
@@ -299,11 +300,41 @@ export class ShopComponent {
   }
 
   /**
+   * 刷新商品价格标签颜色
+   * 用于卖出小丑牌后更新价格标签颜色，但不重新创建整个区域（避免关闭开包界面）
+   */
+  private refreshShopItemPrices(): void {
+    const shopItems = this.getShopItems();
+    const priceTags = document.querySelectorAll('.joker-cost') as NodeListOf<HTMLElement>;
+    
+    priceTags.forEach((priceTag, index) => {
+      const shopItem = shopItems[index];
+      if (shopItem && !shopItem.sold) {
+        const canAfford = this.gameState.money >= shopItem.cost;
+        if (!canAfford) {
+          // 买不起 - 红色
+          priceTag.style.background = 'linear-gradient(145deg, #ef4444 0%, #dc2626 100%)';
+          priceTag.style.color = '#fff';
+        } else {
+          // 买得起 - 恢复默认颜色（绿色）
+          priceTag.style.background = 'linear-gradient(145deg, #22c55e 0%, #16a34a 100%)';
+          priceTag.style.color = '#fff';
+        }
+      }
+    });
+    console.log('[ShopComponent.refreshShopItemPrices] 价格标签颜色已更新');
+  }
+
+  /**
    * 刷新左侧金钱显示
    */
   private refreshLeftPanelMoney(): void {
-    const moneyElement = document.querySelector('.game-layout-left .text-green-400.font-bold.text-center') as HTMLElement;
+    console.log(`[ShopComponent.refreshLeftPanelMoney] 刷新金钱显示, gameState.money=$${this.gameState.money}`);
+    // 修复：使用正确的选择器 text-yellow-400（与createLeftPanel中一致）
+    const moneyElement = document.querySelector('#shop-money-section .text-yellow-400.font-bold.text-center') as HTMLElement;
+    console.log(`[ShopComponent.refreshLeftPanelMoney] 找到moneyElement:`, !!moneyElement);
     if (moneyElement) {
+      console.log(`[ShopComponent.refreshLeftPanelMoney] 更新金钱显示: ${moneyElement.textContent} -> $${this.gameState.money}`);
       moneyElement.textContent = `$${this.gameState.money}`;
     }
   }

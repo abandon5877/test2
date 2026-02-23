@@ -268,6 +268,8 @@ export class Joker implements JokerInterface {
     cloned.disabled = this.disabled;
     // 复制翻面状态
     cloned.faceDown = this.faceDown;
+    // 复制售价加成
+    cloned.sellValueBonus = this.sellValueBonus;
     return cloned;
   }
 

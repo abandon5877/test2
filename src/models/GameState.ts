@@ -945,9 +945,13 @@ export class GameState implements GameStateInterface {
   }
 
   sellJoker(index: number): { success: boolean; sellPrice?: number; error?: string; copiedJokerId?: string } {
+    console.log(`[GameState.sellJoker] 开始卖小丑, index=${index}, 当前金钱=$${this.money}`);
     const result = JokerSystem.sellJoker(this.jokerSlots, index);
+    console.log(`[GameState.sellJoker] JokerSystem返回:`, result);
     if (result.success && result.sellPrice) {
+      const oldMoney = this.money;
       this.money += result.sellPrice;
+      console.log(`[GameState.sellJoker] 金钱更新: ${oldMoney} + ${result.sellPrice} = ${this.money}`);
 
       // 处理隐形小丑的复制效果
       if (result.copiedJokerId) {
@@ -966,6 +970,7 @@ export class GameState implements GameStateInterface {
 
       this.recreateHand();
     }
+    console.log(`[GameState.sellJoker] 返回结果:`, result);
     return result;
   }
 

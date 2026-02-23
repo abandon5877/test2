@@ -168,21 +168,27 @@ export class JokerSystem {
   static sellJoker(jokerSlots: JokerSlots, index: number): { success: boolean; sellPrice?: number; error?: string; copiedJokerId?: string } {
     const jokers = jokerSlots.getJokers();
 
+    console.log(`[JokerSystem.sellJoker] 开始出售小丑牌, index: ${index}, 小丑总数: ${jokers.length}`);
+
     if (index < 0 || index >= jokers.length) {
       logger.warn('Cannot sell joker: invalid index', { index, count: jokers.length });
+      console.log(`[JokerSystem.sellJoker] 失败: 无效的索引 ${index}`);
       return { success: false, error: 'Invalid joker index' };
     }
 
     const joker = jokers[index];
+    console.log(`[JokerSystem.sellJoker] 小丑牌信息: id=${joker.id}, name=${joker.name}, sticker=${joker.sticker}, edition=${joker.edition}, sellValueBonus=${joker.sellValueBonus}`);
 
     // 检查是否为永恒贴纸（无法出售）
     if (joker.sticker === 'eternal') {
       logger.warn('Cannot sell joker: eternal sticker', { jokerId: joker.id });
+      console.log(`[JokerSystem.sellJoker] 失败: 永恒贴纸无法出售`);
       return { success: false, error: 'Eternal joker cannot be sold' };
     }
 
     // 使用小丑牌的getSellPrice方法计算售价（包含礼品卡加成）
     const sellPrice = joker.getSellPrice();
+    console.log(`[JokerSystem.sellJoker] 计算售价: baseCost=${joker.cost}, sellValueBonus=${joker.sellValueBonus}, finalSellPrice=${sellPrice}`);
 
     // 处理出售时的回调（隐形小丑）
     let copiedJokerId: string | undefined;
@@ -200,6 +206,7 @@ export class JokerSystem {
 
     // 移除小丑牌
     jokerSlots.removeJoker(index);
+    console.log(`[JokerSystem.sellJoker] 小丑牌已移除, index: ${index}`);
     logger.info('Joker sold', {
       jokerId: joker.id,
       jokerName: joker.name,
@@ -210,6 +217,7 @@ export class JokerSystem {
     // 更新Campfire状态：每卖出一张牌，Campfire的cardsSold+1
     this.updateCampfireOnCardSold(jokerSlots);
 
+    console.log(`[JokerSystem.sellJoker] 出售成功: sellPrice=${sellPrice}, copiedJokerId=${copiedJokerId}`);
     return { success: true, sellPrice, copiedJokerId };
   }
 
