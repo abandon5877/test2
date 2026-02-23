@@ -331,6 +331,67 @@ export class GameBoard {
     this.setupResponsiveLayout();
 
     this.refresh();
+
+    // 显示当前Boss提示
+    this.showCurrentBossTip();
+  }
+
+  /**
+   * 显示当前Boss的提示信息
+   */
+  private showCurrentBossTip(): void {
+    const currentBoss = this.gameState.bossState.getCurrentBoss();
+    if (!currentBoss) return;
+
+    const bossConfig = BossSystem.getBossConfig(currentBoss);
+    if (!bossConfig) return;
+
+    // 根据Boss类型显示不同的提示
+    switch (currentBoss) {
+      case BossType.WALL:
+        Toast.warning(`⚠️ ${bossConfig.name}Boss: 目标分数为正常的4倍！`);
+        break;
+      case BossType.VIOLET_VESSEL:
+        Toast.warning(`⚠️ ${bossConfig.name}Boss: 目标分数为正常的6倍！`);
+        break;
+      case BossType.NEEDLE:
+        Toast.warning(`⚠️ ${bossConfig.name}Boss: 只能出牌1次！`);
+        break;
+      case BossType.WATER:
+        Toast.warning(`⚠️ ${bossConfig.name}Boss: 没有弃牌机会！`);
+        break;
+      case BossType.MANACLE:
+        Toast.info(`ℹ️ ${bossConfig.name}Boss: 手牌上限-1`);
+        break;
+      case BossType.TOOTH:
+        Toast.info(`ℹ️ ${bossConfig.name}Boss: 每张出牌扣$1`);
+        break;
+      case BossType.FLINT:
+        Toast.info(`ℹ️ ${bossConfig.name}Boss: 基础筹码和倍率减半`);
+        break;
+      case BossType.SERPENT:
+        Toast.info(`ℹ️ ${bossConfig.name}Boss: 出牌/弃牌后只抽3张牌`);
+        break;
+      case BossType.EYE:
+        Toast.info(`ℹ️ ${bossConfig.name}Boss: 不能重复打出相同牌型`);
+        break;
+      case BossType.MOUTH:
+        Toast.info(`ℹ️ ${bossConfig.name}Boss: 本回合只能出一种牌型`);
+        break;
+      case BossType.PSYCHIC:
+        Toast.info(`ℹ️ ${bossConfig.name}Boss: 必须正好打出5张牌`);
+        break;
+      case BossType.OX:
+        Toast.warning(`⚠️ ${bossConfig.name}Boss: 打出最常用牌型时金钱归零！`);
+        break;
+      case BossType.CLUB:
+      case BossType.GOAD:
+      case BossType.HEAD:
+      case BossType.WINDOW:
+      case BossType.PLANT:
+        Toast.info(`ℹ️ ${bossConfig.name}Boss: ${bossConfig.description}`);
+        break;
+    }
   }
 
   /**
@@ -1742,6 +1803,146 @@ export class GameBoard {
   }
 
   /**
+   * 显示Boss限制提示弹窗
+   */
+  private showBossRestrictionModal(bossName: string, restriction: string, suggestion: string): void {
+    // 创建弹窗背景
+    const modal = document.createElement('div');
+    modal.className = 'boss-restriction-modal';
+    modal.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.85);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2000;
+      animation: fadeIn 0.3s ease;
+    `;
+
+    // 创建弹窗内容
+    const content = document.createElement('div');
+    content.style.cssText = `
+      background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+      border: 3px solid #ef4444;
+      border-radius: 16px;
+      padding: 32px;
+      max-width: 450px;
+      width: 90%;
+      box-shadow: 0 8px 40px rgba(239, 68, 68, 0.5);
+      animation: slideIn 0.3s ease;
+    `;
+
+    // 标题
+    const title = document.createElement('div');
+    title.textContent = '⚠️ Boss限制';
+    title.style.cssText = `
+      font-size: ${this.scaled(24)};
+      font-weight: bold;
+      color: #ef4444;
+      text-align: center;
+      margin-bottom: 16px;
+    `;
+    content.appendChild(title);
+
+    // Boss名称
+    const bossNameEl = document.createElement('div');
+    bossNameEl.textContent = bossName;
+    bossNameEl.style.cssText = `
+      font-size: ${this.scaled(20)};
+      font-weight: bold;
+      color: #fbbf24;
+      text-align: center;
+      margin-bottom: 12px;
+    `;
+    content.appendChild(bossNameEl);
+
+    // 限制说明
+    const restrictionEl = document.createElement('div');
+    restrictionEl.textContent = restriction;
+    restrictionEl.style.cssText = `
+      font-size: ${this.scaled(16)};
+      color: #ffffff;
+      text-align: center;
+      margin-bottom: 16px;
+      line-height: 1.5;
+      padding: 12px;
+      background: rgba(239, 68, 68, 0.1);
+      border-radius: 8px;
+      border-left: 4px solid #ef4444;
+    `;
+    content.appendChild(restrictionEl);
+
+    // 建议
+    const suggestionEl = document.createElement('div');
+    suggestionEl.textContent = suggestion;
+    suggestionEl.style.cssText = `
+      font-size: ${this.scaled(14)};
+      color: #9ca3af;
+      text-align: center;
+      margin-bottom: 24px;
+      line-height: 1.4;
+    `;
+    content.appendChild(suggestionEl);
+
+    // 关闭按钮
+    const closeBtn = document.createElement('button');
+    closeBtn.textContent = '知道了';
+    closeBtn.style.cssText = `
+      width: 100%;
+      padding: 12px;
+      background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+      border: none;
+      border-radius: 8px;
+      color: white;
+      font-size: ${this.scaled(16)};
+      font-weight: bold;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    `;
+    closeBtn.addEventListener('mouseover', () => {
+      closeBtn.style.transform = 'scale(1.02)';
+      closeBtn.style.boxShadow = '0 4px 12px rgba(239, 68, 68, 0.4)';
+    });
+    closeBtn.addEventListener('mouseout', () => {
+      closeBtn.style.transform = 'scale(1)';
+      closeBtn.style.boxShadow = 'none';
+    });
+    closeBtn.addEventListener('click', () => {
+      modal.remove();
+    });
+    content.appendChild(closeBtn);
+
+    modal.appendChild(content);
+
+    // 点击背景关闭
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        modal.remove();
+      }
+    });
+
+    // 添加动画样式
+    const style = document.createElement('style');
+    style.textContent = `
+      @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+      }
+      @keyframes slideIn {
+        from { transform: translateY(-20px); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+      }
+    `;
+    modal.appendChild(style);
+
+    document.body.appendChild(modal);
+  }
+
+  /**
    * 处理出牌
    */
   private handlePlayHand(): void {
@@ -1764,13 +1965,23 @@ export class GameBoard {
     // 检查 Boss 限制 - 眼睛Boss: 不能重复打出相同牌型
     const bossResult = BossSystem.canPlayHand(this.gameState.bossState, handResult.handType);
     if (bossResult.canPlay === false && bossResult.message) {
-      Toast.error(bossResult.message);
+      // 显示更明显的弹窗提示
+      const bossConfig = currentBoss ? BossSystem.getBossConfig(currentBoss) : null;
+      this.showBossRestrictionModal(
+        bossConfig?.name || 'Boss限制',
+        bossResult.message,
+        '请尝试打出其他类型的牌型'
+      );
       return;
     }
 
     // 检查通灵Boss: 必须正好打出5张牌
     if (currentBoss === BossType.PSYCHIC && selectedCards.length !== 5) {
-      Toast.error('通灵Boss: 必须正好打出5张牌！');
+      this.showBossRestrictionModal(
+        '通灵Boss',
+        `必须正好打出5张牌，当前选择了${selectedCards.length}张`,
+        '请选择或取消卡牌，使总数正好为5张'
+      );
       return;
     }
 
@@ -1780,9 +1991,26 @@ export class GameBoard {
       if (requiredCardId) {
         const hasRequiredCard = selectedCards.some(card => card.toString() === requiredCardId);
         if (!hasRequiredCard) {
-          Toast.error('天青铃铛Boss: 必须选择指定的特定牌！');
+          this.showBossRestrictionModal(
+            '天青铃铛Boss',
+            '必须选择被强制指定的特定牌',
+            '请查看手牌中被标记的卡牌，必须将其包含在出牌中'
+          );
           return;
         }
+      }
+    }
+
+    // 检查牛Boss: 如果打出最常用牌型，显示警告
+    if (currentBoss === BossType.OX) {
+      const isMostPlayed = BossSystem.isMostPlayedHand(this.gameState.bossState, handResult.handType);
+      if (isMostPlayed) {
+        this.showBossRestrictionModal(
+          '牛Boss警告',
+          '你即将打出本局最常用的牌型，金钱将归零！',
+          '如果可能，请尝试打出其他牌型以避免损失'
+        );
+        // 不return，让玩家可以选择继续
       }
     }
 
@@ -1791,6 +2019,11 @@ export class GameBoard {
     if (scoreResult) {
       // 显示分数动画
       this.showScorePopup(scoreResult);
+
+      // 如果触发了牛Boss效果，显示提示
+      if (scoreResult.isOxMostPlayedHand) {
+        Toast.error('牛Boss效果触发：金钱归零！');
+      }
 
       // 回调
       this.callbacks.onPlayHand?.(scoreResult);

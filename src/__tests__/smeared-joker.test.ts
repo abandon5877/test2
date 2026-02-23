@@ -145,7 +145,7 @@ describe('Smeared_Joker 污损小丑集成测试', () => {
       jokerSlots.addJoker(lustyJoker);
 
       // 设置PokerHandDetector配置
-      JokerSystem.setPokerHandDetectorConfig(jokerSlots);
+      JokerSystem.setGlobalConfig(jokerSlots);
 
       const scoredCards = [
         new Card(Suit.Hearts, Rank.Two),
@@ -173,7 +173,7 @@ describe('Smeared_Joker 污损小丑集成测试', () => {
       jokerSlots.addJoker(smearedJoker);
       jokerSlots.addJoker(wrathfulJoker);
 
-      JokerSystem.setPokerHandDetectorConfig(jokerSlots);
+      JokerSystem.setGlobalConfig(jokerSlots);
 
       const scoredCards = [
         new Card(Suit.Spades, Rank.Two),
@@ -201,7 +201,7 @@ describe('Smeared_Joker 污损小丑集成测试', () => {
       jokerSlots.addJoker(smearedJoker);
       jokerSlots.addJoker(bloodstone);
 
-      JokerSystem.setPokerHandDetectorConfig(jokerSlots);
+      JokerSystem.setGlobalConfig(jokerSlots);
 
       // 使用多张方片牌增加触发概率
       const scoredCards = [
@@ -241,7 +241,7 @@ describe('Smeared_Joker 污损小丑集成测试', () => {
       jokerSlots.addJoker(smearedJoker);
       jokerSlots.addJoker(arrowhead);
 
-      JokerSystem.setPokerHandDetectorConfig(jokerSlots);
+      JokerSystem.setGlobalConfig(jokerSlots);
 
       // 使用梅花牌测试
       const scoredCards = [
@@ -269,7 +269,7 @@ describe('Smeared_Joker 污损小丑集成测试', () => {
       jokerSlots.addJoker(smearedJoker);
       jokerSlots.addJoker(flowerPot);
 
-      JokerSystem.setPokerHandDetectorConfig(jokerSlots);
+      JokerSystem.setGlobalConfig(jokerSlots);
 
       // 2张红色 + 2张黑色
       const scoredCards = [
@@ -294,11 +294,11 @@ describe('Smeared_Joker 污损小丑集成测试', () => {
   });
 
   describe('JokerSystem配置管理', () => {
-    it('setPokerHandDetectorConfig应正确检测Smeared_Joker', () => {
+    it('setGlobalConfig应正确检测Smeared_Joker', () => {
       const smearedJoker = getJokerById('smeared_joker')!;
       jokerSlots.addJoker(smearedJoker);
 
-      JokerSystem.setPokerHandDetectorConfig(jokerSlots);
+      JokerSystem.setGlobalConfig(jokerSlots);
 
       // 验证配置已设置（使用不连续的牌避免形成顺子）
       const cards = [
@@ -317,13 +317,13 @@ describe('Smeared_Joker 污损小丑集成测试', () => {
       const smearedJoker = getJokerById('smeared_joker')!;
       jokerSlots.addJoker(smearedJoker);
 
-      JokerSystem.setPokerHandDetectorConfig(jokerSlots);
+      JokerSystem.setGlobalConfig(jokerSlots);
 
       // 出售Smeared_Joker
       JokerSystem.sellJoker(jokerSlots, 0);
 
       // 重新配置
-      JokerSystem.setPokerHandDetectorConfig(jokerSlots);
+      JokerSystem.setGlobalConfig(jokerSlots);
 
       const cards = [
         new Card(Suit.Hearts, Rank.Two),

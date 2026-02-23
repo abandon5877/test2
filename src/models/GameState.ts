@@ -393,12 +393,21 @@ export class GameState implements GameStateInterface {
     }
 
     // 记录已出的牌（用于柱子Boss效果）并处理Boss效果
-    const bossResult = BossSystem.afterPlayHand(this.bossState, selectedCards, scoreResult.handType);
+    // 修复手臂Boss: 传入当前牌型等级，确保不会降到1级以下
+    const currentHandLevel = this.handLevelState.getHandLevel(scoreResult.handType).level;
+    const bossResult = BossSystem.afterPlayHand(this.bossState, selectedCards, scoreResult.handType, currentHandLevel);
 
     // 处理牙齿Boss扣钱效果
     if (bossResult.moneyChange && bossResult.moneyChange < 0) {
       this.money += bossResult.moneyChange;
       logger.info('牙齿Boss扣钱', { moneyChange: bossResult.moneyChange, newMoney: this.money });
+    }
+
+    // 修复牛Boss: 处理打出最常用牌型时金钱归零效果
+    if (scoreResult.isOxMostPlayedHand) {
+      const oldMoney = this.money;
+      this.money = 0;
+      logger.info('牛Boss效果: 打出最常用牌型，金钱归零', { oldMoney, newMoney: this.money });
     }
 
     // 处理钩子Boss弃牌效果
@@ -421,8 +430,8 @@ export class GameState implements GameStateInterface {
     // 抽牌 - 考虑蛇Boss限制
     const currentBoss = this.bossState.getCurrentBoss();
     if (currentBoss === BossType.SERPENT) {
-      // 蛇Boss: 只抽3张牌
-      this.drawCards(Math.min(3, selectedCards.length));
+      // 修复蛇Boss: 总是抽3张牌，忽略手牌上限
+      this.drawCards(3, { ignoreHandSize: true });
     } else {
       this.drawCards(selectedCards.length);
     }
@@ -487,8 +496,8 @@ export class GameState implements GameStateInterface {
     // 抽牌 - 考虑蛇Boss限制
     const currentBoss = this.bossState.getCurrentBoss();
     if (currentBoss === BossType.SERPENT) {
-      // 蛇Boss: 只抽3张牌
-      this.drawCards(Math.min(3, discardedCards.length));
+      // 修复蛇Boss: 总是抽3张牌，忽略手牌上限
+      this.drawCards(3, { ignoreHandSize: true });
     } else {
       this.drawCards(discardedCards.length);
     }
@@ -810,10 +819,50 @@ export class GameState implements GameStateInterface {
     this.cardPile.dealInitialHand(this.getMaxHandSize());
   }
 
-  private drawCards(count: number): void {
+  private drawCards(count: number, options?: { ignoreHandSize?: boolean; faceDown?: boolean }): void {
     // 修复Bug: 抽牌应该补充到手牌满，而不是只抽count张
     // 这是为了处理塔罗牌摧毁手牌后的情况
-    this.cardPile.drawToMaxHandSize();
+    // 修复蛇Boss: 支持ignoreHandSize选项（总是抽3张，忽略手牌上限）
+    // 修复鱼Boss: 支持faceDown选项（抽到的牌翻面）
+    // 修复轮子Boss: 在抽牌时应用1/7翻面概率
+
+    const currentBoss = this.bossState.getCurrentBoss();
+
+    // 蛇Boss: 总是抽3张，忽略手牌上限
+    if (options?.ignoreHandSize) {
+      // 直接抽指定数量的牌，不考虑手牌上限
+      for (let i = 0; i < count; i++) {
+        const card = this.cardPile.deck.dealOne();
+        if (card) {
+          // 鱼Boss: 抽到的牌翻面
+          if (options?.faceDown || currentBoss === BossType.FISH) {
+            card.setFaceDown(true);
+          }
+          // 修复轮子Boss: 抽牌时有1/7概率翻面
+          if (currentBoss === BossType.WHEEL && Math.random() < 1/7) {
+            card.setFaceDown(true);
+          }
+          this.cardPile.hand.addCard(card);
+        }
+      }
+    } else {
+      // 正常抽牌：补充到手牌满
+      const cardsNeeded = Math.min(count, this.cardPile.hand.maxHandSize - this.cardPile.hand.count);
+      for (let i = 0; i < cardsNeeded; i++) {
+        const card = this.cardPile.deck.dealOne();
+        if (card) {
+          // 鱼Boss: 抽到的牌翻面
+          if (options?.faceDown || currentBoss === BossType.FISH) {
+            card.setFaceDown(true);
+          }
+          // 修复轮子Boss: 抽牌时有1/7概率翻面
+          if (currentBoss === BossType.WHEEL && Math.random() < 1/7) {
+            card.setFaceDown(true);
+          }
+          this.cardPile.hand.addCard(card);
+        }
+      }
+    }
   }
 
   /**
@@ -1045,11 +1094,13 @@ export class GameState implements GameStateInterface {
   }
 
   getMaxHandSize(): number {
-    return this.config.maxHandSize + this.getExtraHandSizeFromJokers() + this.extraHandSizeFromVouchers;
+    const baseSize = this.config.maxHandSize + this.getExtraHandSizeFromJokers() + this.extraHandSizeFromVouchers;
+    return BossSystem.modifyHandSize(this.bossState, baseSize);
   }
 
   getMaxHandsPerRound(): number {
-    return this.config.maxHandsPerRound + this.getExtraHandsFromJokers() + this.extraHandsFromVouchers;
+    const baseHands = this.config.maxHandsPerRound + this.getExtraHandsFromJokers() + this.extraHandsFromVouchers;
+    return BossSystem.modifyHands(this.bossState, baseHands);
   }
 
   getExtraDiscardsFromJokers(): number {
@@ -1064,7 +1115,8 @@ export class GameState implements GameStateInterface {
   }
 
   getMaxDiscardsPerRound(): number {
-    return this.config.maxDiscardsPerRound + this.getExtraDiscardsFromJokers() + this.extraDiscardsFromVouchers;
+    const baseDiscards = this.config.maxDiscardsPerRound + this.getExtraDiscardsFromJokers() + this.extraDiscardsFromVouchers;
+    return BossSystem.modifyDiscards(this.bossState, baseDiscards);
   }
 
   /**

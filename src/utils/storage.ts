@@ -14,7 +14,7 @@ import { ScoringSystem } from '../systems/ScoringSystem';
 import { GamePhase, BossType } from '../types/game';
 import { ConsumableType } from '../types/consumable';
 import type { BlindType } from '../types/game';
-import type { Suit, Rank, CardEnhancement, SealType } from '../types/card';
+import type { Suit, Rank, CardEnhancement, SealType, CardEdition } from '../types/card';
 import { getJokerById } from '../data/jokers';
 import { getConsumableById } from '../data/consumables/index';
 import { HandLevel } from '../models/HandLevelState';
@@ -127,6 +127,8 @@ interface SerializedCard {
   rank: Rank;
   enhancement: CardEnhancement;
   seal: SealType;
+  edition: CardEdition;      // 修复存档: 保存卡牌版本
+  faceDown: boolean;         // 修复存档: 保存卡牌翻面状态
 }
 
 interface SerializedJoker {
@@ -138,10 +140,13 @@ interface SerializedJoker {
   state: Record<string, any>; // 状态数据
   disabled?: boolean; // 是否被禁用（深红之心Boss效果）
   faceDown?: boolean; // 是否翻面（琥珀橡果Boss效果）
+  sellValueBonus?: number; // 礼品卡等增加的售价加成
 }
 
 interface SerializedConsumable {
   id: string;
+  isNegative?: boolean; // 负片效果：消耗牌槽位+1
+  sellValueBonus?: number; // 礼品卡等增加的售价加成
 }
 
 // 修复1: 商店序列化接口
@@ -296,6 +301,10 @@ export class Storage {
           if (jokerData.faceDown !== undefined) {
             joker.faceDown = jokerData.faceDown;
           }
+          // 恢复售价加成
+          if (jokerData.sellValueBonus !== undefined) {
+            joker.sellValueBonus = jokerData.sellValueBonus;
+          }
         }
         return joker;
       })
@@ -343,9 +352,22 @@ export class Storage {
 
     // 恢复消耗牌
     const restoredConsumables = data.consumables
-      .map(consumableData => getConsumableById(consumableData.id))
+      .map(consumableData => {
+        const consumable = getConsumableById(consumableData.id);
+        if (consumable) {
+          // 恢复负片状态
+          if (consumableData.isNegative !== undefined) {
+            (consumable as any).isNegative = consumableData.isNegative;
+          }
+          // 恢复售价加成
+          if (consumableData.sellValueBonus !== undefined) {
+            consumable.sellValueBonus = consumableData.sellValueBonus;
+          }
+        }
+        return consumable;
+      })
       .filter((consumable): consumable is Consumable => consumable !== undefined);
-    
+
     for (const consumable of restoredConsumables) {
       gameState.addConsumable(consumable);
     }
@@ -425,7 +447,14 @@ export class Storage {
         (gameState as any).currentPack = {
           pack: pack,
           revealedCards: data.currentPack.revealedCards.map(cardData =>
-              new Card(cardData.suit, cardData.rank, cardData.enhancement, cardData.seal)
+              new Card(
+                cardData.suit,
+                cardData.rank,
+                cardData.enhancement,
+                cardData.seal,
+                (cardData as any).edition || 'none',      // 修复存档: 恢复卡牌版本
+                (cardData as any).faceDown ?? false       // 修复存档: 恢复卡牌翻面状态
+              )
             )
         };
       }
@@ -581,7 +610,10 @@ export class Storage {
         handLevelsReduced: Object.fromEntries((gameState.bossState as any).handLevelsReduced || new Map()),
         cardsPlayedThisAnte: Array.from((gameState.bossState as any).cardsPlayedThisAnte || []),
         mostPlayedHand: (gameState.bossState as any).mostPlayedHand || null,
-        handPlayCounts: Object.fromEntries((gameState.bossState as any).handPlayCounts || new Map())
+        handPlayCounts: Object.fromEntries((gameState.bossState as any).handPlayCounts || new Map()),
+        jokerSold: (gameState.bossState as any).jokerSold ?? false,
+        disabledJokerIndex: (gameState.bossState as any).disabledJokerIndex ?? null,
+        requiredCardId: (gameState.bossState as any).requiredCardId ?? null
       } : undefined
     };
   }
@@ -591,7 +623,9 @@ export class Storage {
       suit: card.suit,
       rank: card.rank,
       enhancement: card.enhancement,
-      seal: card.seal
+      seal: card.seal,
+      edition: card.edition,       // 修复存档: 保存卡牌版本
+      faceDown: card.faceDown      // 修复存档: 保存卡牌翻面状态
     };
   }
 
@@ -604,13 +638,16 @@ export class Storage {
       perishableRounds: joker.perishableRounds,
       state: joker.getState(),
       disabled: joker.disabled, // 保存禁用状态
-      faceDown: joker.faceDown // 保存翻面状态
+      faceDown: joker.faceDown, // 保存翻面状态
+      sellValueBonus: joker.sellValueBonus // 保存售价加成
     };
   }
 
   private static serializeConsumable(consumable: Consumable): SerializedConsumable {
     return {
-      id: consumable.id
+      id: consumable.id,
+      isNegative: consumable.isNegative, // 保存负片状态
+      sellValueBonus: consumable.sellValueBonus // 保存售价加成
     };
   }
 

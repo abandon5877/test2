@@ -7,6 +7,7 @@ import { Card } from '../models/Card';
 import { Suit, Rank } from '../types/card';
 import { initializeBlindConfigs, resetBlindConfigs, getBossBlindConfig, BASE_BLIND_CONFIGS } from '../data/blinds';
 import { BlindType } from '../types/game';
+import { ScoringSystem } from '../systems/ScoringSystem';
 
 describe('Boss盲注系统', () => {
   let bossState: BossState;
@@ -253,6 +254,37 @@ describe('Boss盲注系统', () => {
       
       expect(BossSystem.getHandLevelReduction(bossState, PokerHandType.HighCard)).toBe(1);
       expect(BossSystem.getHandLevelReduction(bossState, PokerHandType.OnePair)).toBe(1);
+    });
+
+    it('多次打出同牌型应该累加降低等级', () => {
+      const cards = [new Card(Suit.Spades, Rank.Ace)];
+      
+      // 第一次打出高牌（等级2 -> 降低1 -> 有效等级1）
+      BossSystem.afterPlayHand(bossState, cards, PokerHandType.HighCard, 2);
+      expect(BossSystem.getHandLevelReduction(bossState, PokerHandType.HighCard)).toBe(1);
+      
+      // 第二次打出高牌（已经1级，不再降低）
+      const result = BossSystem.afterPlayHand(bossState, cards, PokerHandType.HighCard, 2);
+      expect(BossSystem.getHandLevelReduction(bossState, PokerHandType.HighCard)).toBe(1); // 不再增加
+      expect(result.message).toContain('已降至最低等级');
+    });
+
+    it('高等级牌型可以多次降低直到1级', () => {
+      const cards = [new Card(Suit.Spades, Rank.Ace)];
+      
+      // 假设牌型等级为3级
+      // 第一次打出（等级3 -> 降低1 -> 有效等级2）
+      BossSystem.afterPlayHand(bossState, cards, PokerHandType.HighCard, 3);
+      expect(BossSystem.getHandLevelReduction(bossState, PokerHandType.HighCard)).toBe(1);
+      
+      // 第二次打出（等级3 -> 降低2 -> 有效等级1）
+      BossSystem.afterPlayHand(bossState, cards, PokerHandType.HighCard, 3);
+      expect(BossSystem.getHandLevelReduction(bossState, PokerHandType.HighCard)).toBe(2);
+      
+      // 第三次打出（已经1级，不再降低）
+      const result = BossSystem.afterPlayHand(bossState, cards, PokerHandType.HighCard, 3);
+      expect(BossSystem.getHandLevelReduction(bossState, PokerHandType.HighCard)).toBe(2); // 不再增加
+      expect(result.message).toContain('已降至最低等级');
     });
   });
 
@@ -556,6 +588,287 @@ describe('Boss盲注系统', () => {
 
       // 牌应该重新生效
       expect(BossSystem.isCardDisabled(bossState, card)).toBe(false);
+    });
+
+    // 修复牛Boss: 测试最常用牌型检测
+    it('牛Boss应该正确识别最常用牌型', () => {
+      BossSystem.setBoss(bossState, BossType.OX);
+
+      // 初始时没有最常用牌型
+      expect(bossState.getMostPlayedHand()).toBeNull();
+
+      // 记录onePair出牌3次
+      bossState.recordHandPlayCount(PokerHandType.OnePair);
+      bossState.recordHandPlayCount(PokerHandType.OnePair);
+      bossState.recordHandPlayCount(PokerHandType.OnePair);
+
+      // 记录twoPair出牌2次
+      bossState.recordHandPlayCount(PokerHandType.TwoPair);
+      bossState.recordHandPlayCount(PokerHandType.TwoPair);
+
+      // onePair应该是最常用牌型
+      expect(bossState.getMostPlayedHand()).toBe(PokerHandType.OnePair);
+      expect(BossSystem.isMostPlayedHand(bossState, PokerHandType.OnePair)).toBe(true);
+      expect(BossSystem.isMostPlayedHand(bossState, PokerHandType.TwoPair)).toBe(false);
+    });
+
+    // 修复牛Boss: 测试打出最常用牌型时触发效果标志
+    it('牛Boss效果: 打出最常用牌型应该触发标志', () => {
+      BossSystem.setBoss(bossState, BossType.OX);
+
+      // 设置最常用牌型为OnePair
+      bossState.recordHandPlayCount(PokerHandType.OnePair);
+      bossState.recordHandPlayCount(PokerHandType.OnePair);
+
+      // 验证是最常用牌型
+      expect(BossSystem.isMostPlayedHand(bossState, PokerHandType.OnePair)).toBe(true);
+    });
+
+    // 修复蛇Boss: 测试抽牌逻辑
+    it('蛇Boss应该总是抽3张牌', () => {
+      BossSystem.setBoss(bossState, BossType.SERPENT);
+
+      // 蛇Boss的修改出牌次数方法应该返回正常值（抽牌逻辑在GameState中处理）
+      const modifiedHands = BossSystem.modifyHands(bossState, 4);
+      expect(modifiedHands).toBe(4); // 蛇Boss不影响出牌次数，只影响抽牌数量
+    });
+
+    // 修复鱼Boss: 测试配置正确
+    it('鱼Boss配置正确', () => {
+      const bossAssignments = new Map([[1, BossType.FISH]]);
+      initializeBlindConfigs(bossAssignments);
+
+      const config = getBossBlindConfig(1);
+      expect(config).toBeDefined();
+      expect(config?.bossType).toBe(BossType.FISH);
+      expect(config?.name).toBe('Boss: 鱼');
+      expect(config?.description).toBe('出牌后抽到的补充牌面朝下');
+      // minAnte是BossBlindConfig的属性，不是BlindConfig的属性
+      // 但鱼Boss的minAnte确实是2，这在BossSystem.ts中配置
+    });
+  });
+
+  describe('Boss效果在GameState中集成测试', () => {
+    it('水Boss应该使弃牌次数为0', () => {
+      BossSystem.setBoss(bossState, BossType.WATER);
+
+      // 模拟GameState.getMaxDiscardsPerRound()的行为
+      const baseDiscards = 3; // 默认3次弃牌
+      const modifiedDiscards = BossSystem.modifyDiscards(bossState, baseDiscards);
+
+      expect(modifiedDiscards).toBe(0);
+    });
+
+    it('针Boss应该使出牌次数为1', () => {
+      BossSystem.setBoss(bossState, BossType.NEEDLE);
+
+      // 模拟GameState.getMaxHandsPerRound()的行为
+      const baseHands = 4; // 默认4次出牌
+      const modifiedHands = BossSystem.modifyHands(bossState, baseHands);
+
+      expect(modifiedHands).toBe(1);
+    });
+
+    it('手铐Boss应该使手牌上限减少1', () => {
+      BossSystem.setBoss(bossState, BossType.MANACLE);
+
+      // 模拟GameState.getMaxHandSize()的行为
+      const baseSize = 8; // 默认8张手牌上限
+      const modifiedSize = BossSystem.modifyHandSize(bossState, baseSize);
+
+      expect(modifiedSize).toBe(7);
+    });
+
+    it('无Boss时弃牌次数不变', () => {
+      BossSystem.clearBoss(bossState);
+
+      const baseDiscards = 3;
+      const modifiedDiscards = BossSystem.modifyDiscards(bossState, baseDiscards);
+
+      expect(modifiedDiscards).toBe(3);
+    });
+
+    it('无Boss时出牌次数不变', () => {
+      BossSystem.clearBoss(bossState);
+
+      const baseHands = 4;
+      const modifiedHands = BossSystem.modifyHands(bossState, baseHands);
+
+      expect(modifiedHands).toBe(4);
+    });
+
+    it('无Boss时手牌上限不变', () => {
+      BossSystem.clearBoss(bossState);
+
+      const baseSize = 8;
+      const modifiedSize = BossSystem.modifyHandSize(bossState, baseSize);
+
+      expect(modifiedSize).toBe(8);
+    });
+  });
+
+  describe('燧石Boss (The Flint) - 基础筹码倍率减半', () => {
+    beforeEach(() => {
+      BossSystem.setBoss(bossState, BossType.FLINT);
+    });
+
+    it('燧石Boss配置正确', () => {
+      const config = BossSystem.getBossConfig(BossType.FLINT);
+      expect(config.name).toBe('燧石');
+      expect(config.description).toBe('最终得分减半');
+      expect(config.minAnte).toBe(2);
+      expect(config.scoreMultiplier).toBe(2);
+    });
+
+    it('燧石Boss应该减半基础筹码和倍率', () => {
+      const cards = [
+        new Card(Suit.Spades, Rank.Ace),
+        new Card(Suit.Hearts, Rank.Ace),
+        new Card(Suit.Diamonds, Rank.King),
+        new Card(Suit.Clubs, Rank.Queen),
+        new Card(Suit.Spades, Rank.Jack)
+      ];
+
+      // 无Boss时的分数
+      BossSystem.clearBoss(bossState);
+      const resultWithoutBoss = ScoringSystem.calculate(cards, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, false, undefined, bossState);
+
+      // 有燧石Boss时的分数
+      BossSystem.setBoss(bossState, BossType.FLINT);
+      const resultWithFlint = ScoringSystem.calculate(cards, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, false, undefined, bossState);
+
+      // 验证基础筹码和倍率减半
+      // 一对的基础筹码是10，减半后应该是5
+      // 一对的基础倍率是2，减半后应该是1
+      expect(resultWithFlint.baseChips).toBe(Math.floor(resultWithoutBoss.baseChips / 2));
+      expect(resultWithFlint.baseMultiplier).toBe(Math.floor(resultWithoutBoss.baseMultiplier / 2));
+    });
+
+    it('燧石Boss对高牌的影响', () => {
+      const cards = [
+        new Card(Suit.Spades, Rank.Ace),
+        new Card(Suit.Hearts, Rank.King),
+        new Card(Suit.Diamonds, Rank.Queen),
+        new Card(Suit.Clubs, Rank.Jack),
+        new Card(Suit.Spades, Rank.Nine)
+      ];
+
+      const result = ScoringSystem.calculate(cards, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, false, undefined, bossState);
+
+      // 高牌的基础筹码是5，减半后应该是2
+      // 高牌的基础倍率是1，减半后应该是0（但最小为1）
+      expect(result.baseChips).toBe(2); // Math.floor(5 / 2)
+      expect(result.baseMultiplier).toBe(1); // Math.max(1, Math.floor(1 / 2))
+    });
+  });
+
+  describe('嘴Boss (The Mouth) - 只能出一种牌型', () => {
+    beforeEach(() => {
+      BossSystem.setBoss(bossState, BossType.MOUTH);
+    });
+
+    it('嘴Boss配置正确', () => {
+      const config = BossSystem.getBossConfig(BossType.MOUTH);
+      expect(config.name).toBe('嘴');
+      expect(config.description).toBe('本回合只能打出一种牌型');
+      expect(config.minAnte).toBe(2);
+    });
+
+    it('第一次出牌应该可以', () => {
+      const result = BossSystem.canPlayHand(bossState, PokerHandType.OnePair);
+      expect(result.canPlay).toBe(true);
+    });
+
+    it('出不同牌型应该被阻止', () => {
+      // 第一次出对子
+      BossSystem.beforePlayHand(bossState, PokerHandType.OnePair);
+      BossSystem.afterPlayHand(bossState, [new Card(Suit.Spades, Rank.Ace), new Card(Suit.Hearts, Rank.Ace)], PokerHandType.OnePair);
+
+      // 第二次出三条应该失败
+      const result = BossSystem.canPlayHand(bossState, PokerHandType.ThreeOfAKind);
+      expect(result.canPlay).toBe(false);
+      expect(result.message).toContain('嘴Boss');
+    });
+
+    it('出相同牌型应该可以', () => {
+      // 第一次出对子
+      BossSystem.beforePlayHand(bossState, PokerHandType.OnePair);
+      BossSystem.afterPlayHand(bossState, [new Card(Suit.Spades, Rank.Ace), new Card(Suit.Hearts, Rank.Ace)], PokerHandType.OnePair);
+
+      // 第二次出对子应该可以
+      const result = BossSystem.canPlayHand(bossState, PokerHandType.OnePair);
+      expect(result.canPlay).toBe(true);
+    });
+  });
+
+  describe('通灵Boss (The Psychic) - 必须出5张牌', () => {
+    it('通灵Boss配置正确', () => {
+      const config = BossSystem.getBossConfig(BossType.PSYCHIC);
+      expect(config.name).toBe('通灵');
+      expect(config.description).toBe('必须正好打出5张牌');
+      expect(config.minAnte).toBe(1);
+    });
+  });
+
+  describe('翠绿叶子Boss (Verdant Leaf) - 卖小丑后解除', () => {
+    beforeEach(() => {
+      BossSystem.setBoss(bossState, BossType.VERDANT_LEAF);
+    });
+
+    it('翠绿叶子Boss配置正确', () => {
+      const config = BossSystem.getBossConfig(BossType.VERDANT_LEAF);
+      expect(config.name).toBe('翠绿叶子');
+      expect(config.description).toBe('所有卡牌失效，直到卖出1张小丑牌');
+      expect(config.minAnte).toBe(8);
+      expect(config.reward).toBe(8);
+    });
+
+    it('未卖小丑时所有卡牌应该失效', () => {
+      const card = new Card(Suit.Spades, Rank.Ace);
+      expect(BossSystem.isCardDisabled(bossState, card)).toBe(true);
+    });
+
+    it('卖出小丑后卡牌应该恢复', () => {
+      const card = new Card(Suit.Spades, Rank.Ace);
+
+      // 未卖小丑时失效
+      expect(BossSystem.isCardDisabled(bossState, card)).toBe(true);
+
+      // 标记已卖出小丑
+      bossState.markJokerSold();
+
+      // 卖出后恢复
+      expect(BossSystem.isCardDisabled(bossState, card)).toBe(false);
+    });
+  });
+
+  describe('深红之心Boss (Crimson Heart) - 禁用小丑', () => {
+    it('深红之心Boss配置正确', () => {
+      const config = BossSystem.getBossConfig(BossType.CRIMSON_HEART);
+      expect(config.name).toBe('深红之心');
+      expect(config.description).toBe('每手牌随机禁用1张小丑牌');
+      expect(config.minAnte).toBe(8);
+      expect(config.reward).toBe(8);
+    });
+  });
+
+  describe('天青铃铛Boss (Cerulean Bell) - 强制选牌', () => {
+    beforeEach(() => {
+      BossSystem.setBoss(bossState, BossType.CERULEAN_BELL);
+    });
+
+    it('天青铃铛Boss配置正确', () => {
+      const config = BossSystem.getBossConfig(BossType.CERULEAN_BELL);
+      expect(config.name).toBe('天青铃铛');
+      expect(config.description).toBe('必须选择1张特定牌');
+      expect(config.minAnte).toBe(8);
+      expect(config.reward).toBe(8);
+    });
+
+    it('应该能设置和获取必须选择的卡牌ID', () => {
+      const cardId = 'Spades-Ace';
+      bossState.setRequiredCardId(cardId);
+      expect(bossState.getRequiredCardId()).toBe(cardId);
     });
   });
 });

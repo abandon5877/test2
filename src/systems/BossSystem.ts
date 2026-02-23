@@ -56,7 +56,7 @@ export class BossSystem {
   /**
    * 检查是否可以出牌
    */
-  static canPlayHand(bossState: BossState, handType: PokerHandType): BossEffectResult {
+  static canPlayHand(bossState: BossState, handType: PokerHandType, cardCount?: number): BossEffectResult {
     const currentBoss = bossState.getCurrentBoss();
 
     if (currentBoss === BossType.EYE) {
@@ -73,6 +73,16 @@ export class BossSystem {
         return {
           canPlay: false,
           message: '嘴Boss: 本回合只能出一种牌型'
+        };
+      }
+    }
+
+    // 通灵Boss: 必须正好打出5张牌
+    if (currentBoss === BossType.PSYCHIC) {
+      if (cardCount !== undefined && cardCount !== 5) {
+        return {
+          canPlay: false,
+          message: '通灵Boss: 必须正好打出5张牌'
         };
       }
     }
@@ -98,7 +108,7 @@ export class BossSystem {
   /**
    * 出牌后效果
    */
-  static afterPlayHand(bossState: BossState, cards: Card[], handType: PokerHandType): BossEffectResult {
+  static afterPlayHand(bossState: BossState, cards: Card[], handType: PokerHandType, currentHandLevel?: number): BossEffectResult {
     bossState.recordPlayedHandType(handType);
 
     const currentBoss = bossState.getCurrentBoss();
@@ -116,12 +126,14 @@ export class BossSystem {
       result.message = `牙齿Boss: ${cards.length}张牌扣$${cards.length}`;
     }
 
-    // 手臂Boss: 降低牌型等级
+    // 手臂Boss: 降低牌型等级（每次打出都降低，但最低到1级）
     if (currentBoss === BossType.ARM) {
-      const currentLevel = bossState.getHandLevelReduction(handType);
-      if (currentLevel < 1) {
-        bossState.increaseHandLevelReduction(handType);
-        result.message = `手臂Boss: ${handType}等级降低1级`;
+      const increased = bossState.increaseHandLevelReduction(handType, currentHandLevel);
+      const reduction = bossState.getHandLevelReduction(handType);
+      if (increased) {
+        result.message = `手臂Boss: ${handType}等级降低${reduction}级`;
+      } else {
+        result.message = `手臂Boss: ${handType}已降至最低等级`;
       }
     }
 
@@ -240,14 +252,15 @@ export class BossSystem {
   static isCardFaceDown(bossState: BossState, card: Card, isFirstHand: boolean): boolean {
     const currentBoss = bossState.getCurrentBoss();
 
+    // 房子Boss: 第一手牌面朝下
     if (currentBoss === BossType.HOUSE && isFirstHand && !bossState.isFirstHandPlayed()) {
       return true;
     }
 
-    if (currentBoss === BossType.WHEEL) {
-      return Math.random() < 1/7;
-    }
+    // 修复轮子Boss: 不再在这里随机，而是在抽牌时确定翻面状态并保存到卡牌中
+    // 轮子的翻面状态已经通过 card.faceDown 保存
 
+    // 标记Boss: 人头牌面朝下
     if (currentBoss === BossType.MARK) {
       return card.rank === Rank.Jack || card.rank === Rank.Queen || card.rank === Rank.King;
     }
@@ -333,6 +346,20 @@ export class BossSystem {
    */
   static resetHandLevelReduction(bossState: BossState): void {
     bossState.resetHandLevelReduction();
+  }
+
+  /**
+   * 检查是否是蛇Boss（影响抽牌数量）
+   */
+  static isSerpentBoss(bossState: BossState): boolean {
+    return bossState.getCurrentBoss() === BossType.SERPENT;
+  }
+
+  /**
+   * 获取蛇Boss的抽牌数量（固定为3）
+   */
+  static getSerpentDrawCount(): number {
+    return 3;
   }
 
   /**

@@ -90,11 +90,4 @@ export class Deck {
   getCards(): readonly Card[] {
     return [...this._cards];
   }
-
-  /**
-   * @deprecated 使用 getCards() 代替
-   */
-  get cards(): readonly Card[] {
-    return this._cards;
-  }
 }

@@ -27,6 +27,20 @@ export class BossSelectionSystem {
   // ==================== 静态方法 ====================
 
   /**
+   * Ante 1允许的Boss列表（官方规定只有8个）
+   */
+  private static readonly ANTE1_ALLOWED_BOSSES: BossType[] = [
+    BossType.HOOK,      // 钩子
+    BossType.MANACLE,   // 手铐
+    BossType.CLUB,      // 梅花
+    BossType.GOAD,      // 刺棒
+    BossType.HEAD,      // 头
+    BossType.WINDOW,    // 窗户
+    BossType.PSYCHIC,   // 通灵
+    BossType.PILLAR     // 柱子
+  ];
+
+  /**
    * 获取所有可用的Boss类型
    */
   private static getAvailableBosses(
@@ -46,6 +60,11 @@ export class BossSelectionSystem {
 
       // 检查最低底注要求
       if (config.minAnte > ante) {
+        return false;
+      }
+
+      // Ante 1的特殊限制：只有8个Boss可选
+      if (ante === 1 && !this.ANTE1_ALLOWED_BOSSES.includes(bossType)) {
         return false;
       }
 

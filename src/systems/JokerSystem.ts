@@ -94,13 +94,6 @@ export class JokerSystem {
   }
 
   /**
-   * @deprecated 使用 setGlobalConfig 替代
-   */
-  static setPokerHandDetectorConfig(jokerSlots: JokerSlots): void {
-    this.setGlobalConfig(jokerSlots);
-  }
-
-  /**
    * 限制消耗牌生成数量（根据槽位可用空间）
    * @param result 小丑牌效果结果
    * @param consumableSlots 消耗牌槽位

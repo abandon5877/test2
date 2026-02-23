@@ -8,9 +8,11 @@ import type { JokerSlots } from '../models/JokerSlots';
 import type { HandLevelState } from '../models/HandLevelState';
 import type { BossState } from '../models/BossState';
 import { BossSystem } from './BossSystem';
+import { BossType } from '../types/game';
 import { SealSystem } from './SealSystem';
 import { createModuleLogger } from '../utils/logger';
 import { ProbabilitySystem, PROBABILITIES } from './ProbabilitySystem';
+import { PLANET_CARDS } from '../data/planetCards';
 
 const logger = createModuleLogger('ScoringSystem');
 
@@ -34,6 +36,8 @@ export interface ScoreResult {
   destroyedCards?: readonly Card[]; // 被摧毁的卡牌（Glass效果）
   heldMultMultiplier?: number; // 手持卡牌倍率乘数（Steel效果）
   copyScoredCardToDeck?: boolean; // DNA效果：复制计分牌到卡组
+  // 修复牛Boss: 标记是否触发了牛Boss效果（打出最常用牌型）
+  isOxMostPlayedHand?: boolean;
 }
 
 export interface CardScoreDetail {
@@ -45,20 +49,6 @@ export interface CardScoreDetail {
 }
 
 export class ScoringSystem {
-  /**
-   * @deprecated 不再使用，保留此方法以保持兼容性
-   */
-  static setJokerSystem(_jokerSystem: unknown): void {
-    // 不再使用，JokerSystem 现在是静态方法类
-  }
-
-  /**
-   * @deprecated 不再使用，保留此方法以保持兼容性
-   */
-  static clearJokerSystem(): void {
-    // 不再使用
-  }
-
   /**
    * 检查是否有水花飞溅效果（所有打出的牌都计分）
    */
@@ -258,14 +248,67 @@ export class ScoringSystem {
     // 应用牌型升级效果
     if (handLevelState) {
       const handLevel = handLevelState.getHandLevel(handResult.handType);
-      baseChips += handLevel.totalChipBonus;
-      baseMultiplier += handLevel.totalMultBonus;
+      
+      // 修复手臂Boss: 应用牌型等级降低（在计分前应用，且等级不会低于1）
+      let effectiveLevel = handLevel.level;
+      let effectiveChipBonus = handLevel.totalChipBonus;
+      let effectiveMultBonus = handLevel.totalMultBonus;
+      
+      if (bossState) {
+        const reduction = bossState.getHandLevelReduction(handResult.handType);
+        if (reduction > 0) {
+          // 等级降低，但不低于1
+          effectiveLevel = Math.max(1, handLevel.level - reduction);
+          
+          // 重新计算升级效果（根据降低后的等级）
+          if (effectiveLevel < handLevel.level) {
+            const planetCard = PLANET_CARDS[handResult.handType];
+            if (planetCard) {
+              const levelsLost = handLevel.level - effectiveLevel;
+              effectiveChipBonus = handLevel.totalChipBonus - (planetCard.chipBonus * levelsLost);
+              effectiveMultBonus = handLevel.totalMultBonus - (planetCard.multBonus * levelsLost);
+            }
+          }
+          
+          logger.debug('手臂Boss效果: 牌型等级降低', {
+            handType: handResult.handType,
+            originalLevel: handLevel.level,
+            reduction,
+            effectiveLevel,
+            originalChipBonus: handLevel.totalChipBonus,
+            effectiveChipBonus,
+            originalMultBonus: handLevel.totalMultBonus,
+            effectiveMultBonus
+          });
+        }
+      }
+      
+      baseChips += effectiveChipBonus;
+      baseMultiplier += effectiveMultBonus;
       logger.debug('牌型升级效果已应用', {
         handType: handResult.handType,
-        level: handLevel.level,
-        chipBonus: handLevel.totalChipBonus,
-        multBonus: handLevel.totalMultBonus
+        level: effectiveLevel,
+        chipBonus: effectiveChipBonus,
+        multBonus: effectiveMultBonus
       });
+    }
+
+    // 修复燧石Boss: 基础筹码和倍率减半（在卡牌计分前应用）
+    if (bossState) {
+      const currentBoss = BossSystem.getCurrentBoss(bossState);
+      if (currentBoss === BossType.FLINT) {
+        const originalBaseChips = baseChips;
+        const originalBaseMultiplier = baseMultiplier;
+        baseChips = Math.floor(baseChips / 2);
+        baseMultiplier = Math.max(1, Math.floor(baseMultiplier / 2)); // 确保最小为1
+        logger.debug('燧石Boss效果: 基础筹码和倍率减半', {
+          handType: handResult.handType,
+          originalBaseChips,
+          newBaseChips: baseChips,
+          originalBaseMultiplier,
+          newBaseMultiplier: baseMultiplier
+        });
+      }
     }
 
     const cardDetails: CardScoreDetail[] = [];
@@ -593,6 +636,9 @@ export class ScoringSystem {
     
     const totalScore = totalChips * totalMultiplier;
 
+    // 修复牛Boss: 检查是否打出了最常用牌型
+    const isOxMostPlayedHand = bossState ? BossSystem.isMostPlayedHand(bossState, handResult.handType) : false;
+
     logger.debug('Score calculation complete', {
       handType: handResult.handType,
       baseChips,
@@ -600,7 +646,8 @@ export class ScoringSystem {
       baseMultiplier,
       totalMultiplier,
       totalScore,
-      jokerEffects: jokerEffects?.length ?? 0
+      jokerEffects: jokerEffects?.length ?? 0,
+      isOxMostPlayedHand
     });
 
     return {
@@ -622,7 +669,9 @@ export class ScoringSystem {
       moneyBonus: totalLuckyMoney + sealMoneyBonus,
       destroyedCards: destroyedCards.length > 0 ? destroyedCards : undefined,
       heldMultMultiplier: heldMultMultiplier > 1 ? heldMultMultiplier : undefined,
-      copyScoredCardToDeck
+      copyScoredCardToDeck,
+      // 修复牛Boss: 返回是否触发了牛Boss效果
+      isOxMostPlayedHand
     };
   }
 

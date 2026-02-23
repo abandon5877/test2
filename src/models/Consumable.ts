@@ -56,7 +56,7 @@ export class Consumable implements ConsumableInterface {
   }
 
   clone(): ConsumableInterface {
-    return new Consumable({
+    const cloned = new Consumable({
       id: this.id,
       name: this.name,
       description: this.description,
@@ -66,6 +66,10 @@ export class Consumable implements ConsumableInterface {
       use: this.useFunction,
       canUse: this.canUseFunction
     });
+    // 复制额外属性
+    (cloned as any).isNegative = this.isNegative;
+    cloned.sellValueBonus = this.sellValueBonus;
+    return cloned;
   }
 
   getDisplayInfo(): string {

@@ -106,10 +106,24 @@ export class BossState {
 
   /**
    * 增加牌型等级降低
+   * @param handType 牌型
+   * @param currentHandLevel 当前牌型等级（用于检查是否已降到1级）
+   * @returns 是否成功增加了降低值
    */
-  increaseHandLevelReduction(handType: PokerHandType): void {
-    const current = this.handLevelsReduced.get(handType) || 0;
-    this.handLevelsReduced.set(handType, current + 1);
+  increaseHandLevelReduction(handType: PokerHandType, currentHandLevel?: number): boolean {
+    const currentReduction = this.handLevelsReduced.get(handType) || 0;
+    
+    // 如果提供了当前等级，检查降低后是否会低于1级
+    if (currentHandLevel !== undefined) {
+      const effectiveLevel = Math.max(1, currentHandLevel - currentReduction);
+      if (effectiveLevel <= 1) {
+        // 已经降到1级，不再继续降低
+        return false;
+      }
+    }
+    
+    this.handLevelsReduced.set(handType, currentReduction + 1);
+    return true;
   }
 
   /**

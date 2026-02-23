@@ -3,7 +3,7 @@ import { Hand } from '../models/Hand';
 import { Deck } from '../models/Deck';
 import { DiscardPile } from '../models/DiscardPile';
 import { CardPile } from '../models/CardPile';
-import { Suit, Rank, CardEnhancement, SealType } from '../types/card';
+import { Suit, Rank, CardEnhancement, SealType, CardEdition } from '../types/card';
 import { createModuleLogger } from '../utils/logger';
 
 const logger = createModuleLogger('CardManager');
@@ -259,16 +259,18 @@ export class CardManager {
   // ========== 序列化 ==========
 
   static serialize(deck: Deck, hand: Hand, discardPile: DiscardPile): {
-    deck: Array<{ suit: Suit; rank: Rank; enhancement: CardEnhancement; seal: SealType }>;
-    hand: Array<{ suit: Suit; rank: Rank; enhancement: CardEnhancement; seal: SealType }>;
-    discard: Array<{ suit: Suit; rank: Rank; enhancement: CardEnhancement; seal: SealType }>;
+    deck: Array<{ suit: Suit; rank: Rank; enhancement: CardEnhancement; seal: SealType; edition: CardEdition; faceDown: boolean }>;
+    hand: Array<{ suit: Suit; rank: Rank; enhancement: CardEnhancement; seal: SealType; edition: CardEdition; faceDown: boolean }>;
+    discard: Array<{ suit: Suit; rank: Rank; enhancement: CardEnhancement; seal: SealType; edition: CardEdition; faceDown: boolean }>;
     handSelectedIndices: number[];
   } {
     const serializeCard = (card: Card) => ({
       suit: card.suit,
       rank: card.rank,
       enhancement: card.enhancement,
-      seal: card.seal
+      seal: card.seal,
+      edition: card.edition,
+      faceDown: card.faceDown
     });
 
     return {
@@ -280,20 +282,35 @@ export class CardManager {
   }
 
   static deserialize(deck: Deck, hand: Hand, discardPile: DiscardPile, data: {
-    deck: Array<{ suit: Suit; rank: Rank; enhancement: CardEnhancement; seal: SealType }>;
-    hand: Array<{ suit: Suit; rank: Rank; enhancement: CardEnhancement; seal: SealType }>;
-    discard: Array<{ suit: Suit; rank: Rank; enhancement: CardEnhancement; seal: SealType }>;
+    deck: Array<{ suit: Suit; rank: Rank; enhancement: CardEnhancement; seal: SealType; edition: CardEdition; faceDown: boolean }>;
+    hand: Array<{ suit: Suit; rank: Rank; enhancement: CardEnhancement; seal: SealType; edition: CardEdition; faceDown: boolean }>;
+    discard: Array<{ suit: Suit; rank: Rank; enhancement: CardEnhancement; seal: SealType; edition: CardEdition; faceDown: boolean }>;
     handSelectedIndices: number[];
   }): void {
     // 恢复牌堆
-    (deck as any)._cards = data.deck.map(c => new Card(c.suit, c.rank, c.enhancement, c.seal));
-    
+    (deck as any)._cards = data.deck.map(c => {
+      const card = new Card(c.suit, c.rank, c.enhancement, c.seal);
+      card.edition = c.edition;
+      card.faceDown = c.faceDown;
+      return card;
+    });
+
     // 恢复手牌
-    const handCards = data.hand.map(c => new Card(c.suit, c.rank, c.enhancement, c.seal));
+    const handCards = data.hand.map(c => {
+      const card = new Card(c.suit, c.rank, c.enhancement, c.seal);
+      card.edition = c.edition;
+      card.faceDown = c.faceDown;
+      return card;
+    });
     (hand as any).cards = handCards;
-    
+
     // 恢复弃牌堆
-    const discardCards = data.discard.map(c => new Card(c.suit, c.rank, c.enhancement, c.seal));
+    const discardCards = data.discard.map(c => {
+      const card = new Card(c.suit, c.rank, c.enhancement, c.seal);
+      card.edition = c.edition;
+      card.faceDown = c.faceDown;
+      return card;
+    });
     (discardPile as any).cards = discardCards;
 
     // 恢复选牌状态
@@ -356,24 +373,4 @@ export class CardManager {
   static getCountByLocation(cardPile: CardPile, location: CardLocation): number {
     return cardPile.getCountByLocation(location);
   }
-}
-
-// 为了保持向后兼容，保留全局实例管理（已废弃，将在后续版本中移除）
-let globalCardManager: CardManager | null = null;
-
-/**
- * @deprecated 使用新的静态方法 CardManager.xxx(deck, hand, discardPile, ...)
- */
-export function getCardManager(): CardManager {
-  if (!globalCardManager) {
-    globalCardManager = new CardManager();
-  }
-  return globalCardManager;
-}
-
-/**
- * @deprecated 使用新的静态方法 CardManager.xxx(deck, hand, discardPile, ...)
- */
-export function setCardManager(manager: CardManager): void {
-  globalCardManager = manager;
 }

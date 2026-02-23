@@ -2,14 +2,12 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { Storage } from '../utils/storage';
 import { GameState } from '../models/GameState';
 import { PokerHandDetector } from '../systems/PokerHandDetector';
-import { ScoringSystem } from '../systems/ScoringSystem';
 import { BlindType } from '../types/game';
 
 describe('盲注过渡存档读档测试', () => {
   beforeEach(() => {
     // 重置所有全局状态
     PokerHandDetector.clearConfig();
-    ScoringSystem.clearJokerSystem();
   });
 
   it('新盲注开始后出牌次数应该重置', () => {
@@ -43,7 +41,6 @@ describe('盲注过渡存档读档测试', () => {
 
     const saveData = Storage.serialize(gameState);
     PokerHandDetector.clearConfig();
-    ScoringSystem.clearJokerSystem();
     const restoredState = Storage.restoreGameState(saveData);
 
     // 验证读档后状态一致
