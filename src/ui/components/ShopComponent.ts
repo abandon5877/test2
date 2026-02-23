@@ -1089,6 +1089,7 @@ ${description}
   private draggedJokerIndex: number | null = null;
 
   private handleJokerDragStart(e: DragEvent, index: number): void {
+    console.log('[Shop Joker Drag] DragStart - index:', index);
     this.draggedJokerIndex = index;
     const target = e.currentTarget as HTMLElement;
     target.style.opacity = '0.5';
@@ -1099,6 +1100,7 @@ ${description}
   }
 
   private handleJokerDragEnd(e: DragEvent): void {
+    console.log('[Shop Joker Drag] DragEnd');
     const target = e.currentTarget as HTMLElement;
     target.style.opacity = '1';
     target.style.cursor = 'grab';
@@ -1134,11 +1136,15 @@ ${description}
   private handleJokerDrop(e: DragEvent, targetIndex: number): void {
     e.preventDefault();
     const fromIndex = this.draggedJokerIndex;
+    console.log('[Shop Joker Drag] Drop - from:', fromIndex, 'to:', targetIndex);
     if (fromIndex === null || fromIndex === targetIndex) return;
 
     const success = this.gameState.getJokerSlots().swapJokers(fromIndex, targetIndex);
+    console.log('[Shop Joker Drag] Swap result:', success);
     if (success) {
       this.render();
+      // 交换小丑牌后自动保存
+      Storage.autoSave(this.gameState);
     }
 
     const target = e.currentTarget as HTMLElement;
