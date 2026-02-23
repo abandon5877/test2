@@ -71,6 +71,12 @@ export interface SaveData {
       totalHandsPlayed: number; // 总出牌次数
       totalDiscardsUsed: number; // 总弃牌次数
     };
+    // 修复5: 优惠券效果字段（抓取者、浪费、画笔等）
+    voucherEffects: {
+      extraHandSizeFromVouchers: number; // 手牌上限增加
+      extraHandsFromVouchers: number; // 出牌次数增加
+      extraDiscardsFromVouchers: number; // 弃牌次数增加
+    };
     config: {
       maxHandSize: number;
       maxHandsPerRound: number;
@@ -227,8 +233,7 @@ export class Storage {
     gameState.phase = data.phase;
     gameState.ante = data.ante;
     gameState.money = data.money;
-    gameState.handsRemaining = data.handsRemaining;
-    gameState.discardsRemaining = data.discardsRemaining;
+    // 注意：handsRemaining 和 discardsRemaining 在下面重新计算
     gameState.currentScore = data.currentScore;
     gameState.roundScore = data.roundScore;
 
@@ -237,6 +242,18 @@ export class Storage {
 
     if (data.currentBlind) {
       gameState.currentBlind = Blind.create(data.currentBlind.ante, data.currentBlind.type);
+    }
+
+    // 修复5: 先恢复优惠券效果字段（必须在恢复小丑牌和计算剩余次数之前）
+    if (data.voucherEffects) {
+      (gameState as any).extraHandSizeFromVouchers = data.voucherEffects.extraHandSizeFromVouchers ?? 0;
+      (gameState as any).extraHandsFromVouchers = data.voucherEffects.extraHandsFromVouchers ?? 0;
+      (gameState as any).extraDiscardsFromVouchers = data.voucherEffects.extraDiscardsFromVouchers ?? 0;
+      logger.info('[Storage.restoreGameState] 优惠券效果已恢复', {
+        extraHandSize: data.voucherEffects.extraHandSizeFromVouchers,
+        extraHands: data.voucherEffects.extraHandsFromVouchers,
+        extraDiscards: data.voucherEffects.extraDiscardsFromVouchers
+      });
     }
 
     // 先恢复小丑牌，这样 getMaxHandSize() 才能正确计算
@@ -499,6 +516,12 @@ export class Storage {
       globalCounters: {
         totalHandsPlayed: (gameState as any).globalCounters?.totalHandsPlayed ?? 0,
         totalDiscardsUsed: (gameState as any).globalCounters?.totalDiscardsUsed ?? 0
+      },
+      // 修复5: 保存优惠券效果字段
+      voucherEffects: {
+        extraHandSizeFromVouchers: (gameState as any).extraHandSizeFromVouchers ?? 0,
+        extraHandsFromVouchers: (gameState as any).extraHandsFromVouchers ?? 0,
+        extraDiscardsFromVouchers: (gameState as any).extraDiscardsFromVouchers ?? 0
       },
       config: {
         maxHandSize: (gameState as any).config?.maxHandSize ?? 8,

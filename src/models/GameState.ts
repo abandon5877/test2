@@ -94,13 +94,9 @@ export class GameState implements GameStateInterface {
   startNewGame(): void {
     logger.info('Starting new game');
     this.phase = GamePhase.BLIND_SELECT;
-    this.cardPile = new CardPile(this.getMaxHandSize());
-    this.cardPile.deck.shuffle();
     this.currentBlind = null;
     this.ante = this.config.startingAnte;
     this.money = this.config.startingMoney;
-    this.handsRemaining = this.getMaxHandsPerRound();
-    this.discardsRemaining = this.getMaxDiscardsPerRound();
     this.currentScore = 0;
     this.roundScore = 0;
     this.consumableSlots = new ConsumableSlots(2);
@@ -115,9 +111,15 @@ export class GameState implements GameStateInterface {
       totalHandsPlayed: 0,
       totalDiscardsUsed: 0
     };
+    // 先重置优惠券效果，再计算手牌和出牌次数
     this.extraHandSizeFromVouchers = 0;
     this.extraHandsFromVouchers = 0;
     this.extraDiscardsFromVouchers = 0;
+    // 重置后再初始化CardPile和计算剩余次数
+    this.cardPile = new CardPile(this.getMaxHandSize());
+    this.cardPile.deck.shuffle();
+    this.handsRemaining = this.getMaxHandsPerRound();
+    this.discardsRemaining = this.getMaxDiscardsPerRound();
     
     // 重置Boss选择状态并初始化盲注配置
     this.bossSelectionState.reset();
