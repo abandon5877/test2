@@ -1,24 +1,20 @@
-import { JOKER_RARITY_NAMES, JokerEdition, StickerType } from '../../types/joker';
+import { JOKER_RARITY_COLORS, type JokerRarity } from '../../types/joker';
 import type { Joker } from '../../models/Joker';
 
 export interface JokerDetailOptions {
   joker: Joker;
   index?: number;
-  showSellButton?: boolean;
   onSell?: (index: number) => void;
+  showSellButton?: boolean;
 }
 
 /**
  * 小丑牌详情弹窗工具类
- * 统一处理所有界面的小丑牌详情展示
  */
 export class JokerDetailModal {
   private static instance: JokerDetailModal | null = null;
   private overlay: HTMLElement | null = null;
 
-  /**
-   * 获取单例实例
-   */
   static getInstance(): JokerDetailModal {
     if (!JokerDetailModal.instance) {
       JokerDetailModal.instance = new JokerDetailModal();
@@ -26,164 +22,152 @@ export class JokerDetailModal {
     return JokerDetailModal.instance;
   }
 
-  /**
-   * 显示小丑牌详情弹窗
-   */
   show(options: JokerDetailOptions): void {
-    // 关闭已存在的弹窗
     this.close();
 
-    const { joker, index, showSellButton = false, onSell } = options;
-    const rarityText = JOKER_RARITY_NAMES[joker.rarity] || joker.rarity;
-    // 使用小丑牌的getSellPrice方法获取售价（包含礼品卡加成）
-    const sellPrice = joker.getSellPrice();
-    const isEternal = joker.sticker === StickerType.Eternal;
-    const isRental = joker.sticker === StickerType.Rental;
-    const isPerishable = joker.sticker === StickerType.Perishable;
+    const { joker, index, onSell, showSellButton = true } = options;
+    const rarityColor = JOKER_RARITY_COLORS[joker.rarity] || JOKER_RARITY_COLORS.common;
 
-    // 创建遮罩
     this.overlay = document.createElement('div');
-    this.overlay.className = 'fixed inset-0 bg-black/70 flex items-center justify-center z-50 animate-fade-in';
+    this.overlay.style.cssText = `
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      padding: 4vh 4vw;
+    `;
 
-    // 创建弹窗
     const modal = document.createElement('div');
-    modal.className = 'game-panel max-w-md w-full mx-4 transform scale-100 animate-modal-in';
+    modal.style.cssText = `
+      background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+      border: 3px solid ${rarityColor};
+      border-radius: 2vh;
+      padding: 3vh 4vw;
+      width: 85vw;
+      max-width: 600px;
+      max-height: 88vh;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    `;
 
     // 头部
     const header = document.createElement('div');
-    header.className = 'flex items-center justify-between mb-4';
+    header.style.cssText = `
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 2vh;
+      flex-shrink: 0;
+    `;
 
     const title = document.createElement('h3');
-    title.className = 'text-xl font-bold';
-    title.style.color = this.getRarityColor(joker.rarity);
+    title.style.cssText = `
+      font-size: clamp(20px, 4vh, 32px);
+      font-weight: bold;
+      color: ${rarityColor};
+    `;
     title.textContent = joker.name;
     header.appendChild(title);
 
     const closeBtn = document.createElement('button');
-    closeBtn.className = 'text-gray-400 hover:text-white transition-colors text-2xl';
+    closeBtn.style.cssText = `
+      color: #9ca3af;
+      font-size: clamp(24px, 5vh, 40px);
+      cursor: pointer;
+      background: none;
+      border: none;
+      transition: color 0.2s;
+    `;
     closeBtn.innerHTML = '&times;';
+    closeBtn.addEventListener('mouseover', () => closeBtn.style.color = '#ffffff');
+    closeBtn.addEventListener('mouseout', () => closeBtn.style.color = '#9ca3af');
     closeBtn.addEventListener('click', () => this.close());
     header.appendChild(closeBtn);
 
     modal.appendChild(header);
 
-    // 禁用标签（深红之心Boss效果）
-    if (joker.disabled) {
-      const disabledLabel = document.createElement('div');
-      disabledLabel.className = 'inline-block px-3 py-1 rounded-full text-sm font-bold mb-4 mr-2';
-      disabledLabel.style.backgroundColor = '#ff444433';
-      disabledLabel.style.color = '#ff4444';
-      disabledLabel.style.border = '1px solid #ff4444';
-      disabledLabel.textContent = '🚫 已禁用';
-      modal.appendChild(disabledLabel);
-    }
-
     // 稀有度标签
     const rarityLabel = document.createElement('div');
-    rarityLabel.className = 'inline-block px-3 py-1 rounded-full text-sm font-bold mb-4';
-    rarityLabel.style.backgroundColor = this.getRarityColor(joker.rarity) + '33';
-    rarityLabel.style.color = this.getRarityColor(joker.rarity);
-    rarityLabel.textContent = rarityText;
+    rarityLabel.style.cssText = `
+      display: inline-block;
+      padding: 1vh 2vw;
+      border-radius: 2vh;
+      font-size: clamp(14px, 2.5vh, 20px);
+      font-weight: bold;
+      margin-bottom: 2vh;
+      background: ${rarityColor}33;
+      color: ${rarityColor};
+      width: fit-content;
+    `;
+    rarityLabel.textContent = this.getRarityText(joker.rarity);
     modal.appendChild(rarityLabel);
-
-    // 版本标签（Edition）
-    if (joker.edition && joker.edition !== JokerEdition.None) {
-      const editionLabel = document.createElement('div');
-      editionLabel.className = 'inline-block px-2 py-0.5 rounded text-xs font-bold mb-4 ml-2';
-      
-      switch (joker.edition) {
-        case JokerEdition.Foil:
-          editionLabel.style.backgroundColor = '#c0c0c033';
-          editionLabel.style.color = '#c0c0c0';
-          editionLabel.textContent = '闪箔 (+50筹码)';
-          break;
-        case JokerEdition.Holographic:
-          editionLabel.style.backgroundColor = '#e91e6333';
-          editionLabel.style.color = '#e91e63';
-          editionLabel.textContent = '全息 (+10倍率)';
-          break;
-        case JokerEdition.Polychrome:
-          editionLabel.style.backgroundColor = '#f39c1233';
-          editionLabel.style.color = '#f39c12';
-          editionLabel.textContent = '多彩 (×1.5倍率)';
-          break;
-        case JokerEdition.Negative:
-          editionLabel.style.backgroundColor = '#2c3e5033';
-          editionLabel.style.color = '#ecf0f1';
-          editionLabel.textContent = '负片 (+1槽位)';
-          break;
-      }
-      
-      modal.appendChild(editionLabel);
-    }
-
-    // 贴纸标签（Sticker）
-    if (joker.sticker && joker.sticker !== StickerType.None) {
-      const stickerLabel = document.createElement('div');
-      stickerLabel.className = 'inline-block px-2 py-0.5 rounded text-xs font-bold mb-4 ml-2';
-      
-      switch (joker.sticker) {
-        case StickerType.Eternal:
-          stickerLabel.style.backgroundColor = '#e74c3c33';
-          stickerLabel.style.color = '#e74c3c';
-          stickerLabel.textContent = '🔒 永恒';
-          break;
-        case StickerType.Rental:
-          stickerLabel.style.backgroundColor = '#9b59b633';
-          stickerLabel.style.color = '#9b59b6';
-          stickerLabel.textContent = '💰 租赁 (回合-$3)';
-          break;
-        case StickerType.Perishable:
-          stickerLabel.style.backgroundColor = '#f39c1233';
-          stickerLabel.style.color = '#f39c12';
-          const remainingRounds = (joker as any).perishableRounds || 5;
-          stickerLabel.textContent = `⏳ 易腐 (${remainingRounds}回合)`;
-          break;
-      }
-      
-      modal.appendChild(stickerLabel);
-    }
 
     // 效果描述
     const desc = document.createElement('div');
-    desc.className = 'text-gray-300 mb-4 leading-relaxed';
+    desc.style.cssText = `
+      font-size: clamp(16px, 3vh, 22px);
+      color: #d1d5db;
+      margin-bottom: 3vh;
+      line-height: 1.6;
+      flex: 1;
+    `;
     desc.textContent = joker.description;
     modal.appendChild(desc);
 
     // 价格信息
     const costInfo = document.createElement('div');
-    costInfo.className = 'text-yellow-400 font-bold mb-2';
+    costInfo.style.cssText = `
+      font-size: clamp(16px, 3vh, 22px);
+      color: #fbbf24;
+      font-weight: bold;
+      margin-bottom: 1vh;
+    `;
     costInfo.textContent = `购买价格: $${joker.cost}`;
     modal.appendChild(costInfo);
 
-    // 卖出价格（如果需要显示）
-    if (showSellButton) {
-      const sellInfo = document.createElement('div');
-      sellInfo.className = 'font-bold mb-4';
-      
-      if (isEternal) {
-        sellInfo.className += ' text-red-400';
-        sellInfo.textContent = '卖出价格: 🔒 永恒小丑无法出售';
-      } else if (isRental) {
-        sellInfo.className += ' text-purple-400';
-        sellInfo.textContent = '卖出价格: $1 (租赁小丑)';
-      } else {
-        sellInfo.className += ' text-green-400';
-        sellInfo.textContent = `卖出价格: $${sellPrice}`;
-      }
-      
-      modal.appendChild(sellInfo);
-    }
+    // 卖出价格
+    const sellPrice = joker.getSellPrice();
+    const sellInfo = document.createElement('div');
+    sellInfo.style.cssText = `
+      font-size: clamp(16px, 3vh, 22px);
+      color: #4ade80;
+      font-weight: bold;
+      margin-bottom: 3vh;
+    `;
+    sellInfo.textContent = `卖出价格: $${sellPrice}`;
+    modal.appendChild(sellInfo);
 
     // 按钮区域
     const buttonArea = document.createElement('div');
-    buttonArea.className = 'flex gap-3';
+    buttonArea.style.cssText = `
+      display: flex;
+      gap: 2vw;
+      flex-shrink: 0;
+    `;
 
-    // 卖出按钮（如果需要且可以卖出）
-    if (showSellButton && !isEternal && onSell && typeof index === 'number') {
+    // 卖出按钮
+    if (showSellButton && onSell && typeof index === 'number') {
       const sellButton = document.createElement('button');
-      sellButton.className = 'game-btn game-btn-danger flex-1';
+      sellButton.style.cssText = `
+        flex: 1;
+        padding: 2vh;
+        background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
+        border: 2px solid #ef4444;
+        border-radius: 1.5vh;
+        color: white;
+        font-size: clamp(16px, 3vh, 22px);
+        font-weight: bold;
+        cursor: pointer;
+        transition: transform 0.2s;
+      `;
       sellButton.textContent = '卖出';
+      sellButton.addEventListener('mouseover', () => sellButton.style.transform = 'scale(1.02)');
+      sellButton.addEventListener('mouseout', () => sellButton.style.transform = 'scale(1)');
       sellButton.addEventListener('click', () => {
         this.close();
         onSell(index);
@@ -193,17 +177,28 @@ export class JokerDetailModal {
 
     // 关闭按钮
     const closeButton = document.createElement('button');
-    closeButton.className = 'game-btn game-btn-primary flex-1';
+    closeButton.style.cssText = `
+      flex: 1;
+      padding: 2vh;
+      background: linear-gradient(135deg, #4b5563 0%, #374151 100%);
+      border: 2px solid #6b7280;
+      border-radius: 1.5vh;
+      color: #f3f4f6;
+      font-size: clamp(16px, 3vh, 22px);
+      font-weight: bold;
+      cursor: pointer;
+      transition: transform 0.2s;
+    `;
     closeButton.textContent = '关闭';
+    closeButton.addEventListener('mouseover', () => closeButton.style.transform = 'scale(1.02)');
+    closeButton.addEventListener('mouseout', () => closeButton.style.transform = 'scale(1)');
     closeButton.addEventListener('click', () => this.close());
     buttonArea.appendChild(closeButton);
 
     modal.appendChild(buttonArea);
-
     this.overlay.appendChild(modal);
     document.body.appendChild(this.overlay);
 
-    // 点击遮罩关闭
     this.overlay.addEventListener('click', (e) => {
       if (e.target === this.overlay) {
         this.close();
@@ -211,26 +206,20 @@ export class JokerDetailModal {
     });
   }
 
-  /**
-   * 关闭弹窗
-   */
+  private getRarityText(rarity: JokerRarity): string {
+    const rarityMap: Record<JokerRarity, string> = {
+      common: '普通',
+      uncommon: '罕见',
+      rare: '稀有',
+      legendary: '传说'
+    };
+    return rarityMap[rarity] || '普通';
+  }
+
   close(): void {
     if (this.overlay) {
       this.overlay.remove();
       this.overlay = null;
     }
-  }
-
-  /**
-   * 获取稀有度颜色
-   */
-  private getRarityColor(rarity: string): string {
-    const colors: Record<string, string> = {
-      'common': '#4a90d9',
-      'uncommon': '#2ecc71',
-      'rare': '#e74c3c',
-      'legendary': '#f39c12'
-    };
-    return colors[rarity] || '#fff';
   }
 }

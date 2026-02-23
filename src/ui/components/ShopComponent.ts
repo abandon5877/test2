@@ -12,7 +12,8 @@ import { JokerDetailModal } from './JokerDetailModal';
 import { ConsumableDetailModal } from './ConsumableDetailModal';
 import {
   type BoosterPack,
-  type Voucher
+  type Voucher,
+  getVoucherById
 } from '../../data/consumables';
 import { Toast } from './Toast';
 import { getRandomJoker } from '../../data/jokers';
@@ -455,6 +456,17 @@ export class ShopComponent {
       <div class="text-blue-400 font-bold text-center" style="font-size: ${this.scaled(25)}">$${this.refreshCost}</div>
     `;
     panel.appendChild(refreshSection);
+
+    // 优惠券按钮 - 放在最下面，使用flex布局推到底部
+    const voucherButton = document.createElement('button');
+    voucherButton.className = 'game-btn game-btn-secondary';
+    voucherButton.style.fontSize = this.scaled(16);
+    voucherButton.style.padding = `${this.scaled(10)} ${this.scaled(12)}`;
+    voucherButton.style.marginTop = 'auto';
+    voucherButton.style.marginBottom = this.scaled(4);
+    voucherButton.innerHTML = `🎫 优惠券`;
+    voucherButton.addEventListener('click', () => this.showVouchersModal());
+    panel.appendChild(voucherButton);
 
     return panel;
   }
@@ -1342,5 +1354,160 @@ ${description}
     } else {
       Toast.error(result.error || '卖出失败');
     }
+  }
+
+  // ========== 优惠券展示弹窗 ==========
+  private showVouchersModal(): void {
+    const vouchers = this.gameState.getVouchersUsed();
+    
+    // 创建弹窗背景
+    const modal = document.createElement('div');
+    modal.className = 'vouchers-modal';
+    modal.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      padding: 4vh 4vw;
+    `;
+
+    // 创建弹窗内容 - 使用百分比尺寸
+    const content = document.createElement('div');
+    content.style.cssText = `
+      background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+      border: 2px solid #b45309;
+      border-radius: 2vh;
+      padding: 3vh 4vw;
+      width: 85vw;
+      max-width: 700px;
+      height: auto;
+      max-height: 88vh;
+      overflow-y: auto;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+      display: flex;
+      flex-direction: column;
+    `;
+
+    // 标题 - 使用vh单位
+    const title = document.createElement('div');
+    title.textContent = '🎫 已持有的优惠券';
+    title.style.cssText = `
+      font-size: clamp(20px, 4vh, 36px);
+      font-weight: bold;
+      color: #d97706;
+      text-align: center;
+      margin-bottom: 2vh;
+      flex-shrink: 0;
+    `;
+    content.appendChild(title);
+
+    // 优惠券列表
+    if (vouchers.length === 0) {
+      const emptyMsg = document.createElement('div');
+      emptyMsg.textContent = '暂无优惠券';
+      emptyMsg.style.cssText = `
+        font-size: clamp(16px, 3vh, 24px);
+        color: #6b7280;
+        text-align: center;
+        padding: 5vh 0;
+        flex: 1;
+      `;
+      content.appendChild(emptyMsg);
+    } else {
+      const listContainer = document.createElement('div');
+      listContainer.style.cssText = `
+        display: flex;
+        flex-direction: column;
+        gap: 1.5vh;
+        flex: 1;
+        overflow-y: auto;
+        padding-right: 1vw;
+      `;
+
+      vouchers.forEach(voucherId => {
+        const voucher = getVoucherById(voucherId);
+        if (voucher) {
+          const voucherCard = document.createElement('div');
+          voucherCard.style.cssText = `
+            background: linear-gradient(145deg, #292524 0%, #1c1917 100%);
+            border: 2px solid #92400e;
+            border-radius: 1.5vh;
+            padding: 2vh 3vw;
+            display: flex;
+            flex-direction: column;
+            gap: 1vh;
+            min-height: 10vh;
+            justify-content: center;
+          `;
+
+          const voucherName = document.createElement('div');
+          voucherName.textContent = voucher.name;
+          voucherName.style.cssText = `
+            font-size: clamp(18px, 3.5vh, 28px);
+            font-weight: bold;
+            color: #b45309;
+          `;
+
+          const voucherDesc = document.createElement('div');
+          voucherDesc.textContent = voucher.description;
+          voucherDesc.style.cssText = `
+            font-size: clamp(14px, 2.5vh, 20px);
+            color: #a8a29e;
+            line-height: 1.6;
+          `;
+
+          voucherCard.appendChild(voucherName);
+          voucherCard.appendChild(voucherDesc);
+          listContainer.appendChild(voucherCard);
+        }
+      });
+
+      content.appendChild(listContainer);
+    }
+
+    // 关闭按钮
+    const closeBtn = document.createElement('button');
+    closeBtn.textContent = '关闭';
+    closeBtn.style.cssText = `
+      margin-top: 2vh;
+      width: 100%;
+      padding: 2vh;
+      background: linear-gradient(135deg, #92400e 0%, #78350f 100%);
+      border: 2px solid #b45309;
+      border-radius: 1.5vh;
+      color: #f5f5f4;
+      font-size: clamp(16px, 3vh, 24px);
+      font-weight: bold;
+      cursor: pointer;
+      transition: transform 0.2s;
+      flex-shrink: 0;
+    `;
+    closeBtn.addEventListener('mouseover', () => {
+      closeBtn.style.transform = 'scale(1.02)';
+    });
+    closeBtn.addEventListener('mouseout', () => {
+      closeBtn.style.transform = 'scale(1)';
+    });
+    closeBtn.addEventListener('click', () => {
+      modal.remove();
+    });
+    content.appendChild(closeBtn);
+
+    modal.appendChild(content);
+
+    // 点击背景关闭
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        modal.remove();
+      }
+    });
+
+    document.body.appendChild(modal);
   }
 }

@@ -30,28 +30,63 @@ export class ConsumableDetailModal {
     const sellPrice = 1; // 消耗牌卖出价格固定为1
 
     this.overlay = document.createElement('div');
-    this.overlay.className = 'fixed inset-0 bg-black/70 flex items-center justify-center z-50 animate-fade-in';
-    this.overlay.style.padding = '20px';
+    this.overlay.style.cssText = `
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      padding: 4vh 4vw;
+    `;
 
     const modal = document.createElement('div');
-    modal.className = 'game-panel max-w-md w-full mx-4 transform scale-100 animate-modal-in';
-    modal.style.maxHeight = 'calc(100vh - 40px)';
-    modal.style.overflowY = 'auto';
-    modal.style.display = 'flex';
-    modal.style.flexDirection = 'column';
+    modal.style.cssText = `
+      background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+      border: 3px solid #9b59b6;
+      border-radius: 2vh;
+      padding: 3vh 4vw;
+      width: 85vw;
+      max-width: 600px;
+      max-height: 88vh;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    `;
 
     // 头部
     const header = document.createElement('div');
-    header.className = 'flex items-center justify-between mb-4';
+    header.style.cssText = `
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 2vh;
+      flex-shrink: 0;
+    `;
 
     const title = document.createElement('h3');
-    title.className = 'text-xl font-bold text-purple-400';
+    title.style.cssText = `
+      font-size: clamp(20px, 4vh, 32px);
+      font-weight: bold;
+      color: #c084fc;
+    `;
     title.textContent = consumable.name;
     header.appendChild(title);
 
     const closeBtn = document.createElement('button');
-    closeBtn.className = 'text-gray-400 hover:text-white transition-colors text-2xl';
+    closeBtn.style.cssText = `
+      color: #9ca3af;
+      font-size: clamp(24px, 5vh, 40px);
+      cursor: pointer;
+      background: none;
+      border: none;
+      transition: color 0.2s;
+    `;
     closeBtn.innerHTML = '&times;';
+    closeBtn.addEventListener('mouseover', () => closeBtn.style.color = '#ffffff');
+    closeBtn.addEventListener('mouseout', () => closeBtn.style.color = '#9ca3af');
     closeBtn.addEventListener('click', () => this.close());
     header.appendChild(closeBtn);
 
@@ -59,57 +94,112 @@ export class ConsumableDetailModal {
 
     // 类型标签
     const typeLabel = document.createElement('div');
-    typeLabel.className = 'inline-block px-3 py-1 rounded-full text-sm font-bold mb-4';
-    typeLabel.style.backgroundColor = '#9b59b633';
-    typeLabel.style.color = '#9b59b6';
+    typeLabel.style.cssText = `
+      display: inline-block;
+      padding: 1vh 2vw;
+      border-radius: 2vh;
+      font-size: clamp(14px, 2.5vh, 20px);
+      font-weight: bold;
+      margin-bottom: 2vh;
+      background: #9b59b633;
+      color: #c084fc;
+      width: fit-content;
+    `;
     typeLabel.textContent = typeText;
     modal.appendChild(typeLabel);
 
     // 效果描述
     const desc = document.createElement('div');
-    desc.className = 'text-gray-300 mb-4 leading-relaxed';
+    desc.style.cssText = `
+      font-size: clamp(16px, 3vh, 22px);
+      color: #d1d5db;
+      margin-bottom: 3vh;
+      line-height: 1.6;
+      flex: 1;
+    `;
     desc.textContent = consumable.description;
     modal.appendChild(desc);
 
     // 使用条件提示
     if (consumable.useCondition) {
       const conditionDiv = document.createElement('div');
-      conditionDiv.className = 'bg-yellow-900/30 border border-yellow-600/50 rounded p-3 mb-4';
-      
+      conditionDiv.style.cssText = `
+        background: rgba(234, 179, 8, 0.2);
+        border: 2px solid rgba(234, 179, 8, 0.5);
+        border-radius: 1.5vh;
+        padding: 2vh;
+        margin-bottom: 3vh;
+      `;
+
       const conditionTitle = document.createElement('div');
-      conditionTitle.className = 'text-yellow-400 font-bold text-sm mb-1';
+      conditionTitle.style.cssText = `
+        font-size: clamp(14px, 2.5vh, 18px);
+        color: #facc15;
+        font-weight: bold;
+        margin-bottom: 1vh;
+      `;
       conditionTitle.textContent = '📋 使用条件';
       conditionDiv.appendChild(conditionTitle);
-      
+
       const conditionText = document.createElement('div');
-      conditionText.className = 'text-yellow-200/80 text-sm';
+      conditionText.style.cssText = `
+        font-size: clamp(14px, 2.5vh, 18px);
+        color: #fde047;
+      `;
       conditionText.textContent = consumable.useCondition;
       conditionDiv.appendChild(conditionText);
-      
+
       modal.appendChild(conditionDiv);
     }
 
     // 价格信息
     const costInfo = document.createElement('div');
-    costInfo.className = 'text-yellow-400 font-bold mb-2';
+    costInfo.style.cssText = `
+      font-size: clamp(16px, 3vh, 22px);
+      color: #fbbf24;
+      font-weight: bold;
+      margin-bottom: 1vh;
+    `;
     costInfo.textContent = `购买价格: $${consumable.cost}`;
     modal.appendChild(costInfo);
 
     // 卖出价格
     const sellInfo = document.createElement('div');
-    sellInfo.className = 'text-green-400 font-bold mb-4';
+    sellInfo.style.cssText = `
+      font-size: clamp(16px, 3vh, 22px);
+      color: #4ade80;
+      font-weight: bold;
+      margin-bottom: 3vh;
+    `;
     sellInfo.textContent = `卖出价格: $${sellPrice}`;
     modal.appendChild(sellInfo);
 
     // 按钮区域
     const buttonArea = document.createElement('div');
-    buttonArea.className = 'flex gap-3';
+    buttonArea.style.cssText = `
+      display: flex;
+      gap: 2vw;
+      flex-shrink: 0;
+    `;
 
     // 使用按钮
     if (onUse && typeof index === 'number') {
       const useButton = document.createElement('button');
-      useButton.className = 'game-btn game-btn-primary flex-1';
+      useButton.style.cssText = `
+        flex: 1;
+        padding: 2vh;
+        background: linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%);
+        border: 2px solid #a78bfa;
+        border-radius: 1.5vh;
+        color: white;
+        font-size: clamp(16px, 3vh, 22px);
+        font-weight: bold;
+        cursor: pointer;
+        transition: transform 0.2s;
+      `;
       useButton.textContent = '使用';
+      useButton.addEventListener('mouseover', () => useButton.style.transform = 'scale(1.02)');
+      useButton.addEventListener('mouseout', () => useButton.style.transform = 'scale(1)');
       useButton.addEventListener('click', () => {
         this.close();
         onUse(index);
@@ -120,8 +210,21 @@ export class ConsumableDetailModal {
     // 卖出按钮
     if (onSell && typeof index === 'number') {
       const sellButton = document.createElement('button');
-      sellButton.className = 'game-btn game-btn-danger flex-1';
+      sellButton.style.cssText = `
+        flex: 1;
+        padding: 2vh;
+        background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
+        border: 2px solid #ef4444;
+        border-radius: 1.5vh;
+        color: white;
+        font-size: clamp(16px, 3vh, 22px);
+        font-weight: bold;
+        cursor: pointer;
+        transition: transform 0.2s;
+      `;
       sellButton.textContent = '卖出';
+      sellButton.addEventListener('mouseover', () => sellButton.style.transform = 'scale(1.02)');
+      sellButton.addEventListener('mouseout', () => sellButton.style.transform = 'scale(1)');
       sellButton.addEventListener('click', () => {
         this.close();
         onSell(index);
@@ -131,8 +234,21 @@ export class ConsumableDetailModal {
 
     // 关闭按钮
     const closeButton = document.createElement('button');
-    closeButton.className = 'game-btn game-btn-secondary flex-1';
+    closeButton.style.cssText = `
+      flex: 1;
+      padding: 2vh;
+      background: linear-gradient(135deg, #4b5563 0%, #374151 100%);
+      border: 2px solid #6b7280;
+      border-radius: 1.5vh;
+      color: #f3f4f6;
+      font-size: clamp(16px, 3vh, 22px);
+      font-weight: bold;
+      cursor: pointer;
+      transition: transform 0.2s;
+    `;
     closeButton.textContent = '关闭';
+    closeButton.addEventListener('mouseover', () => closeButton.style.transform = 'scale(1.02)');
+    closeButton.addEventListener('mouseout', () => closeButton.style.transform = 'scale(1)');
     closeButton.addEventListener('click', () => this.close());
     buttonArea.appendChild(closeButton);
 
