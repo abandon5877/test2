@@ -523,6 +523,7 @@ export class JokerSystem {
     chipBonus: number;
     multBonus: number;
     multMultiplier: number;
+    copyScoredCardToDeck?: boolean;
     effects: JokerEffectDetail[];
   } {
     const accumulator = this.createEffectAccumulator();
