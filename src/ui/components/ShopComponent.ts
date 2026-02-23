@@ -243,7 +243,7 @@ export class ShopComponent {
     const joker = jokers[index];
     // 使用与JokerSystem.sellJoker相同的计算逻辑：向下取整，最低$1
     let sellPrice = Math.max(1, Math.floor(joker.cost / 2));
-    
+
     // 租赁小丑只能卖$1
     if (joker.sticker === 'rental') {
       sellPrice = 1;
@@ -261,7 +261,11 @@ export class ShopComponent {
       () => {
         const result = this.gameState.sellJoker(index);
         if (result.success) {
-          this.render();
+          // 只刷新右侧区域，避免关闭开包界面
+          this.refreshRightPanel();
+          // 刷新左侧金钱显示
+          this.refreshLeftPanelMoney();
+
           let message = `${joker.name} 已卖出，获得 $${result.sellPrice}！`;
 
           // 显示隐形小丑复制成功的消息
@@ -278,6 +282,29 @@ export class ShopComponent {
         }
       }
     );
+  }
+
+  /**
+   * 刷新右侧区域（小丑牌和消耗牌）
+   * 用于卖出小丑牌后局部刷新，避免关闭开包界面
+   */
+  private refreshRightPanel(): void {
+    const rightPanel = document.querySelector('.game-layout-right') as HTMLElement;
+    if (rightPanel) {
+      const newRightPanel = this.createRightPanel();
+      newRightPanel.className = 'game-layout-right';
+      rightPanel.replaceWith(newRightPanel);
+    }
+  }
+
+  /**
+   * 刷新左侧金钱显示
+   */
+  private refreshLeftPanelMoney(): void {
+    const moneyElement = document.querySelector('.game-layout-left .text-green-400.font-bold.text-center') as HTMLElement;
+    if (moneyElement) {
+      moneyElement.textContent = `$${this.gameState.money}`;
+    }
   }
 
   /**
@@ -1138,9 +1165,13 @@ ${description}
   // ========== 消耗牌卖出 ==========
   private handleSellConsumable(index: number): void {
     const result = this.gameState.sellConsumable(index);
-    
+
     if (result.success) {
-      this.render();
+      // 只刷新右侧区域，避免关闭开包界面
+      this.refreshRightPanel();
+      // 刷新左侧金钱显示
+      this.refreshLeftPanelMoney();
+
       Toast.success(`消耗牌已卖出，获得 $${result.sellPrice}！`);
     } else {
       Toast.error(result.error || '卖出失败');
