@@ -16,6 +16,7 @@ export class Joker implements JokerInterface {
   isProbability: boolean;
   sellValueBonus: number; // 礼品卡等增加的售价加成
   disabled: boolean; // 是否被禁用（深红之心Boss效果）
+  faceDown: boolean; // 是否翻面（琥珀橡果Boss效果）
   // 可选回调
   onScoredCallback?: (context: JokerEffectContext) => JokerEffectResult;
   onHeldCallback?: (context: JokerEffectContext) => JokerEffectResult;
@@ -44,6 +45,7 @@ export class Joker implements JokerInterface {
     this.isProbability = config.isProbability === true; // 默认为false
     this.sellValueBonus = 0; // 初始售价为0
     this.disabled = false; // 默认不禁用
+    this.faceDown = false; // 默认不翻面
     // 设置可选回调
     this.onScoredCallback = config.onScored;
     this.onHeldCallback = config.onHeld;
@@ -264,7 +266,30 @@ export class Joker implements JokerInterface {
     cloned.perishableRounds = this.perishableRounds;
     // 复制禁用状态
     cloned.disabled = this.disabled;
+    // 复制翻面状态
+    cloned.faceDown = this.faceDown;
     return cloned;
+  }
+
+  /**
+   * 翻面小丑牌
+   */
+  flip(): void {
+    this.faceDown = !this.faceDown;
+  }
+
+  /**
+   * 设置翻面状态
+   */
+  setFaceDown(faceDown: boolean): void {
+    this.faceDown = faceDown;
+  }
+
+  /**
+   * 检查是否翻面
+   */
+  isFaceDown(): boolean {
+    return this.faceDown;
   }
 
   getDisplayInfo(): string {

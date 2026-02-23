@@ -258,10 +258,13 @@ export class BossSystem {
   /**
    * 回合开始效果
    */
-  static onRoundStart(bossState: BossState, jokerSlots: { disableRandomJoker: () => number | null; getJokers: () => readonly JokerInterface[] }, handCards: Card[] = []): BossEffectResult {
+  static onRoundStart(bossState: BossState, jokerSlots: { disableRandomJoker: () => number | null; getJokers: () => readonly JokerInterface[]; flipAllJokers: () => void; shuffleJokers: () => void }, handCards: Card[] = []): BossEffectResult {
     const currentBoss = bossState.getCurrentBoss();
 
     if (currentBoss === BossType.AMBER_ACORN) {
+      // 琥珀橡果Boss: 翻面并洗牌所有小丑牌
+      jokerSlots.flipAllJokers();
+      jokerSlots.shuffleJokers();
       return {
         jokersShuffled: true,
         jokersFlipped: true,

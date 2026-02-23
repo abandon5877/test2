@@ -18,19 +18,22 @@ export class Card implements CardInterface {
   enhancement: CardEnhancement;
   seal: SealType;
   edition: CardEdition;
+  faceDown: boolean;
 
   constructor(
     suit: Suit,
     rank: Rank,
     enhancement: CardEnhancement = CardEnhancement.None,
     seal: SealType = SealType.None,
-    edition: CardEdition = CardEdition.None
+    edition: CardEdition = CardEdition.None,
+    faceDown: boolean = false
   ) {
     this.suit = suit;
     this.rank = rank;
     this.enhancement = enhancement;
     this.seal = seal;
     this.edition = edition;
+    this.faceDown = faceDown;
   }
 
   get isFaceCard(): boolean {
@@ -83,7 +86,28 @@ export class Card implements CardInterface {
   }
 
   clone(): Card {
-    return new Card(this.suit, this.rank, this.enhancement, this.seal, this.edition);
+    return new Card(this.suit, this.rank, this.enhancement, this.seal, this.edition, this.faceDown);
+  }
+
+  /**
+   * 翻面卡牌
+   */
+  flip(): void {
+    this.faceDown = !this.faceDown;
+  }
+
+  /**
+   * 设置翻面状态
+   */
+  setFaceDown(faceDown: boolean): void {
+    this.faceDown = faceDown;
+  }
+
+  /**
+   * 检查是否翻面
+   */
+  isFaceDown(): boolean {
+    return this.faceDown;
   }
 
   equals(other: Card): boolean {
@@ -127,21 +151,28 @@ export class Card implements CardInterface {
    * 返回带有新增强效果的新卡牌实例
    */
   withEnhancement(enhancement: CardEnhancement): Card {
-    return new Card(this.suit, this.rank, enhancement, this.seal, this.edition);
+    return new Card(this.suit, this.rank, enhancement, this.seal, this.edition, this.faceDown);
   }
 
   /**
    * 返回带有新蜡封的新卡牌实例
    */
   withSeal(seal: SealType): Card {
-    return new Card(this.suit, this.rank, this.enhancement, seal, this.edition);
+    return new Card(this.suit, this.rank, this.enhancement, seal, this.edition, this.faceDown);
   }
 
   /**
    * 返回带有新版本的新卡牌实例
    */
   withEdition(edition: CardEdition): Card {
-    return new Card(this.suit, this.rank, this.enhancement, this.seal, edition);
+    return new Card(this.suit, this.rank, this.enhancement, this.seal, edition, this.faceDown);
+  }
+
+  /**
+   * 返回带有新翻面状态的新卡牌实例
+   */
+  withFaceDown(faceDown: boolean): Card {
+    return new Card(this.suit, this.rank, this.enhancement, this.seal, this.edition, faceDown);
   }
 
   /**

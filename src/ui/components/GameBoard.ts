@@ -1139,6 +1139,11 @@ export class GameBoard {
     if (!handTypeEl || !totalScoreEl) return;
 
     const selectedCards = this.gameState.cardPile.hand.getSelectedCards();
+    const jokers = this.gameState.getJokerSlots().getJokers();
+
+    // 检查是否有翻面的牌（手牌或小丑牌）
+    const hasFaceDownCards = selectedCards.some(card => card.faceDown) ||
+                              jokers.some(joker => joker.faceDown);
 
     // 更新已选择卡牌数量（左列下方 - 选牌数）
     if (selectedCountEl) {
@@ -1160,8 +1165,22 @@ export class GameBoard {
       return;
     }
 
+    // 如果有翻面的牌，不显示预览分数
+    if (hasFaceDownCards) {
+      handTypeEl.textContent = '有翻面的牌，无法预览分数';
+      if (baseChipsEl) baseChipsEl.textContent = '-';
+      if (chipBonusEl) chipBonusEl.textContent = '';
+      if (baseMultEl) baseMultEl.textContent = '-';
+      if (multBonusEl) multBonusEl.textContent = '';
+      totalScoreEl.textContent = '翻面中...';
+      // 调整字体大小以适应容器
+      requestAnimationFrame(() => {
+        this.adjustPreviewFontSizes();
+      });
+      return;
+    }
+
     // 检查是否有四指效果并设置配置
-    const jokers = this.gameState.getJokerSlots().getJokers();
     const fourFingers = jokers.some(j => j.effect?.({}).fourFingers);
     PokerHandDetector.setConfig({ fourFingers });
 
@@ -1306,7 +1325,8 @@ export class GameBoard {
         rarity: joker.rarity,
         cost: joker.cost,
         edition: joker.edition,
-        disabled: joker.disabled
+        disabled: joker.disabled,
+        faceDown: joker.faceDown
       });
 
       jokerCard.draggable = jokers.length > 1;

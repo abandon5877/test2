@@ -46,6 +46,41 @@ export class JokerSlots {
     return index >= 0 ? index : null;
   }
 
+  /**
+   * 翻面所有小丑牌（琥珀橡果Boss效果）
+   */
+  flipAllJokers(): void {
+    for (const joker of this.jokers) {
+      joker.faceDown = !joker.faceDown;
+    }
+  }
+
+  /**
+   * 设置所有小丑牌的翻面状态
+   */
+  setAllJokersFaceDown(faceDown: boolean): void {
+    for (const joker of this.jokers) {
+      joker.faceDown = faceDown;
+    }
+  }
+
+  /**
+   * 洗牌（琥珀橡果Boss效果）
+   */
+  shuffleJokers(): void {
+    for (let i = this.jokers.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [this.jokers[i], this.jokers[j]] = [this.jokers[j], this.jokers[i]];
+    }
+  }
+
+  /**
+   * 检查是否有翻面的小丑牌
+   */
+  hasFaceDownJokers(): boolean {
+    return this.jokers.some(j => j.faceDown);
+  }
+
   addJoker(joker: JokerInterface): boolean {
     if (this.jokers.length >= this.maxSlots) {
       return false;

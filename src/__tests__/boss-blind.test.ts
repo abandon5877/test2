@@ -359,7 +359,12 @@ describe('Boss盲注系统', () => {
     });
 
     it('回合开始应该翻转并洗牌小丑牌', () => {
-      const mockJokerSlots = { disableRandomJoker: () => null, getJokers: () => [] };
+      const mockJokerSlots = {
+        disableRandomJoker: () => null,
+        getJokers: () => [],
+        flipAllJokers: () => {},
+        shuffleJokers: () => {}
+      };
       const result = BossSystem.onRoundStart(bossState, mockJokerSlots);
 
       expect(result.jokersFlipped).toBe(true);
@@ -369,7 +374,12 @@ describe('Boss盲注系统', () => {
 
     it('无Boss时不应该翻转小丑牌', () => {
       BossSystem.clearBoss(bossState);
-      const mockJokerSlots = { disableRandomJoker: () => null, getJokers: () => [] };
+      const mockJokerSlots = {
+        disableRandomJoker: () => null,
+        getJokers: () => [],
+        flipAllJokers: () => {},
+        shuffleJokers: () => {}
+      };
       const result = BossSystem.onRoundStart(bossState, mockJokerSlots);
 
       expect(result.jokersFlipped).toBeUndefined();

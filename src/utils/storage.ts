@@ -114,6 +114,7 @@ interface SerializedJoker {
   perishableRounds: number; // 易腐剩余回合
   state: Record<string, any>; // 状态数据
   disabled?: boolean; // 是否被禁用（深红之心Boss效果）
+  faceDown?: boolean; // 是否翻面（琥珀橡果Boss效果）
 }
 
 interface SerializedConsumable {
@@ -242,6 +243,10 @@ export class Storage {
           // 恢复禁用状态
           if (jokerData.disabled !== undefined) {
             joker.disabled = jokerData.disabled;
+          }
+          // 恢复翻面状态
+          if (jokerData.faceDown !== undefined) {
+            joker.faceDown = jokerData.faceDown;
           }
         }
         return joker;
@@ -495,7 +500,8 @@ export class Storage {
       edition: joker.edition,
       perishableRounds: joker.perishableRounds,
       state: joker.getState(),
-      disabled: joker.disabled // 保存禁用状态
+      disabled: joker.disabled, // 保存禁用状态
+      faceDown: joker.faceDown // 保存翻面状态
     };
   }
 

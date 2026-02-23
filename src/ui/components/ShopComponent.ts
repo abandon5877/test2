@@ -686,7 +686,8 @@ export class ShopComponent {
           description: joker.description,
           rarity: joker.rarity,
           cost: joker.cost,
-          disabled: joker.disabled
+          disabled: joker.disabled,
+          faceDown: joker.faceDown
         });
 
         jokerCard.style.cursor = jokers.length > 1 ? 'grab' : 'pointer';

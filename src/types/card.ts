@@ -27,6 +27,7 @@ export interface CardInterface {
   readonly enhancement: CardEnhancement;
   readonly seal: SealType;
   readonly isFaceCard: boolean;
+  faceDown: boolean;
   getChipValue(): number;
   toString(): string;
 }
