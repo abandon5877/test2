@@ -189,6 +189,12 @@ export class GameState implements GameStateInterface {
 
     this.dealInitialHand();
 
+    // 处理Boss回合开始效果（深红之心、天青铃铛等）
+    const handCards = this.cardPile.hand.getCards();
+    // 清除之前的禁用状态
+    this.jokerSlots.clearAllDisabled();
+    const roundStartResult = BossSystem.onRoundStart(this.bossState, this.jokerSlots, handCards);
+
     // 处理选择盲注时的小丑牌效果（ON_BLIND_SELECT触发器）
     const blindSelectResult = JokerSystem.processBlindSelect(this.jokerSlots, blindType);
 
@@ -384,10 +390,40 @@ export class GameState implements GameStateInterface {
       this.cardPile.playSelected();
     }
 
-    // 记录已出的牌（用于柱子Boss效果）
-    BossSystem.afterPlayHand(this.bossState, selectedCards, scoreResult.handType);
+    // 记录已出的牌（用于柱子Boss效果）并处理Boss效果
+    const bossResult = BossSystem.afterPlayHand(this.bossState, selectedCards, scoreResult.handType);
 
-    this.drawCards(selectedCards.length);
+    // 处理牙齿Boss扣钱效果
+    if (bossResult.moneyChange && bossResult.moneyChange < 0) {
+      this.money += bossResult.moneyChange;
+      logger.info('牙齿Boss扣钱', { moneyChange: bossResult.moneyChange, newMoney: this.money });
+    }
+
+    // 处理钩子Boss弃牌效果
+    if (bossResult.discardCount && bossResult.discardCount > 0) {
+      const handCards = this.cardPile.hand.getCards();
+      const discardIndices: number[] = [];
+      // 随机选择指定数量的手牌弃掉
+      const availableIndices = handCards.map((_, i) => i);
+      for (let i = 0; i < bossResult.discardCount && availableIndices.length > 0; i++) {
+        const randomIndex = Math.floor(Math.random() * availableIndices.length);
+        discardIndices.push(availableIndices[randomIndex]);
+        availableIndices.splice(randomIndex, 1);
+      }
+      if (discardIndices.length > 0) {
+        this.cardPile.hand.removeCards(discardIndices);
+        logger.info('钩子Boss弃牌', { discardCount: discardIndices.length, indices: discardIndices });
+      }
+    }
+
+    // 抽牌 - 考虑蛇Boss限制
+    const currentBoss = this.bossState.getCurrentBoss();
+    if (currentBoss === BossType.SERPENT) {
+      // 蛇Boss: 只抽3张牌
+      this.drawCards(Math.min(3, selectedCards.length));
+    } else {
+      this.drawCards(selectedCards.length);
+    }
 
     logger.info('Hand played', { 
       handType: scoreResult.handType,
@@ -446,7 +482,14 @@ export class GameState implements GameStateInterface {
       this.money += discardResult.moneyBonus;
     }
 
-    this.drawCards(discardedCards.length);
+    // 抽牌 - 考虑蛇Boss限制
+    const currentBoss = this.bossState.getCurrentBoss();
+    if (currentBoss === BossType.SERPENT) {
+      // 蛇Boss: 只抽3张牌
+      this.drawCards(Math.min(3, discardedCards.length));
+    } else {
+      this.drawCards(discardedCards.length);
+    }
 
     logger.info('Cards discarded', {
       count: discardedCards.length,
@@ -479,6 +522,25 @@ export class GameState implements GameStateInterface {
           message: bossResult.message
         });
         return false;
+      }
+
+      // 通灵Boss: 必须正好打出5张牌
+      const currentBoss = this.bossState.getCurrentBoss();
+      if (currentBoss === BossType.PSYCHIC && selectedCards.length !== 5) {
+        logger.warn('通灵Boss: 必须正好打出5张牌', { selectedCount: selectedCards.length });
+        return false;
+      }
+
+      // 天青铃铛Boss: 必须选择特定牌
+      if (currentBoss === BossType.CERULEAN_BELL) {
+        const requiredCardId = this.bossState.getRequiredCardId();
+        if (requiredCardId) {
+          const hasRequiredCard = selectedCards.some(card => card.toString() === requiredCardId);
+          if (!hasRequiredCard) {
+            logger.warn('天青铃铛Boss: 必须选择特定牌', { requiredCardId });
+            return false;
+          }
+        }
       }
     }
 
@@ -589,6 +651,9 @@ export class GameState implements GameStateInterface {
     });
 
     this.cardPile.returnToDeckAndShuffle();
+
+    // 清除深红之心Boss禁用的小丑状态
+    this.jokerSlots.clearAllDisabled();
 
     this.currentBlind = null;
 
@@ -741,7 +806,9 @@ export class GameState implements GameStateInterface {
   }
 
   private drawCards(count: number): void {
-    this.cardPile.drawFromDeck(count);
+    // 修复Bug: 抽牌应该补充到手牌满，而不是只抽count张
+    // 这是为了处理塔罗牌摧毁手牌后的情况
+    this.cardPile.drawToMaxHandSize();
   }
 
   /**
@@ -835,6 +902,9 @@ export class GameState implements GameStateInterface {
           });
         }
       }
+
+      // 翠绿叶子Boss: 卖出小丑牌后解除卡牌失效
+      this.bossState.markJokerSold();
 
       this.recreateHand();
     }

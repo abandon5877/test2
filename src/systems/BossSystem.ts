@@ -3,6 +3,7 @@ import { PokerHandType } from '../types/pokerHands';
 import { Suit, Rank } from '../types/card';
 import type { Card } from '../models/Card';
 import type { BossState } from '../models/BossState';
+import type { JokerInterface } from '../types/joker';
 import { createModuleLogger } from '../utils/logger';
 
 const logger = createModuleLogger('BossSystem');
@@ -19,6 +20,8 @@ export interface BossEffectResult {
   discardsModifier?: number;
   jokersShuffled?: boolean;
   jokersFlipped?: boolean;
+  disabledJokerIndex?: number; // 深红之心Boss禁用的小丑位置
+  requiredCardId?: string; // 天青铃铛Boss要求的卡牌ID
 }
 
 /**
@@ -223,6 +226,9 @@ export class BossSystem {
         return card.rank === Rank.Jack || card.rank === Rank.Queen || card.rank === Rank.King;
       case BossType.PILLAR:
         return bossState.hasCardBeenPlayed(card);
+      case BossType.VERDANT_LEAF:
+        // 翠绿叶子Boss: 所有卡牌失效直到卖出1张小丑牌
+        return !bossState.hasJokerSold();
       default:
         return false;
     }
@@ -252,7 +258,7 @@ export class BossSystem {
   /**
    * 回合开始效果
    */
-  static onRoundStart(bossState: BossState): BossEffectResult {
+  static onRoundStart(bossState: BossState, jokerSlots: { disableRandomJoker: () => number | null; getJokers: () => readonly JokerInterface[] }, handCards: Card[] = []): BossEffectResult {
     const currentBoss = bossState.getCurrentBoss();
 
     if (currentBoss === BossType.AMBER_ACORN) {
@@ -260,6 +266,29 @@ export class BossSystem {
         jokersShuffled: true,
         jokersFlipped: true,
         message: '琥珀橡果Boss: 小丑牌翻转并洗牌'
+      };
+    }
+
+    // 深红之心Boss: 随机禁用1个小丑
+    if (currentBoss === BossType.CRIMSON_HEART) {
+      const disabledIndex = jokerSlots.disableRandomJoker();
+      if (disabledIndex !== null) {
+        const jokers = jokerSlots.getJokers();
+        const disabledJoker = jokers[disabledIndex];
+        return {
+          disabledJokerIndex: disabledIndex,
+          message: `深红之心Boss: ${disabledJoker?.name || '位置' + (disabledIndex + 1)} 被禁用`
+        };
+      }
+    }
+
+    // 天青铃铛Boss: 随机选择1张手牌必须被选中
+    if (currentBoss === BossType.CERULEAN_BELL && handCards.length > 0) {
+      const randomCard = handCards[Math.floor(Math.random() * handCards.length)];
+      bossState.setRequiredCardId(randomCard.toString());
+      return {
+        requiredCardId: randomCard.toString(),
+        message: '天青铃铛Boss: 必须选择特定牌'
       };
     }
 

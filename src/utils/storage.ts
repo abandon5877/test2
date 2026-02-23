@@ -8,9 +8,10 @@ import { Hand } from '../models/Hand';
 import { DiscardPile } from '../models/DiscardPile';
 import { CardPile } from '../models/CardPile';
 import { Shop, ShopItem } from '../models/Shop';
+import type { BossStateInterface } from '../models/BossState';
 import { BOOSTER_PACKS, VOUCHERS, type BoosterPack } from '../data/consumables/index';
 import { ScoringSystem } from '../systems/ScoringSystem';
-import { GamePhase } from '../types/game';
+import { GamePhase, BossType } from '../types/game';
 import type { BlindType } from '../types/game';
 import type { Suit, Rank, CardEnhancement, SealType } from '../types/card';
 import { getJokerById } from '../data/jokers';
@@ -20,6 +21,7 @@ import { PokerHandType } from '../types/pokerHands';
 import { CardManager } from '../systems/CardManager';
 import { ConsumableManager } from '../systems/ConsumableManager';
 import { createModuleLogger } from '../utils/logger';
+import { setBossAssignments, getBossAssignments } from '../data/blinds';
 
 const logger = createModuleLogger('Storage');
 
@@ -85,10 +87,16 @@ export interface SaveData {
       cardsPlayedThisAnte: string[];
       mostPlayedHand: string | null;
       handPlayCounts: Record<string, number>;
+      // 新增Boss状态字段
+      jokerSold?: boolean; // 翠绿叶子Boss: 是否已卖出小丑牌
+      disabledJokerIndex?: number | null; // 深红之心Boss: 禁用的小丑位置
+      requiredCardId?: string | null; // 天青铃铛Boss: 要求的卡牌ID
     };
   };
   // 修复1: 商店信息存档
   shop?: SerializedShop;
+  // 修复Boss盲注丢失问题: Boss分配信息存档
+  bossAssignments?: Array<[number, string]>;
 }
 
 interface SerializedCard {
@@ -105,6 +113,7 @@ interface SerializedJoker {
   edition: string; // 版本
   perishableRounds: number; // 易腐剩余回合
   state: Record<string, any>; // 状态数据
+  disabled?: boolean; // 是否被禁用（深红之心Boss效果）
 }
 
 interface SerializedConsumable {
@@ -141,7 +150,9 @@ export class Storage {
         timestamp: Date.now(),
         gameState: this.serializeGameState(gameState),
         // 修复1: 保存商店信息
-        shop: gameState.shop ? this.serializeShop(gameState.shop) : undefined
+        shop: gameState.shop ? this.serializeShop(gameState.shop) : undefined,
+        // 修复Boss盲注丢失问题: 保存Boss分配信息
+        bossAssignments: Array.from(getBossAssignments())
       };
 
       localStorage.setItem(SAVE_KEY, JSON.stringify(saveData));
@@ -161,7 +172,9 @@ export class Storage {
       timestamp: Date.now(),
       gameState: this.serializeGameState(gameState),
       // 修复1: 保存商店信息
-      shop: gameState.shop ? this.serializeShop(gameState.shop) : undefined
+      shop: gameState.shop ? this.serializeShop(gameState.shop) : undefined,
+      // 修复Boss盲注丢失问题: 保存Boss分配信息
+      bossAssignments: Array.from(getBossAssignments())
     };
   }
 
@@ -225,6 +238,10 @@ export class Storage {
           // 恢复状态
           if (jokerData.state) {
             joker.updateState(jokerData.state);
+          }
+          // 恢复禁用状态
+          if (jokerData.disabled !== undefined) {
+            joker.disabled = jokerData.disabled;
           }
         }
         return joker;
@@ -319,18 +336,41 @@ export class Storage {
 
     // 修复5: 恢复Boss状态
     if (data.bossState) {
-      const bossStateInterface = {
+      const bossStateInterface: BossStateInterface = {
         currentBoss: data.bossState.currentBoss as any,
         playedHandTypes: data.bossState.playedHandTypes as any[],
         firstHandPlayed: data.bossState.firstHandPlayed,
         handLevelsReduced: data.bossState.handLevelsReduced,
         cardsPlayedThisAnte: data.bossState.cardsPlayedThisAnte,
         mostPlayedHand: data.bossState.mostPlayedHand as any,
-        handPlayCounts: data.bossState.handPlayCounts
+        handPlayCounts: data.bossState.handPlayCounts,
+        jokerSold: data.bossState.jokerSold ?? false,
+        disabledJokerIndex: data.bossState.disabledJokerIndex ?? null,
+        requiredCardId: data.bossState.requiredCardId ?? null
       };
       gameState.bossState.restoreState(bossStateInterface);
-      logger.info('[Storage.restoreGameState] Boss状态已恢复', { 
-        currentBoss: data.bossState.currentBoss 
+      logger.info('[Storage.restoreGameState] Boss状态已恢复', {
+        currentBoss: data.bossState.currentBoss
+      });
+    }
+
+    return gameState;
+  }
+
+  /**
+   * 恢复游戏状态（包含Boss分配）
+   */
+  static restore(saveData: SaveData): GameState {
+    const gameState = this.restoreGameState(saveData);
+
+    // 修复Boss盲注丢失问题: 恢复Boss分配信息
+    if (saveData.bossAssignments && saveData.bossAssignments.length > 0) {
+      const bossAssignments = new Map<number, BossType>(
+        saveData.bossAssignments.map(([ante, bossType]) => [ante, bossType as BossType])
+      );
+      setBossAssignments(bossAssignments);
+      logger.info('[Storage.restore] Boss分配已恢复', {
+        assignments: saveData.bossAssignments
       });
     }
 
@@ -454,7 +494,8 @@ export class Storage {
       sticker: joker.sticker,
       edition: joker.edition,
       perishableRounds: joker.perishableRounds,
-      state: joker.getState()
+      state: joker.getState(),
+      disabled: joker.disabled // 保存禁用状态
     };
   }
 
@@ -597,4 +638,4 @@ export const getSaveInfo = (): { exists: boolean; timestamp?: number; version?: 
   Storage.getSaveInfo();
 export const autoSave = (gameState: GameState): void => Storage.autoSave(gameState);
 export const restoreGameState = (saveData: SaveData): GameState =>
-  Storage.restoreGameState(saveData);
+  Storage.restore(saveData);

@@ -1305,7 +1305,8 @@ export class GameBoard {
         description: joker.description,
         rarity: joker.rarity,
         cost: joker.cost,
-        edition: joker.edition
+        edition: joker.edition,
+        disabled: joker.disabled
       });
 
       jokerCard.draggable = jokers.length > 1;

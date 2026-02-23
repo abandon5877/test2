@@ -162,6 +162,16 @@ export class CardPile {
   }
 
   /**
+   * 抽牌直到手牌满（用于出牌/弃牌后的补充）
+   * 修复Bug: 使用塔罗牌摧毁手牌后，下次抽牌应该补满手牌
+   */
+  drawToMaxHandSize(): void {
+    const cardsNeeded = this.hand.maxHandSize - this.hand.count;
+    if (cardsNeeded <= 0) return;
+    this.drawFromDeck(cardsNeeded);
+  }
+
+  /**
    * 将选中的手牌移到弃牌堆
    */
   discardSelected(): Card[] {

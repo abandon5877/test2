@@ -359,8 +359,9 @@ describe('Boss盲注系统', () => {
     });
 
     it('回合开始应该翻转并洗牌小丑牌', () => {
-      const result = BossSystem.onRoundStart(bossState);
-      
+      const mockJokerSlots = { disableRandomJoker: () => null, getJokers: () => [] };
+      const result = BossSystem.onRoundStart(bossState, mockJokerSlots);
+
       expect(result.jokersFlipped).toBe(true);
       expect(result.jokersShuffled).toBe(true);
       expect(result.message).toContain('琥珀橡果Boss');
@@ -368,8 +369,9 @@ describe('Boss盲注系统', () => {
 
     it('无Boss时不应该翻转小丑牌', () => {
       BossSystem.clearBoss(bossState);
-      const result = BossSystem.onRoundStart(bossState);
-      
+      const mockJokerSlots = { disableRandomJoker: () => null, getJokers: () => [] };
+      const result = BossSystem.onRoundStart(bossState, mockJokerSlots);
+
       expect(result.jokersFlipped).toBeUndefined();
       expect(result.jokersShuffled).toBeUndefined();
     });

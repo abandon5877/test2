@@ -18,6 +18,34 @@ export class JokerSlots {
     this.interestCapBonus = 0;
   }
 
+  /**
+   * 随机禁用一个小丑（深红之心Boss效果）
+   * 禁用状态跟随小丑牌本身，不跟随位置
+   */
+  disableRandomJoker(): number | null {
+    if (this.jokers.length === 0) return null;
+    const randomIndex = Math.floor(Math.random() * this.jokers.length);
+    this.jokers[randomIndex].disabled = true;
+    return randomIndex;
+  }
+
+  /**
+   * 清除所有小丑的禁用状态（回合结束或新盲注）
+   */
+  clearAllDisabled(): void {
+    for (const joker of this.jokers) {
+      joker.disabled = false;
+    }
+  }
+
+  /**
+   * 获取被禁用的小丑索引（用于显示）
+   */
+  getDisabledJokerIndex(): number | null {
+    const index = this.jokers.findIndex(j => j.disabled);
+    return index >= 0 ? index : null;
+  }
+
   addJoker(joker: JokerInterface): boolean {
     if (this.jokers.length >= this.maxSlots) {
       return false;
@@ -71,8 +99,20 @@ export class JokerSlots {
     return true;
   }
 
+  /**
+   * 获取所有小丑（包括被禁用的）
+   * 深红之心Boss: 禁用的小丑仍然显示，但效果不生效
+   */
   getJokers(): readonly JokerInterface[] {
     return [...this.jokers];
+  }
+
+  /**
+   * 获取生效的小丑（排除被禁用的）
+   * 用于JokerSystem计算效果
+   */
+  getActiveJokers(): readonly JokerInterface[] {
+    return this.jokers.filter(j => !j.disabled);
   }
 
   getJokerCount(): number {

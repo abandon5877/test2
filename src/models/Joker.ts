@@ -15,6 +15,7 @@ export class Joker implements JokerInterface {
   isCopyable: boolean;
   isProbability: boolean;
   sellValueBonus: number; // 礼品卡等增加的售价加成
+  disabled: boolean; // 是否被禁用（深红之心Boss效果）
   // 可选回调
   onScoredCallback?: (context: JokerEffectContext) => JokerEffectResult;
   onHeldCallback?: (context: JokerEffectContext) => JokerEffectResult;
@@ -42,6 +43,7 @@ export class Joker implements JokerInterface {
     this.isCopyable = config.isCopyable !== false; // 默认为true
     this.isProbability = config.isProbability === true; // 默认为false
     this.sellValueBonus = 0; // 初始售价为0
+    this.disabled = false; // 默认不禁用
     // 设置可选回调
     this.onScoredCallback = config.onScored;
     this.onHeldCallback = config.onHeld;
@@ -260,11 +262,14 @@ export class Joker implements JokerInterface {
     });
     // 手动复制 perishableRounds，因为构造函数会根据 sticker 重置
     cloned.perishableRounds = this.perishableRounds;
+    // 复制禁用状态
+    cloned.disabled = this.disabled;
     return cloned;
   }
 
   getDisplayInfo(): string {
-    return `${this.name} (${this.rarity}) - ${this.cost}$\n${this.description}`;
+    const disabledTag = this.disabled ? '[已禁用] ' : '';
+    return `${disabledTag}${this.name} (${this.rarity}) - ${this.cost}$\n${this.description}`;
   }
 
   toString(): string {

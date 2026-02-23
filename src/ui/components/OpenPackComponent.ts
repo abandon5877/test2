@@ -378,7 +378,8 @@ export class OpenPackComponent {
         name: card.name,
         description: card.description,
         rarity: card.rarity,
-        cost: card.cost
+        cost: card.cost,
+        disabled: card.disabled
       });
     } else if (card instanceof Consumable) {
       cardElement = CardComponent.renderConsumableCard({

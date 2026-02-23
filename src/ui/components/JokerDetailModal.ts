@@ -67,6 +67,17 @@ export class JokerDetailModal {
 
     modal.appendChild(header);
 
+    // 禁用标签（深红之心Boss效果）
+    if (joker.disabled) {
+      const disabledLabel = document.createElement('div');
+      disabledLabel.className = 'inline-block px-3 py-1 rounded-full text-sm font-bold mb-4 mr-2';
+      disabledLabel.style.backgroundColor = '#ff444433';
+      disabledLabel.style.color = '#ff4444';
+      disabledLabel.style.border = '1px solid #ff4444';
+      disabledLabel.textContent = '🚫 已禁用';
+      modal.appendChild(disabledLabel);
+    }
+
     // 稀有度标签
     const rarityLabel = document.createElement('div');
     rarityLabel.className = 'inline-block px-3 py-1 rounded-full text-sm font-bold mb-4';

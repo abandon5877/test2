@@ -185,6 +185,7 @@ export interface JokerInterface {
   readonly isCopyable: boolean; // 是否可被蓝图/头脑风暴复制
   readonly isProbability: boolean; // 是否为概率触发类小丑牌（预览时不计算效果）
   sellValueBonus: number; // 礼品卡等增加的售价加成
+  disabled: boolean; // 是否被禁用（深红之心Boss效果）
   onScored?(context: JokerEffectContext): JokerEffectResult;
   onHeld?(context: JokerEffectContext): JokerEffectResult;
   onDiscard?(context: JokerEffectContext): JokerEffectResult;

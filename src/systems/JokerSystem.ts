@@ -461,7 +461,7 @@ export class JokerSystem {
     effects: JokerEffectDetail[];
   } {
     const accumulator = this.createEffectAccumulator();
-    const jokers = jokerSlots.getJokers();
+    const jokers = jokerSlots.getActiveJokers();
 
     for (let i = 0; i < jokers.length; i++) {
       const joker = jokers[i];
@@ -528,7 +528,7 @@ export class JokerSystem {
     effects: JokerEffectDetail[];
   } {
     const accumulator = this.createEffectAccumulator();
-    const jokers = jokerSlots.getJokers();
+    const jokers = jokerSlots.getActiveJokers();
 
     console.log('[JokerSystem] processHandPlayed循环开始, 小丑数量:', jokers.length, '预览模式:', isPreview);
     for (let i = 0; i < jokers.length; i++) {
@@ -588,7 +588,7 @@ export class JokerSystem {
     effects: JokerEffectDetail[];
   } {
     const accumulator = this.createEffectAccumulator();
-    const jokers = jokerSlots.getJokers();
+    const jokers = jokerSlots.getActiveJokers();
 
     for (let i = 0; i < jokers.length; i++) {
       const joker = jokers[i];
@@ -630,7 +630,7 @@ export class JokerSystem {
     effects: JokerEffectDetail[];
   } {
     const accumulator = this.createEffectAccumulator();
-    const jokers = jokerSlots.getJokers();
+    const jokers = jokerSlots.getActiveJokers();
 
     for (let i = 0; i < jokers.length; i++) {
       const joker = jokers[i];
@@ -677,7 +677,7 @@ export class JokerSystem {
     const destroyedJokers: number[] = [];
 
     const context: JokerEffectContext = { gameState, defeatedBoss };
-    const jokers = jokerSlots.getJokers();
+    const jokers = jokerSlots.getActiveJokers();
 
     for (let i = jokers.length - 1; i >= 0; i--) {
       const joker = jokers[i];
@@ -771,7 +771,7 @@ export class JokerSystem {
     effects: JokerEffectDetail[];
   } {
     const accumulator = this.createEffectAccumulator();
-    const jokers = jokerSlots.getJokers();
+    const jokers = jokerSlots.getActiveJokers();
 
     for (let i = 0; i < jokers.length; i++) {
       const joker = jokers[i];
@@ -811,7 +811,7 @@ export class JokerSystem {
     effects: JokerEffectDetail[];
   } {
     const accumulator = this.createEffectAccumulator();
-    const jokers = jokerSlots.getJokers();
+    const jokers = jokerSlots.getActiveJokers();
 
     for (let i = 0; i < jokers.length; i++) {
       const joker = jokers[i];
@@ -862,7 +862,7 @@ export class JokerSystem {
     effects: JokerEffectDetail[];
   } {
     const accumulator = this.createEffectAccumulator();
-    const jokers = jokerSlots.getJokers();
+    const jokers = jokerSlots.getActiveJokers();
 
     for (let i = 0; i < jokers.length; i++) {
       const joker = jokers[i];
@@ -914,7 +914,7 @@ export class JokerSystem {
     copiedConsumableIds: string[];
   } {
     const accumulator = this.createEffectAccumulator();
-    const jokers = jokerSlots.getJokers();
+    const jokers = jokerSlots.getActiveJokers();
 
     for (let i = 0; i < jokers.length; i++) {
       const joker = jokers[i];
@@ -972,7 +972,7 @@ export class JokerSystem {
     effects: JokerEffectDetail[];
   } {
     const accumulator = this.createEffectAccumulator();
-    const jokers = jokerSlots.getJokers();
+    const jokers = jokerSlots.getActiveJokers();
 
     for (let i = 0; i < jokers.length; i++) {
       const joker = jokers[i];
@@ -1020,7 +1020,7 @@ export class JokerSystem {
     heldCardRetrigger: boolean; // 哑剧演员效果：手牌能力触发2次
   } {
     const accumulator = this.createEffectAccumulator();
-    const jokers = jokerSlots.getJokers();
+    const jokers = jokerSlots.getActiveJokers();
 
     for (let i = 0; i < jokers.length; i++) {
       const joker = jokers[i];

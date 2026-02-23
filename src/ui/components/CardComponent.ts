@@ -314,9 +314,10 @@ export class CardComponent {
     cost: number;
     trigger?: string;
     edition?: JokerEdition;
+    disabled?: boolean;
   }): HTMLElement {
     const cardElement = document.createElement('div');
-    cardElement.className = `joker-card ${joker.rarity}`;
+    cardElement.className = `joker-card ${joker.rarity}${joker.disabled ? ' disabled' : ''}`;
     cardElement.dataset.jokerId = joker.id;
 
     // 应用小丑牌版本视觉效果
@@ -370,13 +371,63 @@ export class CardComponent {
       cardElement.appendChild(editionBadge);
     }
 
+    // 添加禁用标记（深红之心Boss效果）
+    if (joker.disabled) {
+      // 禁用遮罩
+      const disabledOverlay = document.createElement('div');
+      disabledOverlay.className = 'joker-disabled-overlay';
+      disabledOverlay.style.cssText = `
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.6);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 20;
+        border-radius: 8px;
+      `;
+
+      // 禁用图标
+      const disabledIcon = document.createElement('div');
+      disabledIcon.style.cssText = `
+        font-size: 48px;
+        color: #ff4444;
+        text-shadow: 0 0 10px rgba(255, 68, 68, 0.8);
+        animation: pulse 1.5s ease-in-out infinite;
+      `;
+      disabledIcon.textContent = '🚫';
+
+      // 禁用文字
+      const disabledText = document.createElement('div');
+      disabledText.style.cssText = `
+        position: absolute;
+        bottom: 20px;
+        font-size: 14px;
+        font-weight: bold;
+        color: #ff4444;
+        text-shadow: 0 0 5px rgba(0, 0, 0, 0.8);
+        background: rgba(0, 0, 0, 0.7);
+        padding: 4px 8px;
+        border-radius: 4px;
+      `;
+      disabledText.textContent = '已禁用';
+
+      disabledOverlay.appendChild(disabledIcon);
+      disabledOverlay.appendChild(disabledText);
+      cardElement.appendChild(disabledOverlay);
+    }
+
     // 点击查看详情
     cardElement.addEventListener('click', () => {
       this.showJokerDetail(joker);
     });
 
     // 悬停提示
-    cardElement.title = `点击查看详情: ${joker.name}`;
+    const titlePrefix = joker.disabled ? '[已禁用] ' : '';
+    cardElement.title = `${titlePrefix}点击查看详情: ${joker.name}`;
 
     return cardElement;
   }
@@ -487,6 +538,7 @@ export class CardComponent {
     rarity: string;
     cost: number;
     trigger?: string;
+    disabled?: boolean;
   }): void {
     // 创建临时 Joker 对象用于详情展示
     const jokerForModal = new Joker({
@@ -498,6 +550,8 @@ export class CardComponent {
       trigger: (joker.trigger as JokerTrigger) || JokerTrigger.ON_INDEPENDENT,
       effect: () => ({})
     });
+    // 设置禁用状态
+    jokerForModal.disabled = joker.disabled || false;
 
     JokerDetailModal.getInstance().show({
       joker: jokerForModal,

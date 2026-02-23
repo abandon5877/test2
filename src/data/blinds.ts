@@ -47,6 +47,9 @@ export const BASE_BLIND_CONFIGS: Omit<BlindConfig, 'bossType' | 'name' | 'descri
 // 当前游戏使用的盲注配置（包含动态分配的Boss）
 let currentBlindConfigs: BlindConfig[] = [];
 
+// 保存当前的Boss分配，用于存档/读档
+let currentBossAssignments: Map<number, BossType> = new Map();
+
 /**
  * 根据Boss类型生成完整的盲注配置
  */
@@ -84,12 +87,30 @@ export function generateBlindConfig(
  * 由BossSelectionSystem调用
  */
 export function initializeBlindConfigs(bossAssignments: Map<number, BossType>): void {
+  // 保存Boss分配用于存档
+  currentBossAssignments = new Map(bossAssignments);
   currentBlindConfigs = BASE_BLIND_CONFIGS.map(baseConfig => {
-    const bossType = baseConfig.type === BlindType.BOSS_BLIND 
+    const bossType = baseConfig.type === BlindType.BOSS_BLIND
       ? bossAssignments.get(baseConfig.ante)
       : undefined;
     return generateBlindConfig(baseConfig, bossType);
   });
+}
+
+/**
+ * 获取当前Boss分配（用于存档）
+ */
+export function getBossAssignments(): Map<number, BossType> {
+  return new Map(currentBossAssignments);
+}
+
+/**
+ * 设置Boss分配（用于读档）
+ */
+export function setBossAssignments(bossAssignments: Map<number, BossType>): void {
+  currentBossAssignments = new Map(bossAssignments);
+  // 重新初始化盲注配置
+  initializeBlindConfigs(currentBossAssignments);
 }
 
 /**
@@ -139,6 +160,7 @@ export function getMaxAnte(): number {
  */
 export function resetBlindConfigs(): void {
   currentBlindConfigs = [];
+  currentBossAssignments = new Map();
 }
 
 // 为了向后兼容，导出BLIND_CONFIGS别名

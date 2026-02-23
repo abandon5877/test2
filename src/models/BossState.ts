@@ -16,6 +16,12 @@ export interface BossStateInterface {
   cardsPlayedThisAnte: string[];
   mostPlayedHand: PokerHandType | null;
   handPlayCounts: Record<string, number>;
+  // 翠绿叶子Boss: 是否已卖出小丑牌
+  jokerSold: boolean;
+  // 深红之心Boss: 当前禁用的小丑位置
+  disabledJokerIndex: number | null;
+  // 天青铃铛Boss: 必须选择的卡牌ID
+  requiredCardId: string | null;
 }
 
 /**
@@ -30,6 +36,9 @@ export class BossState {
   private cardsPlayedThisAnte: Set<string> = new Set();
   private mostPlayedHand: PokerHandType | null = null;
   private handPlayCounts: Map<PokerHandType, number> = new Map();
+  private jokerSold: boolean = false;
+  private disabledJokerIndex: number | null = null;
+  private requiredCardId: string | null = null;
 
   /**
    * 设置当前Boss
@@ -180,6 +189,54 @@ export class BossState {
     this.cardsPlayedThisAnte.clear();
     this.handPlayCounts.clear();
     this.mostPlayedHand = null;
+    this.jokerSold = false;
+    this.disabledJokerIndex = null;
+    this.requiredCardId = null;
+  }
+
+  /**
+   * 设置禁用的小丑位置（深红之心Boss）
+   */
+  setDisabledJokerIndex(index: number): void {
+    this.disabledJokerIndex = index;
+    logger.info('Crimson Heart disabled joker', { index });
+  }
+
+  /**
+   * 获取禁用的小丑位置（深红之心Boss）
+   */
+  getDisabledJokerIndex(): number | null {
+    return this.disabledJokerIndex;
+  }
+
+  /**
+   * 设置必须选择的卡牌ID（天青铃铛Boss）
+   */
+  setRequiredCardId(cardId: string): void {
+    this.requiredCardId = cardId;
+    logger.info('Cerulean Bell required card', { cardId });
+  }
+
+  /**
+   * 获取必须选择的卡牌ID（天青铃铛Boss）
+   */
+  getRequiredCardId(): string | null {
+    return this.requiredCardId;
+  }
+
+  /**
+   * 标记已卖出小丑牌（翠绿叶子Boss）
+   */
+  markJokerSold(): void {
+    this.jokerSold = true;
+    logger.info('Joker sold for Verdant Leaf boss');
+  }
+
+  /**
+   * 检查是否已卖出小丑牌（翠绿叶子Boss）
+   */
+  hasJokerSold(): boolean {
+    return this.jokerSold;
   }
 
   /**
@@ -193,7 +250,10 @@ export class BossState {
       handLevelsReduced: Object.fromEntries(this.handLevelsReduced),
       cardsPlayedThisAnte: Array.from(this.cardsPlayedThisAnte),
       mostPlayedHand: this.mostPlayedHand,
-      handPlayCounts: Object.fromEntries(this.handPlayCounts)
+      handPlayCounts: Object.fromEntries(this.handPlayCounts),
+      jokerSold: this.jokerSold,
+      disabledJokerIndex: this.disabledJokerIndex,
+      requiredCardId: this.requiredCardId
     };
   }
 
@@ -208,6 +268,9 @@ export class BossState {
     this.cardsPlayedThisAnte = new Set(state.cardsPlayedThisAnte);
     this.mostPlayedHand = state.mostPlayedHand;
     this.handPlayCounts = new Map(Object.entries(state.handPlayCounts).map(([k, v]) => [k as unknown as PokerHandType, v]));
+    this.jokerSold = state.jokerSold ?? false;
+    this.disabledJokerIndex = state.disabledJokerIndex ?? null;
+    this.requiredCardId = state.requiredCardId ?? null;
     logger.info('Boss state restored', { bossType: this.currentBoss });
   }
 }

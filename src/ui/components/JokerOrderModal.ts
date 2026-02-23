@@ -177,7 +177,8 @@ export class JokerOrderModal {
       name: joker.name,
       description: joker.description,
       rarity: joker.rarity,
-      cost: joker.cost
+      cost: joker.cost,
+      disabled: joker.disabled
     });
 
     // 添加拖拽样式
