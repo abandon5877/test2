@@ -743,6 +743,11 @@ export class ShopComponent {
           jokerCard.addEventListener('drop', (e) => this.handleJokerDrop(e, index));
           jokerCard.addEventListener('dragenter', (e) => this.handleJokerDragEnter(e));
           jokerCard.addEventListener('dragleave', (e) => this.handleJokerDragLeave(e));
+          // 触摸事件（移动端支持）
+          jokerCard.addEventListener('touchstart', (e) => this.handleJokerTouchStart(e, index), { passive: true });
+          jokerCard.addEventListener('touchmove', (e) => this.handleJokerTouchMove(e), { passive: false });
+          jokerCard.addEventListener('touchend', (e) => this.handleJokerTouchEnd(e, index));
+          jokerCard.addEventListener('touchcancel', (e) => this.handleJokerTouchEnd(e, index));
         }
 
         jokerCards.push(jokerCard);
@@ -1088,6 +1093,14 @@ ${description}
   // ========== 小丑牌拖拽排�?==========
   private draggedJokerIndex: number | null = null;
 
+  // 触摸拖动状态变量
+  private touchStartX: number = 0;
+  private touchStartY: number = 0;
+  private touchCurrentIndex: number | null = null;
+  private isTouchDragging: boolean = false;
+  private hasTouchMoved: boolean = false;
+  private readonly TOUCH_MOVE_THRESHOLD = 10; // 移动超过10px认为是拖拽
+
   private handleJokerDragStart(e: DragEvent, index: number): void {
     console.log('[Shop Joker Drag] DragStart - index:', index);
     this.draggedJokerIndex = index;
@@ -1150,6 +1163,149 @@ ${description}
     const target = e.currentTarget as HTMLElement;
     target.style.transform = '';
     target.style.border = '';
+  }
+
+  // ========== 触摸事件处理（移动端支持）==========
+  private handleJokerTouchStart(e: TouchEvent, index: number): void {
+    console.log('[Shop Joker Touch] TouchStart - index:', index);
+
+    const touch = e.touches[0];
+    this.touchStartX = touch.clientX;
+    this.touchStartY = touch.clientY;
+    this.touchCurrentIndex = index;
+    this.draggedJokerIndex = index;
+    this.isTouchDragging = true;
+    this.hasTouchMoved = false;
+
+    console.log('[Shop Joker Touch] TouchStart completed');
+  }
+
+  private handleJokerTouchMove(e: TouchEvent): void {
+    if (!this.isTouchDragging || this.draggedJokerIndex === null) {
+      console.log('[Shop Joker Touch] TouchMove ignored - not dragging');
+      return;
+    }
+
+    const touch = e.touches[0];
+    const deltaX = touch.clientX - this.touchStartX;
+    const deltaY = touch.clientY - this.touchStartY;
+    const moveDistance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+
+    // 如果移动距离超过阈值，认为是拖拽
+    if (moveDistance > this.TOUCH_MOVE_THRESHOLD) {
+      if (!this.hasTouchMoved) {
+        console.log('[Shop Joker Touch] TouchMove - start dragging, distance:', moveDistance);
+        this.hasTouchMoved = true;
+
+        // 开始拖动视觉效果
+        const target = document.querySelector(`#shop-jokers-area [data-index="${this.draggedJokerIndex}"]`) as HTMLElement;
+        if (target) {
+          target.style.opacity = '0.7';
+          target.style.transform = 'scale(1.05)';
+          target.style.zIndex = '100';
+          target.style.transition = 'none';
+          target.style.cursor = 'grabbing';
+        }
+      }
+
+      // 检查事件是否可取消，避免 passive 事件警告
+      if (e.cancelable) {
+        e.preventDefault();
+      }
+      e.stopPropagation();
+
+      // 移动被拖拽的元素跟随手指
+      const target = document.querySelector(`#shop-jokers-area [data-index="${this.draggedJokerIndex}"]`) as HTMLElement;
+      if (target) {
+        target.style.transform = `translate(${deltaX}px, ${deltaY}px) scale(1.05)`;
+        // 临时隐藏被拖动的元素，以便 elementFromPoint 能检测到下方的元素
+        target.style.pointerEvents = 'none';
+      }
+
+      // 检测下方的元素（在隐藏被拖动元素后）
+      const element = document.elementFromPoint(touch.clientX, touch.clientY);
+      const wrapper = element?.closest('#shop-jokers-area [data-index]') as HTMLElement;
+
+      if (wrapper) {
+        const index = Number(wrapper.dataset.index);
+        if (index !== this.draggedJokerIndex) {
+          // 高亮目标
+          document.querySelectorAll('#shop-jokers-area [data-index]').forEach(el => {
+            if (Number((el as HTMLElement).dataset.index) !== this.draggedJokerIndex) {
+              (el as HTMLElement).style.border = '';
+            }
+          });
+          wrapper.style.border = '3px solid #fbbf24';
+          wrapper.style.borderRadius = '8px';
+          this.touchCurrentIndex = index;
+          console.log('[Shop Joker Touch] TouchMove - over index:', index);
+        }
+      }
+
+      // 恢复被拖动元素的 pointerEvents
+      if (target) {
+        target.style.pointerEvents = '';
+      }
+    }
+  }
+
+  private handleJokerTouchEnd(e: TouchEvent, index: number): void {
+    console.log('[Shop Joker Touch] TouchEnd - draggedIndex:', this.draggedJokerIndex, 'currentIndex:', this.touchCurrentIndex, 'hasMoved:', this.hasTouchMoved);
+
+    // 如果没有移动（只是点击），不阻止事件，让 click 事件处理
+    if (!this.hasTouchMoved) {
+      console.log('[Shop Joker Touch] TouchEnd - was a click, not drag');
+      this.resetTouchState();
+      return;
+    }
+
+    // 是拖动，阻止默认行为
+    if (e.cancelable) {
+      e.preventDefault();
+    }
+    e.stopPropagation();
+    console.log('[Shop Joker Touch] TouchEnd - processing drag end');
+
+    const target = document.querySelector(`#shop-jokers-area [data-index="${this.draggedJokerIndex}"]`) as HTMLElement;
+    if (target) {
+      target.style.opacity = '1';
+      target.style.transform = '';
+      target.style.zIndex = '';
+      target.style.transition = 'transform 0.2s ease';
+      target.style.cursor = 'grab';
+    }
+
+    // 清除所有高亮
+    document.querySelectorAll('#shop-jokers-area [data-index]').forEach(el => {
+      (el as HTMLElement).style.border = '';
+    });
+
+    // 如果移动到了新位置，交换
+    console.log('[Shop Joker Touch] Checking swap condition - currentIndex:', this.touchCurrentIndex, 'draggedIndex:', this.draggedJokerIndex);
+    if (this.touchCurrentIndex !== null && this.touchCurrentIndex !== this.draggedJokerIndex && this.draggedJokerIndex !== null) {
+      console.log('[Shop Joker Touch] Swapping - from:', this.draggedJokerIndex, 'to:', this.touchCurrentIndex);
+      const success = this.gameState.getJokerSlots().swapJokers(this.draggedJokerIndex, this.touchCurrentIndex);
+      console.log('[Shop Joker Touch] Swap result:', success);
+      if (success) {
+        console.log('[Shop Joker Touch] Swap successful, calling render and autoSave');
+        this.render();
+        // 交换小丑牌后自动保存
+        Storage.autoSave(this.gameState);
+      } else {
+        console.log('[Shop Joker Touch] Swap failed, not calling autoSave');
+      }
+    } else {
+      console.log('[Shop Joker Touch] Swap condition not met, skipping swap');
+    }
+
+    this.resetTouchState();
+  }
+
+  private resetTouchState(): void {
+    this.draggedJokerIndex = null;
+    this.touchCurrentIndex = null;
+    this.isTouchDragging = false;
+    this.hasTouchMoved = false;
   }
 
   // ========== 消耗牌详情弹窗 ==========
