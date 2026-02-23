@@ -1174,6 +1174,7 @@ html, body, #app {
   transition: all 0.3s ease;
   position: relative;
   flex-shrink: 0;
+  z-index: 1;
 }
 
 .jokers-area .joker-card:first-child {
@@ -1214,6 +1215,7 @@ html, body, #app {
   position: relative;
   flex-shrink: 0;
   margin-left: calc(-1 * clamp(35px, 3.5vw, 50px));
+  z-index: 1;
 }
 
 .consumables-area .consumable-card:first-child {
