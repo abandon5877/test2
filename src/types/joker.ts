@@ -75,10 +75,13 @@ export interface JokerEffectContext {
   readonly interestCap?: number; // 利息上限
   readonly defeatedBoss?: boolean; // 是否击败Boss（用于rocket）
   readonly mostPlayedHand?: PokerHandType | null; // 最常出的牌型（用于obelisk）
+  readonly handTypeHistoryCount?: number; // 当前牌型的历史出牌次数（用于Supernova）
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   readonly jokerState?: any; // 小丑牌状态（用于flash_card等）
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   readonly consumables?: any[]; // 消耗牌列表（用于佩尔科）
+  // Smeared_Joker相关
+  readonly smearedJoker?: boolean; // 是否激活Smeared_Joker效果
 }
 
 export interface JokerEffectResult {
@@ -125,6 +128,7 @@ export interface JokerEffectResult {
   readonly removeEnhancements?: boolean; // 移除强化
   readonly turnToGold?: number; // 变成金牌数量
   readonly spectralBonus?: number; // 幻灵牌奖励
+  readonly planetBonus?: number; // 行星牌奖励
   readonly copiedConsumableId?: string; // 复制的消耗牌ID（用于佩尔科）
 }
 
@@ -161,6 +165,8 @@ export interface JokerState {
   cardsSold?: number; // 卖出的牌数量（篝火）
   cardsAdded?: number; // 添加的牌数量（全息影像）
   destroyedFaceCards?: number; // 摧毁的人头牌数量（卡尼奥）
+  totalDiscarded?: number; // 弃牌总数（约里克）
+  multMultiplier?: number; // 倍率乘数（部分小丑牌）
 }
 
 export interface JokerInterface {

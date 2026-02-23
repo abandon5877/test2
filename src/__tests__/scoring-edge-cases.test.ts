@@ -198,32 +198,48 @@ describe('ScoringSystem Edge Cases', () => {
   });
 
   describe('Glass牌摧毁机制', () => {
-    it('Glass牌有1/4概率被摧毁', () => {
-      // Mock Math.random来模拟摧毁
-      const originalRandom = Math.random;
-      Math.random = () => 0.1; // < 0.25, 触发摧毁
-      
-      const glassCard = new Card(Suit.Spades, Rank.Ace, CardEnhancement.Glass);
-      const result = ScoringSystem.calculate([glassCard]);
-      
-      Math.random = originalRandom;
-      
-      expect(result.destroyedCards).toBeDefined();
-      expect(result.destroyedCards!.length).toBeGreaterThan(0);
+    it('Glass牌有1/15概率被摧毁 (蒙特卡洛验证)', () => {
+      // 使用蒙特卡洛方法验证概率
+      // 注意：玻璃牌摧毁概率实际是1/15 ≈ 6.67%，不是1/4
+      const trials = 1000;
+      let destructionCount = 0;
+      const expectedProbability = 1 / 15; // ≈ 0.0667
+
+      for (let i = 0; i < trials; i++) {
+        const glassCard = new Card(Suit.Spades, Rank.Ace, CardEnhancement.Glass);
+        const result = ScoringSystem.calculate([glassCard]);
+        if (result.destroyedCards && result.destroyedCards.length > 0) {
+          destructionCount++;
+        }
+      }
+
+      const observedProbability = destructionCount / trials;
+      const tolerance = 0.03; // 允许3%的偏差
+
+      // 验证观察到的概率在预期范围内
+      expect(observedProbability).toBeGreaterThanOrEqual(expectedProbability - tolerance);
+      expect(observedProbability).toBeLessThanOrEqual(expectedProbability + tolerance);
     });
 
-    it('Glass牌有3/4概率不被摧毁', () => {
-      const originalRandom = Math.random;
-      Math.random = () => 0.5; // > 0.25, 不摧毁
-      
-      const glassCard = new Card(Suit.Spades, Rank.Ace, CardEnhancement.Glass);
-      const result = ScoringSystem.calculate([glassCard]);
-      
-      Math.random = originalRandom;
-      
-      // destroyedCards可能是undefined或空数组
-      const hasDestroyedCards = result.destroyedCards && result.destroyedCards.length > 0;
-      expect(hasDestroyedCards).toBeFalsy();
+    it('Glass牌有14/15概率不被摧毁 (蒙特卡洛验证)', () => {
+      const trials = 1000;
+      let notDestroyedCount = 0;
+      const expectedProbability = 14 / 15; // ≈ 0.9333
+
+      for (let i = 0; i < trials; i++) {
+        const glassCard = new Card(Suit.Spades, Rank.Ace, CardEnhancement.Glass);
+        const result = ScoringSystem.calculate([glassCard]);
+        if (!result.destroyedCards || result.destroyedCards.length === 0) {
+          notDestroyedCount++;
+        }
+      }
+
+      const observedProbability = notDestroyedCount / trials;
+      const tolerance = 0.03; // 允许3%的偏差
+
+      // 验证观察到的概率在预期范围内
+      expect(observedProbability).toBeGreaterThanOrEqual(expectedProbability - tolerance);
+      expect(observedProbability).toBeLessThanOrEqual(expectedProbability + tolerance);
     });
   });
 

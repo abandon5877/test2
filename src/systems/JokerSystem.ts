@@ -5,6 +5,9 @@ import { ScoreResult } from './ScoringSystem';
 import { createModuleLogger } from '../utils/logger';
 import { JokerSlots } from '../models/JokerSlots';
 import { CopyEffectHelper } from './CopyEffectHelper';
+import { PokerHandDetector } from './PokerHandDetector';
+import { ProbabilitySystem } from './ProbabilitySystem';
+import { ConsumableSlots } from '../models/ConsumableSlots';
 
 const logger = createModuleLogger('JokerSystem');
 
@@ -46,6 +49,124 @@ export interface JokerEffectDetail {
 }
 
 export class JokerSystem {
+  /**
+   * 检查是否有Smeared_Joker
+   */
+  private static hasSmearedJoker(jokers: readonly JokerInterface[]): boolean {
+    return jokers.some(joker => joker.id === 'smeared_joker');
+  }
+
+  /**
+   * 计算Oops!_All_6s的数量
+   */
+  private static countOopsAll6s(jokers: readonly JokerInterface[]): number {
+    return jokers.filter(joker => joker.id === 'oops_all_6s').length;
+  }
+
+  /**
+   * 设置全局系统配置（包括Smeared_Joker、Four_Fingers、Oops!_All_6s等效果）
+   */
+  static setGlobalConfig(jokerSlots: JokerSlots): void {
+    const jokers = jokerSlots.getJokers();
+    const hasSmearedJoker = this.hasSmearedJoker(jokers);
+    const hasFourFingers = jokers.some(joker => joker.id === 'four_fingers');
+    const hasShortcut = jokers.some(joker => joker.id === 'shortcut');
+    const oopsAll6sCount = this.countOopsAll6s(jokers);
+
+    // 设置PokerHandDetector配置
+    PokerHandDetector.setConfig({
+      smearedJoker: hasSmearedJoker,
+      fourFingers: hasFourFingers,
+      shortcut: hasShortcut
+    });
+
+    // 设置概率系统配置
+    ProbabilitySystem.setOopsAll6sCount(oopsAll6sCount);
+
+    logger.debug('全局配置已更新', {
+      smearedJoker: hasSmearedJoker,
+      fourFingers: hasFourFingers,
+      shortcut: hasShortcut,
+      oopsAll6sCount
+    });
+  }
+
+  /**
+   * @deprecated 使用 setGlobalConfig 替代
+   */
+  static setPokerHandDetectorConfig(jokerSlots: JokerSlots): void {
+    this.setGlobalConfig(jokerSlots);
+  }
+
+  /**
+   * 限制消耗牌生成数量（根据槽位可用空间）
+   * @param result 小丑牌效果结果
+   * @param consumableSlots 消耗牌槽位
+   * @returns 限制后的结果
+   */
+  static clampConsumableGeneration(
+    result: JokerEffectResult,
+    consumableSlots: ConsumableSlots
+  ): JokerEffectResult {
+    if (!result) return result;
+
+    const availableSlots = consumableSlots.getAvailableSlots();
+    let clampedResult = { ...result };
+    let wasClamped = false;
+
+    // 限制塔罗牌生成
+    if (result.tarotBonus && result.tarotBonus > 0) {
+      const clampedTarot = Math.min(result.tarotBonus, availableSlots);
+      if (clampedTarot !== result.tarotBonus) {
+        clampedResult.tarotBonus = clampedTarot;
+        wasClamped = true;
+        logger.debug('塔罗牌生成被限制', {
+          requested: result.tarotBonus,
+          allowed: clampedTarot,
+          availableSlots
+        });
+      }
+    }
+
+    // 限制幻灵牌生成
+    if (result.spectralBonus && result.spectralBonus > 0) {
+      const clampedSpectral = Math.min(result.spectralBonus, availableSlots);
+      if (clampedSpectral !== result.spectralBonus) {
+        clampedResult.spectralBonus = clampedSpectral;
+        wasClamped = true;
+        logger.debug('幻灵牌生成被限制', {
+          requested: result.spectralBonus,
+          allowed: clampedSpectral,
+          availableSlots
+        });
+      }
+    }
+
+    // 限制行星牌生成
+    if (result.planetBonus && result.planetBonus > 0) {
+      const clampedPlanet = Math.min(result.planetBonus, availableSlots);
+      if (clampedPlanet !== result.planetBonus) {
+        clampedResult.planetBonus = clampedPlanet;
+        wasClamped = true;
+        logger.debug('行星牌生成被限制', {
+          requested: result.planetBonus,
+          allowed: clampedPlanet,
+          availableSlots
+        });
+      }
+    }
+
+    // 如果全部被限制为0，清空消息
+    if (wasClamped &&
+        (clampedResult.tarotBonus === 0 || clampedResult.tarotBonus === undefined) &&
+        (clampedResult.spectralBonus === 0 || clampedResult.spectralBonus === undefined) &&
+        (clampedResult.planetBonus === 0 || clampedResult.planetBonus === undefined)) {
+      clampedResult.message = undefined;
+    }
+
+    return clampedResult;
+  }
+
   /**
    * 出售小丑牌
    */
@@ -96,13 +217,30 @@ export class JokerSystem {
       copiedJokerId
     });
 
+    // 更新Campfire状态：每卖出一张牌，Campfire的cardsSold+1
+    this.updateCampfireOnCardSold(jokerSlots);
+
     return { success: true, sellPrice, copiedJokerId };
+  }
+
+  /**
+   * 更新Campfire状态：当卡牌被出售时
+   */
+  private static updateCampfireOnCardSold(jokerSlots: JokerSlots): void {
+    const jokers = jokerSlots.getJokers();
+    for (const joker of jokers) {
+      if (joker.id === 'campfire') {
+        const currentCardsSold = (joker.state?.cardsSold as number) || 0;
+        joker.updateState({ cardsSold: currentCardsSold + 1 });
+        logger.info('Campfire updated', { cardsSold: currentCardsSold + 1 });
+      }
+    }
   }
 
   /**
    * 创建位置上下文
    */
-  private static createPositionContext(jokerSlots: JokerSlots, jokerIndex: number): Pick<JokerEffectContext, 'jokerPosition' | 'allJokers' | 'leftJokers' | 'rightJokers' | 'leftmostJoker' | 'rightmostJoker'> {
+  private static createPositionContext(jokerSlots: JokerSlots, jokerIndex: number): Pick<JokerEffectContext, 'jokerPosition' | 'allJokers' | 'leftJokers' | 'rightJokers' | 'leftmostJoker' | 'rightmostJoker' | 'smearedJoker'> {
     const allJokers = [...jokerSlots.getJokers()];
     const leftJokers = allJokers.slice(0, jokerIndex);
     const rightJokers = allJokers.slice(jokerIndex + 1);
@@ -113,7 +251,8 @@ export class JokerSystem {
       leftJokers,
       rightJokers,
       leftmostJoker: allJokers[0],
-      rightmostJoker: allJokers[allJokers.length - 1]
+      rightmostJoker: allJokers[allJokers.length - 1],
+      smearedJoker: this.hasSmearedJoker(allJokers)
     };
   }
 
@@ -159,11 +298,17 @@ export class JokerSystem {
     callback: ((context: JokerEffectContext) => JokerEffectResult) | undefined,
     context: JokerEffectContext,
     accumulator: EffectAccumulator,
-    effectPrefix?: string
+    effectPrefix?: string,
+    consumableSlots?: ConsumableSlots
   ): void {
     if (!callback) return;
 
-    const result = callback.call(joker, context);
+    let result = callback.call(joker, context);
+
+    // 应用消耗牌槽位限制
+    if (consumableSlots && result) {
+      result = this.clampConsumableGeneration(result, consumableSlots);
+    }
 
     // 累加各种奖励值
     if (result.chipBonus) accumulator.chipBonus += result.chipBonus;
@@ -180,7 +325,7 @@ export class JokerSystem {
     // 处理特殊效果
     if (result.copiedConsumableId) accumulator.copiedConsumableIds.push(result.copiedConsumableId);
 
-    // 添加效果消息
+    // 添加效果消息（只在有实际效果时添加）
     const hasEffect = result.chipBonus || result.multBonus || result.multMultiplier ||
                       result.moneyBonus || result.tarotBonus || result.jokerBonus ||
                       result.handBonus || result.message;
@@ -211,6 +356,7 @@ export class JokerSystem {
    * @param accumulator 结果累加器
    * @param jokerIndex 当前小丑在槽位中的索引
    * @param jokers 所有小丑牌数组
+   * @param consumableSlots 消耗牌槽位（可选）
    */
   private static processCopyEffect(
     joker: JokerInterface,
@@ -219,7 +365,8 @@ export class JokerSystem {
     context: JokerEffectContext,
     accumulator: EffectAccumulator,
     jokerIndex: number,
-    jokers: readonly JokerInterface[]
+    jokers: readonly JokerInterface[],
+    consumableSlots?: ConsumableSlots
   ): void {
     // 获取目标小丑
     const targetJoker = copyType === 'blueprint'
@@ -238,7 +385,12 @@ export class JokerSystem {
       : `头脑风暴复制 [${targetJoker.name}]: `;
 
     // 处理复制效果 - 注意：使用targetJoker作为this上下文
-    const result = callback.call(targetJoker, context);
+    let result = callback.call(targetJoker, context);
+
+    // 应用消耗牌槽位限制
+    if (consumableSlots && result) {
+      result = this.clampConsumableGeneration(result, consumableSlots);
+    }
 
     // 累加各种奖励值
     if (result.chipBonus) accumulator.chipBonus += result.chipBonus;
@@ -285,7 +437,8 @@ export class JokerSystem {
     scoredCards: readonly Card[],
     handType: PokerHandType,
     currentChips: number,
-    currentMult: number
+    currentMult: number,
+    consumableSlots?: ConsumableSlots
   ): {
     chipBonus: number;
     multBonus: number;
@@ -310,16 +463,16 @@ export class JokerSystem {
       (context as unknown as { jokerState: typeof joker.state }).jokerState = joker.state;
 
       // 1. 处理小丑自身的 onScored 效果
-      this.processJokerEffect(joker, joker.onScored, context, accumulator);
+      this.processJokerEffect(joker, joker.onScored, context, accumulator, undefined, consumableSlots);
 
       // 2. 处理蓝图的复制效果
       if (joker.id === 'blueprint') {
-        this.processCopyEffect(joker, 'blueprint', 'onScored', context, accumulator, i, jokers);
+        this.processCopyEffect(joker, 'blueprint', 'onScored', context, accumulator, i, jokers, consumableSlots);
       }
 
       // 3. 处理头脑风暴的复制效果
       if (joker.id === 'brainstorm') {
-        this.processCopyEffect(joker, 'brainstorm', 'onScored', context, accumulator, i, jokers);
+        this.processCopyEffect(joker, 'brainstorm', 'onScored', context, accumulator, i, jokers, consumableSlots);
       }
     }
 
@@ -346,7 +499,9 @@ export class JokerSystem {
     deckSize?: number,
     initialDeckSize?: number,
     handsRemaining?: number,
-    mostPlayedHand?: PokerHandType | null
+    mostPlayedHand?: PokerHandType | null,
+    consumableSlots?: ConsumableSlots,
+    handTypeHistoryCount?: number
   ): {
     chipBonus: number;
     multBonus: number;
@@ -372,6 +527,7 @@ export class JokerSystem {
         initialDeckSize,
         handsRemaining,
         mostPlayedHand,
+        handTypeHistoryCount,
         ...this.createPositionContext(jokerSlots, i)
       };
 
@@ -381,17 +537,17 @@ export class JokerSystem {
       // 1. 处理小丑自身的 onHandPlayed 效果
       if ('onHandPlayed' in joker && typeof (joker as any).onHandPlayed === 'function') {
         console.log(`[JokerSystem] 调用小丑[${i}] onHandPlayed, handType:`, handType);
-        this.processJokerEffect(joker, joker.onHandPlayed, context, accumulator);
+        this.processJokerEffect(joker, joker.onHandPlayed, context, accumulator, undefined, consumableSlots);
       }
 
       // 2. 处理蓝图的复制效果
       if (joker.id === 'blueprint') {
-        this.processCopyEffect(joker, 'blueprint', 'onHandPlayed', context, accumulator, i, jokers);
+        this.processCopyEffect(joker, 'blueprint', 'onHandPlayed', context, accumulator, i, jokers, consumableSlots);
       }
 
       // 3. 处理头脑风暴的复制效果
       if (joker.id === 'brainstorm') {
-        this.processCopyEffect(joker, 'brainstorm', 'onHandPlayed', context, accumulator, i, jokers);
+        this.processCopyEffect(joker, 'brainstorm', 'onHandPlayed', context, accumulator, i, jokers, consumableSlots);
       }
     }
 
@@ -448,14 +604,56 @@ export class JokerSystem {
   }
 
   /**
+   * 处理刷新商店时效果（Flash Card等）
+   */
+  static processOnReroll(jokerSlots: JokerSlots): {
+    multBonus: number;
+    effects: JokerEffectDetail[];
+  } {
+    const accumulator = this.createEffectAccumulator();
+    const jokers = jokerSlots.getJokers();
+
+    for (let i = 0; i < jokers.length; i++) {
+      const joker = jokers[i];
+
+      const context: JokerEffectContext = {
+        ...this.createPositionContext(jokerSlots, i)
+      };
+
+      // 添加jokerState到context
+      (context as unknown as { jokerState: typeof joker.state }).jokerState = joker.state;
+
+      // 1. 处理小丑自身的 onReroll 效果
+      this.processJokerEffect(joker, joker.onReroll, context, accumulator);
+
+      // 2. 处理蓝图的复制效果
+      if (joker.id === 'blueprint') {
+        this.processCopyEffect(joker, 'blueprint', 'onReroll', context, accumulator, i, jokers);
+      }
+
+      // 3. 处理头脑风暴的复制效果
+      if (joker.id === 'brainstorm') {
+        this.processCopyEffect(joker, 'brainstorm', 'onReroll', context, accumulator, i, jokers);
+      }
+    }
+
+    return {
+      multBonus: accumulator.multBonus,
+      effects: accumulator.effects
+    };
+  }
+
+  /**
    * 处理回合结束
    */
   static processEndRound(jokerSlots: JokerSlots, gameState?: { money: number; interestCap: number; hands: number; discards: number }, defeatedBoss?: boolean): {
     moneyBonus: number;
     effects: JokerEffectDetail[];
     destroyedJokers: number[];
+    increaseSellValue: number;
   } {
     let totalMoneyBonus = 0;
+    let totalIncreaseSellValue = 0;
     const effects: JokerEffectDetail[] = [];
     const destroyedJokers: number[] = [];
 
@@ -498,6 +696,11 @@ export class JokerSystem {
           jokerSlots.removeJoker(randomIndex);
         }
 
+        // 处理增加售价（礼品卡效果）
+        if (result.increaseSellValue && result.increaseSellValue > 0) {
+          totalIncreaseSellValue += result.increaseSellValue;
+        }
+
         if (result.moneyBonus || result.message) {
           totalMoneyBonus += result.moneyBonus || 0;
 
@@ -513,11 +716,30 @@ export class JokerSystem {
       // 回合结束效果（如金色小丑给钱、蛋增加售价等）不被复制
     }
 
+    // 如果击败了Boss，重置Campfire状态
+    if (defeatedBoss) {
+      this.resetCampfireAfterBoss(jokerSlots);
+    }
+
     return {
       moneyBonus: totalMoneyBonus,
       effects,
-      destroyedJokers
+      destroyedJokers,
+      increaseSellValue: totalIncreaseSellValue
     };
+  }
+
+  /**
+   * 击败Boss后重置Campfire状态
+   */
+  private static resetCampfireAfterBoss(jokerSlots: JokerSlots): void {
+    const jokers = jokerSlots.getJokers();
+    for (const joker of jokers) {
+      if (joker.id === 'campfire') {
+        joker.updateState({ cardsSold: 0 });
+        logger.info('Campfire reset after boss defeated');
+      }
+    }
   }
 
   /**
@@ -609,7 +831,8 @@ export class JokerSystem {
    */
   static processBlindSelect(
     jokerSlots: JokerSlots,
-    blindType?: string
+    blindType?: string,
+    consumableSlots?: ConsumableSlots
   ): {
     tarotBonus: number;
     jokerBonus: number;
@@ -635,16 +858,16 @@ export class JokerSystem {
       (context as unknown as { jokerState: typeof joker.state }).jokerState = joker.state;
 
       // 1. 处理小丑自身的 onBlindSelect 效果
-      this.processJokerEffect(joker, joker.onBlindSelect, context, accumulator);
+      this.processJokerEffect(joker, joker.onBlindSelect, context, accumulator, undefined, consumableSlots);
 
       // 2. 处理蓝图的复制效果
       if (joker.id === 'blueprint') {
-        this.processCopyEffect(joker, 'blueprint', 'onBlindSelect', context, accumulator, i, jokers);
+        this.processCopyEffect(joker, 'blueprint', 'onBlindSelect', context, accumulator, i, jokers, consumableSlots);
       }
 
       // 3. 处理头脑风暴的复制效果
       if (joker.id === 'brainstorm') {
-        this.processCopyEffect(joker, 'brainstorm', 'onBlindSelect', context, accumulator, i, jokers);
+        this.processCopyEffect(joker, 'brainstorm', 'onBlindSelect', context, accumulator, i, jokers, consumableSlots);
       }
     }
 
@@ -850,7 +1073,8 @@ export class JokerSystem {
     deckSize?: number,
     initialDeckSize?: number,
     handsRemaining?: number,
-    mostPlayedHand?: PokerHandType | null
+    mostPlayedHand?: PokerHandType | null,
+    handTypeHistoryCount?: number
   ): ProcessedScoreResult {
     const jokerEffects: JokerEffectDetail[] = [];
     let totalChipBonus = 0;
@@ -921,7 +1145,9 @@ export class JokerSystem {
       deckSize,
       initialDeckSize,
       handsRemaining,
-      mostPlayedHand
+      mostPlayedHand,
+      undefined, // consumableSlots
+      handTypeHistoryCount
     );
     console.log('[JokerSystem] processHandPlayed结果:', { chipBonus: handPlayedResult.chipBonus, multBonus: handPlayedResult.multBonus, multMultiplier: handPlayedResult.multMultiplier, effects: handPlayedResult.effects });
     totalChipBonus += handPlayedResult.chipBonus;

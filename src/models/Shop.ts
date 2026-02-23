@@ -511,6 +511,26 @@ export class Shop {
     return Math.max(1, Math.floor(item.currentPrice / 2));
   }
 
+  /**
+   * 增加小丑和消耗牌的售价（礼品卡效果）
+   * @param amount 增加的金额
+   */
+  increaseJokerAndConsumablePrices(amount: number): void {
+    logger.info(`[Shop.increaseJokerAndConsumablePrices] 增加售价: +$${amount}`);
+    let increasedCount = 0;
+
+    for (const item of this.items) {
+      if (!item.sold && (item.type === 'joker' || item.type === 'consumable')) {
+        item.basePrice += amount;
+        item.currentPrice += amount;
+        increasedCount++;
+        logger.debug(`[Shop.increaseJokerAndConsumablePrices] 增加售价: ${this.getItemName(item)} +$${amount} = $${item.currentPrice}`);
+      }
+    }
+
+    logger.info(`[Shop.increaseJokerAndConsumablePrices] 完成，共${increasedCount}个商品售价增加`);
+  }
+
   private getItemName(shopItem: ShopItem): string {
     switch (shopItem.type) {
       case 'joker':

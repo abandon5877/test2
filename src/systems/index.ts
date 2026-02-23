@@ -20,3 +20,16 @@ export {
   SealSystem,
   type SealEffectResult
 } from './SealSystem';
+
+export {
+  ProbabilitySystem,
+  PROBABILITIES,
+  checkBloodstone,
+  checkStuntman,
+  checkSpaceJoker,
+  checkHallucination,
+  checkLuckyCash,
+  checkLuckyMult,
+  checkGlassDestroy,
+  type ProbabilityConfig
+} from './ProbabilitySystem';

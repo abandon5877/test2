@@ -106,8 +106,9 @@ describe('ON_PLAY 触发器类小丑牌测试', () => {
 
       const result = ScoringSystem.calculate(cards, undefined, undefined, undefined, jokerSlots);
       const effect = result.jokerEffects!.find(e => e.jokerName === '全息影像');
-      // 初始状态没有添加过牌，应该不触发或返回0
-      expect(effect).toBeUndefined();
+      // 修复后：初始状态返回 x1 倍率 (符合Wiki)
+      expect(effect).toBeDefined();
+      expect(effect?.multMultiplier).toBe(1);
     });
 
     it('篝火: 初始状态0倍率', () => {

@@ -342,7 +342,7 @@ describe('ON_HAND_PLAYED 触发器类小丑牌测试', () => {
       const result = ScoringSystem.calculate(cards, undefined, gameState, undefined, jokerSlots);
       const effect = result.jokerEffects!.find(e => e.jokerName === '旗帜');
       expect(effect).toBeDefined();
-      expect(effect!.chipBonus).toBe(80); // 2剩余弃牌 * 40
+      expect(effect!.chipBonus).toBe(60); // 修复后: 2剩余弃牌 * 30
     });
 
     it('神秘峰顶: 0弃牌时+15倍率', () => {
@@ -409,8 +409,8 @@ describe('ON_HAND_PLAYED 触发器类小丑牌测试', () => {
       const result = ScoringSystem.calculate(cards, undefined, undefined, undefined, jokerSlots);
       const effects = result.jokerEffects!.filter(e => e.jokerName === '抽象小丑');
       expect(effects.length).toBe(2);
-      // 2张小丑 * 2倍率 = 4
-      expect(effects[0]!.multBonus).toBe(4);
+      // 修复后: 2张小丑 * 3倍率 = 6
+      expect(effects[0]!.multBonus).toBe(6);
     });
   });
 

@@ -30,3 +30,18 @@ export {
 } from './errors';
 
 export { Storage } from './storage';
+
+export {
+  getEffectiveSuit,
+  isSameSuit,
+  getSuitColor,
+  isRedSuit,
+  isBlackSuit,
+  isRedCard,
+  isBlackCard,
+  groupByEffectiveSuit,
+  getAllEffectiveSuits,
+  cardMatchesSuit,
+  countCardsMatchingSuit,
+  type EffectiveSuit
+} from './suitUtils';

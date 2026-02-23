@@ -198,7 +198,7 @@ describe('触发类小丑牌功能检查', () => {
 
         const abstractEffect = result.jokerEffects!.find(e => e.jokerName === '抽象小丑');
         expect(abstractEffect).toBeDefined();
-        expect(abstractEffect!.multBonus).toBe(4); // 2张小丑 * 2倍率
+        expect(abstractEffect!.multBonus).toBe(6); // 修复后：2张小丑 * 3倍率
       });
     });
 
@@ -239,7 +239,8 @@ describe('触发类小丑牌功能检查', () => {
         const result = ScoringSystem.calculate(cards, undefined, undefined, undefined, jokerSlots);
 
         const hologramEffect = result.jokerEffects!.find(e => e.jokerName === '全息影像');
-        expect(hologramEffect).toBeUndefined();
+        expect(hologramEffect).toBeDefined(); // 修复后：初始状态返回 x1 倍率
+        expect(hologramEffect?.multMultiplier).toBe(1);
       });
     });
 

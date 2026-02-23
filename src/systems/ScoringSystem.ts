@@ -7,6 +7,7 @@ import type { JokerInterface } from '../types/joker';
 import type { JokerSlots } from '../models/JokerSlots';
 import { SealSystem } from './SealSystem';
 import { createModuleLogger } from '../utils/logger';
+import { ProbabilitySystem, PROBABILITIES } from './ProbabilitySystem';
 
 const logger = createModuleLogger('ScoringSystem');
 
@@ -196,7 +197,8 @@ export class ScoringSystem {
     handsPlayed?: number, // 本回合已出牌次数（用于loyalty_card等）
     discardsUsed?: number, // 本回合已弃牌次数（用于yorick等）
     handsRemaining?: number, // 剩余手牌数（用于acrobat等）
-    mostPlayedHand?: PokerHandType | null // 最常出的牌型（用于obelisk）
+    mostPlayedHand?: PokerHandType | null, // 最常出的牌型（用于obelisk）
+    handTypeHistoryCount?: number // 当前牌型的历史出牌次数（用于Supernova）
   ): ScoreResult {
     if (cards.length === 0) {
       logger.warn('Calculate called with empty cards');
@@ -301,8 +303,8 @@ export class ScoringSystem {
           // Glass牌提供x2倍率乘数，不是加算
           glassMultMultiplier *= 2;
           enhancements.push('Glass (×2倍率)');
-          // 1/4 几率摧毁
-          if (Math.random() < 0.25) {
+          // 1/4 几率摧毁 (受Oops!_All_6s影响)
+          if (ProbabilitySystem.check(PROBABILITIES.GLASS_DESTROY)) {
             destroyedCards.push(card);
             enhancements.push('Glass (已摧毁!)');
           }
@@ -319,13 +321,13 @@ export class ScoringSystem {
         case CardEnhancement.Lucky:
           let luckyTriggered = false;
           let luckyMoney = 0;
-          // 1/5 几率 +20 Mult
-          if (Math.random() < 0.2) {
+          // 1/5 几率 +20 Mult (受Oops!_All_6s影响)
+          if (ProbabilitySystem.check(PROBABILITIES.LUCKY_MULT)) {
             cardMultBonus += 20;
             luckyTriggered = true;
           }
-          // 1/15 几率 +$20
-          if (Math.random() < 1/15) {
+          // 1/15 几率 +$20 (受Oops!_All_6s影响)
+          if (ProbabilitySystem.check(PROBABILITIES.LUCKY_CASH)) {
             luckyMoney = 20;
             totalLuckyMoney += luckyMoney;
           }
@@ -527,7 +529,8 @@ export class ScoringSystem {
         deckSize,
         initialDeckSize,
         handsRemaining,
-        mostPlayedHand
+        mostPlayedHand,
+        handTypeHistoryCount
       );
 
       totalChips = jokerResult.totalChips;

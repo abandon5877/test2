@@ -216,7 +216,7 @@ describe('触发类小丑牌完整调用链测试', () => {
 
       const abstractEffect = result.jokerEffects?.find(e => e.jokerName === '抽象小丑');
       expect(abstractEffect).toBeDefined();
-      expect(abstractEffect?.multBonus).toBe(4); // 2张小丑 * 2倍率
+      expect(abstractEffect?.multBonus).toBe(6); // 修复后: 2张小丑 * 3倍率
     });
 
     it('模型层: context.allJokers 应正确传递', () => {
@@ -245,7 +245,7 @@ describe('触发类小丑牌完整调用链测试', () => {
       };
 
       const result = abstract.effect(context);
-      expect(result.multBonus).toBe(8); // 4张小丑 * 2倍率
+      expect(result.multBonus).toBe(12); // 修复后: 4张小丑 * 3倍率
     });
   });
 
@@ -317,7 +317,8 @@ describe('触发类小丑牌完整调用链测试', () => {
       const result = ScoringSystem.calculate(cards, undefined, undefined, undefined, jokerSlots);
 
       const hologramEffect = result.jokerEffects?.find(e => e.jokerName === '全息影像');
-      expect(hologramEffect).toBeUndefined(); // 初始状态无效果
+      expect(hologramEffect).toBeDefined(); // 修复后：初始状态返回 x1 倍率
+      expect(hologramEffect?.multMultiplier).toBe(1);
     });
   });
 

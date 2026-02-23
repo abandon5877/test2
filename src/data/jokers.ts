@@ -5,6 +5,8 @@ import { PokerHandType } from '../types/pokerHands';
 import type { Card } from '../models/Card';
 import type { ConsumableInterface } from '../types/consumable';
 import { generateRandomJokerEdition } from './probabilities';
+import { cardMatchesSuit, isRedCard, isBlackCard, getSuitColor } from '../utils/suitUtils';
+import { ProbabilitySystem, PROBABILITIES } from '../systems/ProbabilitySystem';
 
 export const JOKERS: Joker[] = [
   new Joker({
@@ -16,11 +18,16 @@ export const JOKERS: Joker[] = [
     trigger: JokerTrigger.ON_SCORED,
     effect: (context: JokerEffectContext): JokerEffectResult => {
       if (!context.scoredCards) return {};
-      const heartCount = context.scoredCards.filter(card => card.suit === Suit.Hearts).length;
+      const hasSmearedJoker = context.smearedJoker ?? false;
+      // Smeared_Joker激活时，红桃和方片都视为红色花色
+      const heartCount = context.scoredCards.filter(card =>
+        cardMatchesSuit(card, Suit.Hearts, hasSmearedJoker)
+      ).length;
       if (heartCount > 0) {
+        const suitDesc = hasSmearedJoker ? '红色牌' : '红桃';
         return {
           multBonus: heartCount * 3,
-          message: `色欲小丑: ${heartCount}张红桃 +${heartCount * 3}倍率`
+          message: `色欲小丑: ${heartCount}张${suitDesc} +${heartCount * 3}倍率`
         };
       }
       return {};
@@ -36,11 +43,16 @@ export const JOKERS: Joker[] = [
     trigger: JokerTrigger.ON_SCORED,
     effect: (context: JokerEffectContext): JokerEffectResult => {
       if (!context.scoredCards) return {};
-      const spadeCount = context.scoredCards.filter(card => card.suit === Suit.Spades).length;
+      const hasSmearedJoker = context.smearedJoker ?? false;
+      // Smeared_Joker激活时，黑桃和梅花都视为黑色花色
+      const spadeCount = context.scoredCards.filter(card =>
+        cardMatchesSuit(card, Suit.Spades, hasSmearedJoker)
+      ).length;
       if (spadeCount > 0) {
+        const suitDesc = hasSmearedJoker ? '黑色牌' : '黑桃';
         return {
           multBonus: spadeCount * 3,
-          message: `暴怒小丑: ${spadeCount}张黑桃 +${spadeCount * 3}倍率`
+          message: `暴怒小丑: ${spadeCount}张${suitDesc} +${spadeCount * 3}倍率`
         };
       }
       return {};
@@ -237,11 +249,16 @@ export const JOKERS: Joker[] = [
     trigger: JokerTrigger.ON_SCORED,
     effect: (context: JokerEffectContext): JokerEffectResult => {
       if (!context.scoredCards) return {};
-      const diamondCount = context.scoredCards.filter(card => card.suit === Suit.Diamonds).length;
+      const hasSmearedJoker = context.smearedJoker ?? false;
+      // Smeared_Joker激活时，红桃和方片都视为红色花色
+      const diamondCount = context.scoredCards.filter(card =>
+        cardMatchesSuit(card, Suit.Diamonds, hasSmearedJoker)
+      ).length;
       if (diamondCount > 0) {
+        const suitDesc = hasSmearedJoker ? '红色牌' : '方片';
         return {
           multBonus: diamondCount * 3,
-          message: `贪婪小丑: ${diamondCount}张方片 +${diamondCount * 3}倍率`
+          message: `贪婪小丑: ${diamondCount}张${suitDesc} +${diamondCount * 3}倍率`
         };
       }
       return {};
@@ -257,11 +274,16 @@ export const JOKERS: Joker[] = [
     trigger: JokerTrigger.ON_SCORED,
     effect: (context: JokerEffectContext): JokerEffectResult => {
       if (!context.scoredCards) return {};
-      const clubCount = context.scoredCards.filter(card => card.suit === Suit.Clubs).length;
+      const hasSmearedJoker = context.smearedJoker ?? false;
+      // Smeared_Joker激活时，黑桃和梅花都视为黑色花色
+      const clubCount = context.scoredCards.filter(card =>
+        cardMatchesSuit(card, Suit.Clubs, hasSmearedJoker)
+      ).length;
       if (clubCount > 0) {
+        const suitDesc = hasSmearedJoker ? '黑色牌' : '梅花';
         return {
           multBonus: clubCount * 3,
-          message: `暴食小丑: ${clubCount}张梅花 +${clubCount * 3}倍率`
+          message: `暴食小丑: ${clubCount}张${suitDesc} +${clubCount * 3}倍率`
         };
       }
       return {};
@@ -327,12 +349,12 @@ export const JOKERS: Joker[] = [
   new Joker({
     id: 'space_joker',
     name: '太空小丑',
-    description: '1/5概率升级牌型等级',
+    description: '1/4概率升级牌型等级',
     rarity: JokerRarity.UNCOMMON,
     cost: 5,
     trigger: JokerTrigger.ON_HAND_PLAYED,
     effect: (context: JokerEffectContext): JokerEffectResult => {
-      if (Math.random() < 0.2) {
+      if (ProbabilitySystem.check(PROBABILITIES.SPACE_JOKER)) {
         return {
           message: '太空小丑: 升级牌型等级'
         };
@@ -349,12 +371,22 @@ export const JOKERS: Joker[] = [
     cost: 5,
     trigger: JokerTrigger.ON_HAND_PLAYED,
     effect: (context: JokerEffectContext): JokerEffectResult => {
-      if (!context.scoredCards) return {};
-      const suits = new Set(context.scoredCards.map(card => card.suit));
-      if (suits.size === 4) {
+      if (!context.scoredCards || context.scoredCards.length < 4) return {};
+      const hasSmearedJoker = context.smearedJoker ?? false;
+
+      // Smeared_Joker激活时，只需要两种颜色（红黑）
+      const requiredSuits = hasSmearedJoker ? 2 : 4;
+
+      // 使用有效花色来判断
+      const effectiveSuits = new Set(context.scoredCards.map(card =>
+        hasSmearedJoker ? getSuitColor(card.suit) : card.suit
+      ));
+
+      if (effectiveSuits.size === requiredSuits) {
+        const desc = hasSmearedJoker ? '两种颜色' : '四种花色';
         return {
           multMultiplier: 3,
-          message: '花盆: x3倍率'
+          message: `花盆: ${desc} x3倍率`
         };
       }
       return {};
@@ -366,7 +398,7 @@ export const JOKERS: Joker[] = [
     name: '四指',
     description: '同花/顺子只需4张',
     rarity: JokerRarity.UNCOMMON,
-    cost: 5,
+    cost: 7,
     trigger: JokerTrigger.ON_INDEPENDENT,
     effect: (context: JokerEffectContext): JokerEffectResult => {
       return {
@@ -379,7 +411,7 @@ export const JOKERS: Joker[] = [
   new Joker({
     id: 'dusk',
     name: '黄昏',
-    description: '最后一次出牌触发2次',
+    description: '最后一次出牌重新触发所有打出的牌',
     rarity: JokerRarity.UNCOMMON,
     cost: 5,
     trigger: JokerTrigger.ON_HAND_PLAYED,
@@ -387,8 +419,8 @@ export const JOKERS: Joker[] = [
       const gameState = context.gameState;
       if (gameState && gameState.hands === 1) {
         return {
-          multMultiplier: 2,
-          message: '黄昏: 最后一次出牌触发2次'
+          retriggerCards: true,
+          message: '黄昏: 重新触发所有打出牌'
         };
       }
       return {};
@@ -400,7 +432,7 @@ export const JOKERS: Joker[] = [
     name: '星座',
     description: '每使用一张行星牌x0.1倍率',
     rarity: JokerRarity.UNCOMMON,
-    cost: 5,
+    cost: 6,
     trigger: JokerTrigger.ON_HAND_PLAYED,
     effect: (context: JokerEffectContext): JokerEffectResult => {
       const planetCardsUsed = (context as unknown as { jokerState?: { planetCardsUsed?: number } }).jokerState?.planetCardsUsed || 0;
@@ -415,7 +447,7 @@ export const JOKERS: Joker[] = [
   new Joker({
     id: 'hiker',
     name: '远足者',
-    description: '打出牌永久+1筹码',
+    description: '打出的每张牌永久+5筹码',
     rarity: JokerRarity.UNCOMMON,
     cost: 5,
     trigger: JokerTrigger.ON_SCORED,
@@ -423,10 +455,11 @@ export const JOKERS: Joker[] = [
       if (!context.scoredCards) return {};
       const cardCount = context.scoredCards.length;
       const permanentBonus = (context as unknown as { jokerState?: { hikerBonus?: number } }).jokerState?.hikerBonus || 0;
+      const addedBonus = cardCount * 5;
       return {
-        chipBonus: cardCount + permanentBonus,
-        stateUpdate: { hikerBonus: permanentBonus + cardCount },
-        message: `远足者: ${cardCount}张牌+${cardCount}筹码，累计永久+${permanentBonus + cardCount}筹码`
+        chipBonus: addedBonus,
+        stateUpdate: { hikerBonus: permanentBonus + addedBonus },
+        message: `远足者: ${cardCount}张牌永久+${addedBonus}筹码`
       };
     }
   }),
@@ -436,7 +469,7 @@ export const JOKERS: Joker[] = [
     name: '捷径',
     description: '顺子可跳1个数字',
     rarity: JokerRarity.UNCOMMON,
-    cost: 5,
+    cost: 7,
     trigger: JokerTrigger.ON_INDEPENDENT,
     effect: (context: JokerEffectContext): JokerEffectResult => {
       // 捷径效果在PokerHandDetector中实现
@@ -655,26 +688,17 @@ export const JOKERS: Joker[] = [
   new Joker({
     id: 'stone_joker',
     name: '石头小丑',
-    description: '打出石头牌永久+20筹码',
+    description: '牌库中每张石头牌+25筹码',
     rarity: JokerRarity.COMMON,
     cost: 4,
-    trigger: JokerTrigger.ON_SCORED,
+    trigger: JokerTrigger.ON_HAND_PLAYED,
     effect: (context: JokerEffectContext): JokerEffectResult => {
-      if (!context.scoredCards) return {};
-      const stoneCount = context.scoredCards.filter(card => card.enhancement === CardEnhancement.Stone).length;
-      const permanentBonus = (context as unknown as { jokerState?: { stoneBonus?: number } }).jokerState?.stoneBonus || 0;
-      if (stoneCount > 0) {
+      const stoneCardsInDeck = (context as unknown as { stoneCardsInDeck?: number }).stoneCardsInDeck || 0;
+      if (stoneCardsInDeck > 0) {
+        const bonus = stoneCardsInDeck * 25;
         return {
-          chipBonus: stoneCount * 20 + permanentBonus,
-          stateUpdate: { stoneBonus: permanentBonus + stoneCount * 20 },
-          message: `石头小丑: ${stoneCount}张石头牌+${stoneCount * 20}筹码，累计永久+${permanentBonus + stoneCount * 20}筹码`
-        };
-      }
-      // 即使没有打出石头牌，也提供永久加成
-      if (permanentBonus > 0) {
-        return {
-          chipBonus: permanentBonus,
-          message: `石头小丑: 永久+${permanentBonus}筹码`
+          chipBonus: bonus,
+          message: `石头小丑: ${stoneCardsInDeck}张石头牌 +${bonus}筹码`
         };
       }
       return {};
@@ -685,14 +709,14 @@ export const JOKERS: Joker[] = [
   new Joker({
     id: 'juggler',
     name: '杂耍者',
-    description: '手牌上限+2',
+    description: '手牌上限+1',
     rarity: JokerRarity.COMMON,
-    cost: 3,
+    cost: 4,
     trigger: JokerTrigger.ON_INDEPENDENT,
     effect: (context: JokerEffectContext): JokerEffectResult => {
       return {
-        extraHandSize: 2,
-        message: '杂耍者: 手牌上限+2'
+        extraHandSize: 1,
+        message: '杂耍者: 手牌上限+1'
       };
     }
   }),
@@ -718,8 +742,8 @@ export const JOKERS: Joker[] = [
     id: 'troubadour',
     name: '吟游诗人',
     description: '+2手牌上限，-1出牌次数',
-    rarity: JokerRarity.COMMON,
-    cost: 4,
+    rarity: JokerRarity.UNCOMMON,
+    cost: 5,
     trigger: JokerTrigger.ON_INDEPENDENT,
     effect: (context: JokerEffectContext): JokerEffectResult => {
       return {
@@ -734,14 +758,14 @@ export const JOKERS: Joker[] = [
   new Joker({
     id: 'banner',
     name: '旗帜',
-    description: '每剩余弃牌+40筹码',
+    description: '每剩余弃牌+30筹码',
     rarity: JokerRarity.COMMON,
     cost: 4,
     trigger: JokerTrigger.ON_HAND_PLAYED,
     effect: (context: JokerEffectContext): JokerEffectResult => {
       const remainingDiscards = context.gameState?.discards || 0;
       if (remainingDiscards > 0) {
-        const bonus = remainingDiscards * 40;
+        const bonus = remainingDiscards * 30;
         return {
           chipBonus: bonus,
           message: `旗帜: ${remainingDiscards}剩余弃牌 +${bonus}筹码`
@@ -775,12 +799,12 @@ export const JOKERS: Joker[] = [
   new Joker({
     id: 'misprint',
     name: '印刷错误',
-    description: '随机+0~20倍率',
+    description: '随机+0~23倍率',
     rarity: JokerRarity.COMMON,
     cost: 3,
     trigger: JokerTrigger.ON_HAND_PLAYED,
     effect: (context: JokerEffectContext): JokerEffectResult => {
-      const randomMult = Math.floor(Math.random() * 21);
+      const randomMult = Math.floor(Math.random() * 24);
       return {
         multBonus: randomMult,
         message: `印刷错误: +${randomMult}倍率`
@@ -792,17 +816,17 @@ export const JOKERS: Joker[] = [
   new Joker({
     id: 'steel_joker',
     name: '钢铁小丑',
-    description: '钢铁牌在手牌中+10倍率',
+    description: '牌库中每张钢铁牌x0.2倍率',
     rarity: JokerRarity.COMMON,
     cost: 4,
-    trigger: JokerTrigger.ON_HELD,
+    trigger: JokerTrigger.ON_HAND_PLAYED,
     effect: (context: JokerEffectContext): JokerEffectResult => {
-      if (!context.heldCards) return {};
-      const steelCount = context.heldCards.filter(card => card.enhancement === CardEnhancement.Steel).length;
-      if (steelCount > 0) {
+      const steelCardsInDeck = (context as unknown as { steelCardsInDeck?: number }).steelCardsInDeck || 0;
+      if (steelCardsInDeck > 0) {
+        const multiplier = 1 + (steelCardsInDeck * 0.2);
         return {
-          multBonus: steelCount * 10,
-          message: `钢铁小丑: ${steelCount}张钢铁牌 +${steelCount * 10}倍率`
+          multMultiplier: multiplier,
+          message: `钢铁小丑: ${steelCardsInDeck}张钢铁牌 x${multiplier.toFixed(1)}倍率`
         };
       }
       return {};
@@ -813,14 +837,14 @@ export const JOKERS: Joker[] = [
   new Joker({
     id: 'abstract_joker',
     name: '抽象小丑',
-    description: '每小丑牌+2倍率',
+    description: '每小丑牌+3倍率',
     rarity: JokerRarity.COMMON,
     cost: 3,
     trigger: JokerTrigger.ON_HAND_PLAYED,
     effect: (context: JokerEffectContext): JokerEffectResult => {
       const jokerCount = context.allJokers?.length || 0;
       if (jokerCount > 0) {
-        const bonus = jokerCount * 2;
+        const bonus = jokerCount * 3;
         return {
           multBonus: bonus,
           message: `抽象小丑: ${jokerCount}张小丑 +${bonus}倍率`
@@ -954,11 +978,12 @@ export const JOKERS: Joker[] = [
     cost: 4,
     trigger: JokerTrigger.ON_HAND_PLAYED,
     effect: (context: JokerEffectContext): JokerEffectResult => {
-      const handsPlayed = context.handsPlayed || 0;
-      if (handsPlayed > 0) {
+      // 使用牌型历史次数（本局游戏中该牌型出过的次数），不是本回合出牌次数
+      const handTypeHistoryCount = context.handTypeHistoryCount || 0;
+      if (handTypeHistoryCount > 0) {
         return {
-          multBonus: handsPlayed,
-          message: `超新星: 出牌${handsPlayed}次 +${handsPlayed}倍率`
+          multBonus: handTypeHistoryCount,
+          message: `超新星: 该牌型出过${handTypeHistoryCount}次 +${handTypeHistoryCount}倍率`
         };
       }
       return {};
@@ -1083,7 +1108,7 @@ export const JOKERS: Joker[] = [
     name: '灵巧小丑',
     description: '同花时+80筹码',
     rarity: JokerRarity.COMMON,
-    cost: 3,
+    cost: 4,
     trigger: JokerTrigger.ON_HAND_PLAYED,
     effect: (context: JokerEffectContext): JokerEffectResult => {
       const flushTypes = [
@@ -1167,7 +1192,7 @@ export const JOKERS: Joker[] = [
     cost: 5,
     trigger: JokerTrigger.ON_HAND_PLAYED,
     effect: (context: JokerEffectContext): JokerEffectResult => {
-      if (Math.random() < 0.2) {
+      if (ProbabilitySystem.check(PROBABILITIES.STUNTMAN)) {
         return {
           chipBonus: 500,
           message: '特技演员: +500筹码'
@@ -1291,7 +1316,8 @@ export const JOKERS: Joker[] = [
     trigger: JokerTrigger.END_OF_ROUND,
     effect: (context: JokerEffectContext): JokerEffectResult => {
       return {
-        message: '礼品卡: 售价增加'
+        increaseSellValue: 1,
+        message: '礼品卡: 小丑/消耗牌售价+$1'
       };
     }
   }),
@@ -1372,8 +1398,8 @@ export const JOKERS: Joker[] = [
     id: 'smeared_joker',
     name: '污损小丑',
     description: '花色只有红黑两种',
-    rarity: JokerRarity.RARE,
-    cost: 8,
+    rarity: JokerRarity.UNCOMMON,
+    cost: 7,
     trigger: JokerTrigger.ON_INDEPENDENT,
     effect: (context: JokerEffectContext): JokerEffectResult => {
       return {
@@ -1387,17 +1413,22 @@ export const JOKERS: Joker[] = [
     id: 'rough_gem',
     name: '粗糙宝石',
     description: '每张方片+$1',
-    rarity: JokerRarity.RARE,
+    rarity: JokerRarity.UNCOMMON,
     cost: 7,
     trigger: JokerTrigger.ON_SCORED,
     effect: (context: JokerEffectContext): JokerEffectResult => {
       if (!context.scoredCards) return {};
-      const diamondCount = context.scoredCards.filter(card => card.suit === Suit.Diamonds).length;
+      const hasSmearedJoker = context.smearedJoker ?? false;
+      // Smeared_Joker激活时，红桃和方片都视为红色花色
+      const diamondCount = context.scoredCards.filter(card =>
+        cardMatchesSuit(card, Suit.Diamonds, hasSmearedJoker)
+      ).length;
       if (diamondCount > 0) {
+        const suitDesc = hasSmearedJoker ? '红色牌' : '方片';
         const money = diamondCount * 1;
         return {
           moneyBonus: money,
-          message: `粗糙宝石: ${diamondCount}张方片 +$${money}`
+          message: `粗糙宝石: ${diamondCount}张${suitDesc} +$${money}`
         };
       }
       return {};
@@ -1409,21 +1440,30 @@ export const JOKERS: Joker[] = [
     id: 'bloodstone',
     name: '血石',
     description: '红桃1/2概率x1.5倍率',
-    rarity: JokerRarity.RARE,
+    rarity: JokerRarity.UNCOMMON,
     cost: 7,
     trigger: JokerTrigger.ON_SCORED,
     effect: (context: JokerEffectContext): JokerEffectResult => {
       if (!context.scoredCards) return {};
-      const heartCount = context.scoredCards.filter(card => card.suit === Suit.Hearts).length;
+      const hasSmearedJoker = context.smearedJoker ?? false;
+      // Smeared_Joker激活时，红桃和方片都视为红色花色
+      const heartCount = context.scoredCards.filter(card =>
+        cardMatchesSuit(card, Suit.Hearts, hasSmearedJoker)
+      ).length;
       if (heartCount > 0) {
         let multiplier = 1;
+        let triggeredCount = 0;
         for (let i = 0; i < heartCount; i++) {
-          if (Math.random() < 0.5) multiplier *= 1.5;
+          if (ProbabilitySystem.check(PROBABILITIES.BLOODSTONE)) {
+            multiplier *= 1.5;
+            triggeredCount++;
+          }
         }
         if (multiplier > 1) {
+          const suitDesc = hasSmearedJoker ? '红色牌' : '红桃';
           return {
             multMultiplier: multiplier,
-            message: `血石: x${multiplier.toFixed(2)}倍率`
+            message: `血石: ${suitDesc}触发${triggeredCount}次 x${multiplier.toFixed(2)}倍率`
           };
         }
       }
@@ -1436,17 +1476,22 @@ export const JOKERS: Joker[] = [
     id: 'arrowhead',
     name: '箭头',
     description: '每张黑桃+50筹码',
-    rarity: JokerRarity.RARE,
+    rarity: JokerRarity.UNCOMMON,
     cost: 7,
     trigger: JokerTrigger.ON_SCORED,
     effect: (context: JokerEffectContext): JokerEffectResult => {
       if (!context.scoredCards) return {};
-      const spadeCount = context.scoredCards.filter(card => card.suit === Suit.Spades).length;
+      const hasSmearedJoker = context.smearedJoker ?? false;
+      // Smeared_Joker激活时，黑桃和梅花都视为黑色花色
+      const spadeCount = context.scoredCards.filter(card =>
+        cardMatchesSuit(card, Suit.Spades, hasSmearedJoker)
+      ).length;
       if (spadeCount > 0) {
+        const suitDesc = hasSmearedJoker ? '黑色牌' : '黑桃';
         const bonus = spadeCount * 50;
         return {
           chipBonus: bonus,
-          message: `箭头: ${spadeCount}张黑桃 +${bonus}筹码`
+          message: `箭头: ${spadeCount}张${suitDesc} +${bonus}筹码`
         };
       }
       return {};
@@ -1458,17 +1503,22 @@ export const JOKERS: Joker[] = [
     id: 'onyx_agate',
     name: '黑玛瑙',
     description: '每张梅花+7倍率',
-    rarity: JokerRarity.RARE,
+    rarity: JokerRarity.UNCOMMON,
     cost: 7,
     trigger: JokerTrigger.ON_SCORED,
     effect: (context: JokerEffectContext): JokerEffectResult => {
       if (!context.scoredCards) return {};
-      const clubCount = context.scoredCards.filter(card => card.suit === Suit.Clubs).length;
+      const hasSmearedJoker = context.smearedJoker ?? false;
+      // Smeared_Joker激活时，黑桃和梅花都视为黑色花色
+      const clubCount = context.scoredCards.filter(card =>
+        cardMatchesSuit(card, Suit.Clubs, hasSmearedJoker)
+      ).length;
       if (clubCount > 0) {
+        const suitDesc = hasSmearedJoker ? '黑色牌' : '梅花';
         const bonus = clubCount * 7;
         return {
           multBonus: bonus,
-          message: `黑玛瑙: ${clubCount}张梅花 +${bonus}倍率`
+          message: `黑玛瑙: ${clubCount}张${suitDesc} +${bonus}倍率`
         };
       }
       return {};
@@ -1480,7 +1530,7 @@ export const JOKERS: Joker[] = [
     id: 'bootstraps',
     name: '自力更生',
     description: '每$5+2倍率',
-    rarity: JokerRarity.RARE,
+    rarity: JokerRarity.UNCOMMON,
     cost: 7,
     trigger: JokerTrigger.ON_HAND_PLAYED,
     effect: (context: JokerEffectContext): JokerEffectResult => {
@@ -1502,19 +1552,20 @@ export const JOKERS: Joker[] = [
   new Joker({
     id: 'yorick',
     name: '约里克',
-    description: '23次弃牌后x5倍率',
+    description: '每弃掉23张牌，本回合x1倍率',
     rarity: JokerRarity.LEGENDARY,
     cost: 20,
     trigger: JokerTrigger.ON_HAND_PLAYED,
     effect: (context: JokerEffectContext): JokerEffectResult => {
-      const discardsUsed = context.discardsUsed || 0;
-      if (discardsUsed >= 23) {
-        return {
-          multMultiplier: 5,
-          message: '约里克: x5倍率'
-        };
-      }
-      return {};
+      const jokerState = (context as unknown as { jokerState?: { totalDiscarded?: number } }).jokerState || {};
+      const totalDiscarded = (jokerState.totalDiscarded || 0) + (context.discardsUsed || 0);
+      const multiplier = 1 + Math.floor(totalDiscarded / 23);
+      
+      return {
+        multMultiplier: multiplier,
+        message: `约里克: 已弃${totalDiscarded}张牌 x${multiplier}倍率`,
+        stateUpdate: { totalDiscarded }
+      };
     }
   }),
 
@@ -1525,7 +1576,7 @@ export const JOKERS: Joker[] = [
     id: 'ceremonial_dagger',
     name: '仪式匕首',
     description: '选盲注时摧毁右侧小丑，永久加双倍售价到倍率',
-    rarity: JokerRarity.COMMON,
+    rarity: JokerRarity.UNCOMMON,
     cost: 6,
     trigger: JokerTrigger.ON_BLIND_SELECT,
     effect: (context: JokerEffectContext): JokerEffectResult => {
@@ -1559,7 +1610,7 @@ export const JOKERS: Joker[] = [
       if (eightCount > 0) {
         let tarotGenerated = 0;
         for (let i = 0; i < eightCount; i++) {
-          if (Math.random() < 0.25) tarotGenerated++;
+          if (ProbabilitySystem.check(PROBABILITIES.EIGHT_BALL)) tarotGenerated++;
         }
         if (tarotGenerated > 0) {
           return {
@@ -1583,7 +1634,8 @@ export const JOKERS: Joker[] = [
     effect: (context: JokerEffectContext): JokerEffectResult => {
       const heldCards = (context as unknown as { heldCards?: Card[] }).heldCards;
       if (heldCards && heldCards.length > 0) {
-        const rankValues: Record<string, number> = { 'A': 1, '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9, '10': 10, 'J': 10, 'Q': 10, 'K': 10 };
+        // 官方规则：A=11点，不是1点
+        const rankValues: Record<string, number> = { 'A': 11, '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9, '10': 10, 'J': 10, 'Q': 10, 'K': 10 };
         const minValue = Math.min(...heldCards.map(card => rankValues[card.rank] || 10));
         const bonus = minValue * 2;
         return {
@@ -2045,13 +2097,16 @@ export const JOKERS: Joker[] = [
     effect: (context: JokerEffectContext): JokerEffectResult => {
       const emptySlots = (context as unknown as { emptySlots?: number }).emptySlots || 0;
       if (emptySlots > 0) {
-        const multiplier = 1 + emptySlots;
+        const multiplier = emptySlots; // 每空槽x1，不是1+空槽
         return {
           multMultiplier: multiplier,
           message: `小丑模板: ${emptySlots}个空槽位 x${multiplier}倍率`
         };
       }
-      return {};
+      return {
+        multMultiplier: 1,
+        message: '小丑模板: x1倍率'
+      };
     }
   }),
 
@@ -2147,11 +2202,17 @@ export const JOKERS: Joker[] = [
     effect: (context: JokerEffectContext): JokerEffectResult => {
       const heldCards = context.heldCards;
       if (heldCards && heldCards.length > 0) {
-        const allBlack = heldCards.every(card => card.suit === Suit.Spades || card.suit === Suit.Clubs);
+        const hasSmearedJoker = context.smearedJoker ?? false;
+        // Smeared_Joker激活时，所有牌都是黑色（因为只有红黑两种）
+        // 但黑板要求全黑，所以Smeared_Joker下只要手牌非空就满足条件
+        const allBlack = hasSmearedJoker
+          ? heldCards.every(card => isBlackCard(card, true))
+          : heldCards.every(card => card.suit === Suit.Spades || card.suit === Suit.Clubs);
         if (allBlack) {
+          const desc = hasSmearedJoker ? '全黑色手牌' : '全黑手牌';
           return {
             multMultiplier: 3,
-            message: '黑板: 全黑手牌 x3倍率'
+            message: `黑板: ${desc} x3倍率`
           };
         }
       }
@@ -2233,7 +2294,7 @@ export const JOKERS: Joker[] = [
   new Joker({
     id: 'madness',
     name: '疯狂',
-    description: '选小盲注或大盲注时x0.5倍率并摧毁随机小丑',
+    description: '选小盲注或大盲注时+X0.5倍率并摧毁随机小丑',
     rarity: JokerRarity.UNCOMMON,
     cost: 7,
     trigger: JokerTrigger.ON_BLIND_SELECT,
@@ -2249,10 +2310,15 @@ export const JOKERS: Joker[] = [
         if (jokerSlots && jokerSlots.getJokerCount() <= 1) {
           return {};
         }
+        // 累加倍率
+        const jokerState = (context as unknown as { jokerState?: { multMultiplier?: number } }).jokerState || {};
+        const currentMult = jokerState.multMultiplier || 1;
+        const newMult = currentMult + 0.5;
         return {
-          multMultiplier: 1.5,
+          multMultiplier: newMult,
           destroyRandomJoker: true,
-          message: '疯狂: x1.5倍率并摧毁随机小丑'
+          stateUpdate: { multMultiplier: newMult },
+          message: `疯狂: x${newMult.toFixed(1)}倍率并摧毁随机小丑`
         };
       }
       return {};
@@ -2303,22 +2369,29 @@ export const JOKERS: Joker[] = [
   new Joker({
     id: 'vampire',
     name: '吸血鬼',
-    description: '每张强化的计分牌x0.1倍率并移除强化',
+    description: '每张强化的计分牌永久x0.1倍率并移除强化',
     rarity: JokerRarity.UNCOMMON,
     cost: 7,
     trigger: JokerTrigger.ON_SCORED,
     effect: (context: JokerEffectContext): JokerEffectResult => {
       if (!context.scoredCards) return {};
       const enhancedCards = context.scoredCards.filter(card => card.enhancement !== undefined);
+      const jokerState = (context as unknown as { jokerState?: { multMultiplier?: number } }).jokerState || {};
+      const currentMult = jokerState.multMultiplier || 1;
+      
       if (enhancedCards.length > 0) {
-        const multiplier = 1 + (enhancedCards.length * 0.1);
+        const newMult = currentMult + (enhancedCards.length * 0.1);
         return {
-          multMultiplier: multiplier,
+          multMultiplier: newMult,
           removeEnhancements: true,
-          message: `吸血鬼: ${enhancedCards.length}张强化牌 x${multiplier.toFixed(1)}倍率并移除强化`
+          stateUpdate: { multMultiplier: newMult },
+          message: `吸血鬼: ${enhancedCards.length}张强化牌，x${newMult.toFixed(1)}倍率`
         };
       }
-      return {};
+      return {
+        multMultiplier: currentMult,
+        message: `吸血鬼: x${currentMult.toFixed(1)}倍率`
+      };
     }
   }),
 
@@ -2333,14 +2406,11 @@ export const JOKERS: Joker[] = [
     effect: (context: JokerEffectContext): JokerEffectResult => {
       const jokerState = (context as unknown as { jokerState?: { cardsAdded?: number } }).jokerState || {};
       const cardsAdded = jokerState.cardsAdded || 0;
-      if (cardsAdded > 0) {
-        const multiplier = 1 + (cardsAdded * 0.25);
-        return {
-          multMultiplier: multiplier,
-          message: `全息影像: ${cardsAdded}张牌加入牌库 x${multiplier.toFixed(2)}倍率`
-        };
-      }
-      return {};
+      const multiplier = 1 + (cardsAdded * 0.25); // 始终至少为 X1
+      return {
+        multMultiplier: multiplier,
+        message: `全息影像: ${cardsAdded}张牌加入牌库 x${multiplier.toFixed(2)}倍率`
+      };
     }
   }),
 
@@ -2349,7 +2419,7 @@ export const JOKERS: Joker[] = [
     id: 'vagabond',
     name: '流浪者',
     description: '资金≤$4时出牌生成一张塔罗牌',
-    rarity: JokerRarity.UNCOMMON,
+    rarity: JokerRarity.RARE,
     cost: 8,
     trigger: JokerTrigger.ON_HAND_PLAYED,
     effect: (context: JokerEffectContext): JokerEffectResult => {
@@ -2407,7 +2477,7 @@ export const JOKERS: Joker[] = [
     id: 'obelisk',
     name: '方尖碑',
     description: '连续不打最常出的牌型，每手x0.2倍率',
-    rarity: JokerRarity.UNCOMMON,
+    rarity: JokerRarity.RARE,
     cost: 8,
     trigger: JokerTrigger.ON_HAND_PLAYED,
     effect: (context: JokerEffectContext): JokerEffectResult => {
@@ -2558,7 +2628,7 @@ export const JOKERS: Joker[] = [
     trigger: JokerTrigger.ON_INDEPENDENT,
     effect: (context: JokerEffectContext): JokerEffectResult => {
       const openedBooster = (context as unknown as { openedBooster?: boolean }).openedBooster;
-      if (openedBooster && Math.random() < 0.5) {
+      if (openedBooster && ProbabilitySystem.check(PROBABILITIES.HALLUCINATION)) {
         return {
           tarotBonus: 1,
           message: '幻觉: 生成塔罗牌'
@@ -2694,13 +2764,19 @@ export const JOKERS: Joker[] = [
       const jokerState = (context as unknown as { jokerState?: { targetSuit?: Suit } }).jokerState || {};
       const targetSuit = jokerState.targetSuit || Suit.Hearts;
       const discardedCards = (context as unknown as { discardedCards?: Card[] }).discardedCards;
+      const hasSmearedJoker = context.smearedJoker ?? false;
       if (discardedCards) {
-        const matchingCards = discardedCards.filter(card => card.suit === targetSuit);
+        const matchingCards = discardedCards.filter(card =>
+          cardMatchesSuit(card, targetSuit, hasSmearedJoker)
+        );
         if (matchingCards.length > 0) {
           const bonus = matchingCards.length * 3;
+          const suitDesc = hasSmearedJoker
+            ? (targetSuit === Suit.Hearts || targetSuit === Suit.Diamonds ? '红色牌' : '黑色牌')
+            : targetSuit;
           return {
             chipBonus: bonus,
-            message: `城堡: 弃掉${matchingCards.length}张${targetSuit} +${bonus}筹码`
+            message: `城堡: 弃掉${matchingCards.length}张${suitDesc} +${bonus}筹码`
           };
         }
       }
@@ -2803,12 +2879,19 @@ export const JOKERS: Joker[] = [
     trigger: JokerTrigger.ON_HAND_PLAYED,
     effect: (context: JokerEffectContext): JokerEffectResult => {
       if (context.scoredCards && context.scoredCards.length >= 2) {
-        const hasClub = context.scoredCards.some(card => card.suit === Suit.Clubs);
-        const hasOtherSuit = context.scoredCards.some(card => card.suit !== Suit.Clubs);
+        const hasSmearedJoker = context.smearedJoker ?? false;
+        // Smeared_Joker激活时，"其他花色"指红色牌（红桃/方片）
+        const hasClub = context.scoredCards.some(card =>
+          cardMatchesSuit(card, Suit.Clubs, hasSmearedJoker)
+        );
+        const hasOtherSuit = context.scoredCards.some(card =>
+          !cardMatchesSuit(card, Suit.Clubs, hasSmearedJoker)
+        );
         if (hasClub && hasOtherSuit) {
+          const desc = hasSmearedJoker ? '黑色+红色牌' : '梅花+其他花色';
           return {
             multMultiplier: 2,
-            message: '重影: 梅花+其他花色 x2倍率'
+            message: `重影: ${desc} x2倍率`
           };
         }
       }
@@ -2912,7 +2995,7 @@ export const JOKERS: Joker[] = [
     id: 'walkie_talkie',
     name: '对讲机',
     description: '每张打出的10或4+10筹码和+4倍率',
-    rarity: JokerRarity.RARE,
+    rarity: JokerRarity.COMMON,
     cost: 4,
     trigger: JokerTrigger.ON_SCORED,
     effect: (context: JokerEffectContext): JokerEffectResult => {
@@ -2981,7 +3064,7 @@ export const JOKERS: Joker[] = [
     id: 'the_idol',
     name: '偶像',
     description: '特定牌x2倍率，每回合更换目标牌',
-    rarity: JokerRarity.RARE,
+    rarity: JokerRarity.UNCOMMON,
     cost: 6,
     trigger: JokerTrigger.ON_SCORED,
     effect: (context: JokerEffectContext): JokerEffectResult => {

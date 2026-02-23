@@ -24,6 +24,7 @@ import type { ConsumableInterface } from '../types/consumable';
 import { getJokerById } from '../data/jokers';
 import { CardEnhancement } from '../types/card';
 import { ConsumableType } from '../types/consumable';
+import { PokerHandType } from '../types/pokerHands';
 import { createModuleLogger } from '../utils/logger';
 
 const logger = createModuleLogger('GameState');
@@ -56,6 +57,7 @@ export class GameState implements GameStateInterface {
   private config: GameConfig;
   private roundStats: RoundStats;
   private playedHandTypes: Set<string> = new Set();
+  private handTypeHistory: Map<string, number> = new Map(); // 牌型历史统计（用于Supernova）
   private lastPlayScore: number = 0;
   private skippedBlinds: Set<string> = new Set();
   private currentBlindPosition: BlindType = BlindType.SMALL_BLIND;
@@ -238,13 +240,31 @@ export class GameState implements GameStateInterface {
     const reward = blindToSkip.getSkipReward();
     this.skippedBlinds.add(skipKey);
     this.money += reward;
-    logger.info('Blind skipped', { 
-      blindType: blindToSkip.type, 
+    logger.info('Blind skipped', {
+      blindType: blindToSkip.type,
       reward,
-      newMoney: this.money 
+      newMoney: this.money
     });
+
+    // 更新Throwback状态：每跳过盲注，Throwback的blindsSkipped+1
+    this.updateThrowbackOnBlindSkipped();
+
     this.advanceBlindPosition();
     return true;
+  }
+
+  /**
+   * 更新Throwback状态：当盲注被跳过时
+   */
+  private updateThrowbackOnBlindSkipped(): void {
+    const jokers = this.jokerSlots.getJokers();
+    for (const joker of jokers) {
+      if (joker.id === 'throwback') {
+        const currentBlindsSkipped = (joker.state?.blindsSkipped as number) || 0;
+        joker.updateState({ blindsSkipped: currentBlindsSkipped + 1 });
+        logger.info('Throwback updated', { blindsSkipped: currentBlindsSkipped + 1 });
+      }
+    }
   }
 
   private advanceBlindPosition(): void {
@@ -320,9 +340,18 @@ export class GameState implements GameStateInterface {
     // 获取最常出的牌型（用于方尖碑）
     const mostPlayedHand = this.bossState.getMostPlayedHand();
 
-    const scoreResult = ScoringSystem.calculate(selectedCards, undefined, gameState, heldCards, this.jokerSlots, currentTotalCards, initialDeckSize, handsPlayed, discardsUsed, handsRemaining, mostPlayedHand);
+    // 先检测牌型，获取历史统计（用于Supernova）
+    const tempScoreResult = ScoringSystem.calculate(selectedCards);
+    const handTypeHistoryCount = this.getHandTypeHistoryCount(tempScoreResult.handType);
+
+    const scoreResult = ScoringSystem.calculate(selectedCards, undefined, gameState, heldCards, this.jokerSlots, currentTotalCards, initialDeckSize, handsPlayed, discardsUsed, handsRemaining, mostPlayedHand, handTypeHistoryCount);
 
     this.playedHandTypes.add(scoreResult.handType);
+    // 更新牌型历史统计（用于Supernova）
+    const currentCount = this.handTypeHistory.get(scoreResult.handType) || 0;
+    this.handTypeHistory.set(scoreResult.handType, currentCount + 1);
+    // 更新BossState的牌型统计（用于Obelisk）
+    this.bossState.recordHandPlayCount(scoreResult.handType as PokerHandType);
     this.lastPlayScore = scoreResult.totalScore;
     this.roundScore += scoreResult.totalScore;
     this.currentScore += scoreResult.totalScore;
@@ -510,6 +539,11 @@ export class GameState implements GameStateInterface {
     // 添加小丑牌提供的金钱奖励
     if (endRoundResult.moneyBonus > 0) {
       this.money += endRoundResult.moneyBonus;
+    }
+
+    // 处理礼品卡效果：增加小丑/消耗牌售价
+    if (endRoundResult.increaseSellValue > 0 && this.shop) {
+      this.shop.increaseJokerAndConsumablePrices(endRoundResult.increaseSellValue);
     }
 
     logger.info('Blind completed', {
@@ -897,6 +931,23 @@ export class GameState implements GameStateInterface {
 
   getMaxHandsPerRound(): number {
     return this.config.maxHandsPerRound + this.getExtraHandsFromJokers();
+  }
+
+  /**
+   * 获取指定牌型的历史出牌次数（用于Supernova）
+   * @param handType 牌型
+   * @returns 该牌型在本局游戏中出过的次数
+   */
+  getHandTypeHistoryCount(handType: string): number {
+    return this.handTypeHistory.get(handType) || 0;
+  }
+
+  /**
+   * 获取所有牌型的历史统计
+   * @returns 牌型历史统计Map
+   */
+  getHandTypeHistory(): Map<string, number> {
+    return new Map(this.handTypeHistory);
   }
 
   isGameOver(): boolean {

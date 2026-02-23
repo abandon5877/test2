@@ -104,10 +104,10 @@ export class ConsumableSlots {
   }
 
   /**
-   * 获取可用槽位数量
+   * 获取可用槽位数量（只考虑非负片消耗牌）
    */
   getAvailableSlots(): number {
-    return this.maxSlots - this.consumables.length;
+    return this.maxSlots - this.getNonNegativeConsumableCount();
   }
 
   /**

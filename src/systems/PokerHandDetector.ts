@@ -1,10 +1,12 @@
 import { Card } from '../models/Card';
 import { Rank, Suit, CardEnhancement } from '../types/card';
 import { PokerHandType, PokerHandResult, HAND_BASE_VALUES } from '../types/pokerHands';
+import { groupByEffectiveSuit, EffectiveSuit } from '../utils/suitUtils';
 
 export interface PokerHandDetectorConfig {
   fourFingers?: boolean; // 四指效果：同花/顺子只需4张
   shortcut?: boolean;    // 捷径效果：顺子可跳1个数字
+  smearedJoker?: boolean; // Smeared_Joker效果：花色简化为红黑两种
 }
 
 export class PokerHandDetector {
@@ -52,20 +54,17 @@ export class PokerHandDetector {
     return groups;
   }
 
-  private static groupBySuit(cards: readonly Card[]): Map<Suit, Card[]> {
-    const groups = new Map<Suit, Card[]>();
+  private static groupBySuit(cards: readonly Card[]): Map<Suit | EffectiveSuit, Card[]> {
+    // 使用有效花色分组（支持Smeared_Joker效果）
+    const hasSmearedJoker = this.config.smearedJoker ?? false;
+
     // 修复13: 分离万能牌和普通卡牌
     const wildCards = cards.filter(c => c.enhancement === CardEnhancement.Wild);
     const normalCards = cards.filter(c => c.enhancement !== CardEnhancement.Wild);
-    
-    // 先分组普通卡牌
-    for (const card of normalCards) {
-      if (!groups.has(card.suit)) {
-        groups.set(card.suit, []);
-      }
-      groups.get(card.suit)!.push(card);
-    }
-    
+
+    // 先按有效花色分组普通卡牌
+    const groups = groupByEffectiveSuit(normalCards, hasSmearedJoker);
+
     // 修复13: 万能牌可以视为任意花色，添加到每个花色组
     if (wildCards.length > 0) {
       for (const [suit, suitedCards] of groups) {
@@ -74,16 +73,16 @@ export class PokerHandDetector {
           suitedCards.push(wildCard);
         }
       }
-      
-      // 如果只有万能牌，为每个花色创建一个组
+
+      // 如果只有万能牌，为每个有效花色创建一个组
       if (groups.size === 0) {
-        const allSuits = Object.values(Suit);
-        for (const suit of allSuits) {
+        const effectiveSuits = hasSmearedJoker ? ['red', 'black'] as EffectiveSuit[] : Object.values(Suit);
+        for (const suit of effectiveSuits) {
           groups.set(suit, [...wildCards]);
         }
       }
     }
-    
+
     return groups;
   }
 
@@ -159,11 +158,15 @@ export class PokerHandDetector {
         const rankGroups = this.groupByRank(suitedCards);
         for (const [rank, rankedCards] of rankGroups) {
           if (rankedCards.length >= 5) {
+            let description = HAND_BASE_VALUES[PokerHandType.FlushFive].displayName;
+            if (this.config.smearedJoker) {
+              description += ' (污损)';
+            }
             return this.createResult(
               PokerHandType.FlushFive,
               rankedCards.slice(0, 5),
               [],
-              HAND_BASE_VALUES[PokerHandType.FlushFive].displayName
+              description
             );
           }
         }
@@ -187,11 +190,15 @@ export class PokerHandDetector {
         const pair = groups.find(g => g.length >= 2 && g[0].rank !== threeOfAKind?.[0].rank);
 
         if (threeOfAKind && pair) {
+          let description = HAND_BASE_VALUES[PokerHandType.FlushHouse].displayName;
+          if (this.config.smearedJoker) {
+            description += ' (污损)';
+          }
           return this.createResult(
             PokerHandType.FlushHouse,
             [...threeOfAKind.slice(0, 3), ...pair.slice(0, 2)],
             [],
-            HAND_BASE_VALUES[PokerHandType.FlushHouse].displayName
+            description
           );
         }
       }
@@ -237,11 +244,15 @@ export class PokerHandDetector {
         // 检查是否是同花顺（连续的）
         const straight = this.findStraight(suitedCards, requiredCards);
         if (straight) {
+          let description = HAND_BASE_VALUES[PokerHandType.RoyalFlush].displayName;
+          if (this.config.smearedJoker) {
+            description += ' (污损)';
+          }
           return this.createResult(
             PokerHandType.RoyalFlush,
             straight,
             [],
-            HAND_BASE_VALUES[PokerHandType.RoyalFlush].displayName
+            description
           );
         }
       }
@@ -262,11 +273,25 @@ export class PokerHandDetector {
         if (straight) {
           const kickers = this.config.fourFingers ?
             suitedCards.filter(c => !straight.includes(c)).slice(0, 1) : [];
+
+          // 构建描述信息
+          let description = HAND_BASE_VALUES[PokerHandType.StraightFlush].displayName;
+          const modifiers: string[] = [];
+          if (this.config.fourFingers) {
+            modifiers.push('四指');
+          }
+          if (this.config.smearedJoker) {
+            modifiers.push('污损');
+          }
+          if (modifiers.length > 0) {
+            description += ` (${modifiers.join('+')})`;
+          }
+
           return this.createResult(
             PokerHandType.StraightFlush,
             straight,
             kickers,
-            HAND_BASE_VALUES[PokerHandType.StraightFlush].displayName + (this.config.fourFingers ? ' (四指)' : '')
+            description
           );
         }
       }
@@ -315,13 +340,14 @@ export class PokerHandDetector {
 
   private static detectFlush(cards: readonly Card[]): PokerHandResult | null {
     const requiredCards = this.config.fourFingers ? 4 : 5;
-    
+
     console.log('[PokerHandDetector] 检测同花:', {
       cardCount: cards.length,
       requiredCards,
-      fourFingers: this.config.fourFingers
+      fourFingers: this.config.fourFingers,
+      smearedJoker: this.config.smearedJoker
     });
-    
+
     if (cards.length < requiredCards) return null;
 
     const suitGroups = this.groupBySuit(cards);
@@ -329,13 +355,31 @@ export class PokerHandDetector {
     for (const [suit, suitedCards] of suitGroups) {
       if (suitedCards.length >= requiredCards) {
         const sorted = this.sortByRankDesc(suitedCards);
-        const scoringCards = sorted.slice(0, requiredCards);
-        const kickers = this.config.fourFingers ? sorted.slice(4, 5) : [];
+        // 修复: 四指效果下，如果有5张或更多同花牌，应该按5张计算（不是4张）
+        // 四指只是降低门槛到4张，但5张同花仍然是5张同花
+        const scoringCardCount = Math.min(sorted.length, 5);
+        const scoringCards = sorted.slice(0, scoringCardCount);
+        // 踢牌：超过5张的部分
+        const kickers = sorted.length > 5 ? sorted.slice(5, 6) : [];
+
+        // 构建描述信息
+        let description = HAND_BASE_VALUES[PokerHandType.Flush].displayName;
+        const modifiers: string[] = [];
+        if (this.config.fourFingers && suitedCards.length === 4) {
+          modifiers.push('四指');
+        }
+        if (this.config.smearedJoker) {
+          modifiers.push('污损');
+        }
+        if (modifiers.length > 0) {
+          description += ` (${modifiers.join('+')})`;
+        }
+
         return this.createResult(
           PokerHandType.Flush,
           scoringCards,
           kickers,
-          HAND_BASE_VALUES[PokerHandType.Flush].displayName + (this.config.fourFingers ? ' (四指)' : '')
+          description
         );
       }
     }

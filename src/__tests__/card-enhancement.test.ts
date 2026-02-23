@@ -279,28 +279,35 @@ describe('Card Enhancement Effects', () => {
       expect(result.totalMultiplier).toBeGreaterThanOrEqual(4);
     });
 
-    it('should return destroyed cards in result', () => {
-      // Mock Math.random to always trigger destruction
-      const originalRandom = Math.random;
-      Math.random = () => 0.1; // Less than 0.25 to trigger destruction
-      
-      const glassCard = new Card(Suit.Spades, Rank.Ace, CardEnhancement.Glass);
-      const cards = [
-        glassCard,
-        new Card(Suit.Hearts, Rank.Two),
-        new Card(Suit.Diamonds, Rank.Three),
-        new Card(Suit.Clubs, Rank.Four),
-        new Card(Suit.Spades, Rank.Six)
-      ];
-      
-      const result = ScoringSystem.calculate(cards);
-      
-      // Restore Math.random
-      Math.random = originalRandom;
-      
-      // Should have destroyed cards
-      expect(result.destroyedCards).toBeDefined();
-      expect(result.destroyedCards?.length).toBeGreaterThan(0);
+    it('should return destroyed cards in result (蒙特卡洛验证)', () => {
+      // 使用蒙特卡洛方法验证玻璃牌摧毁概率
+      // 玻璃牌摧毁概率 = 1/15 ≈ 6.67%
+      const trials = 1000;
+      let destructionCount = 0;
+
+      for (let i = 0; i < trials; i++) {
+        const glassCard = new Card(Suit.Spades, Rank.Ace, CardEnhancement.Glass);
+        const cards = [
+          glassCard,
+          new Card(Suit.Hearts, Rank.Two),
+          new Card(Suit.Diamonds, Rank.Three),
+          new Card(Suit.Clubs, Rank.Four),
+          new Card(Suit.Spades, Rank.Six)
+        ];
+
+        const result = ScoringSystem.calculate(cards);
+        if (result.destroyedCards && result.destroyedCards.length > 0) {
+          destructionCount++;
+        }
+      }
+
+      const observedProbability = destructionCount / trials;
+      const expectedProbability = 1 / 15; // ≈ 0.0667
+      const tolerance = 0.03; // 允许3%的偏差
+
+      // 验证观察到的概率在预期范围内
+      expect(observedProbability).toBeGreaterThanOrEqual(expectedProbability - tolerance);
+      expect(observedProbability).toBeLessThanOrEqual(expectedProbability + tolerance);
     });
   });
 

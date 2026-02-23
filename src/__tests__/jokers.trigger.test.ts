@@ -1,8 +1,10 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { JokerSystem } from '../systems/JokerSystem';
+import { ScoringSystem } from '../systems/ScoringSystem';
 import { Card } from '../models/Card';
 import { JokerSlots } from '../models/JokerSlots';
 import { Suit, Rank, CardEnhancement } from '../types/card';
+import { PokerHandType } from '../types/pokerHands';
 import { getJokerById } from '../data/jokers';
 
 describe('触发器系统测试', () => {
@@ -52,27 +54,25 @@ describe('触发器系统测试', () => {
     });
   });
 
-  describe('ON_HELD触发器', () => {
-    it('steel_joker (钢制小丑): 手持钢制卡时应提供加成', () => {
+  describe('ON_HAND_PLAYED触发器 (修复后)', () => {
+    it('steel_joker (钢铁小丑): 牌库有钢铁牌时应提供倍率加成', () => {
       const joker = getJokerById('steel_joker')!;
-      jokerSlots.addJoker(joker);
 
-      // 创建带有钢制增强的卡牌
-      const steelCard1 = new Card(Suit.Spades, Rank.Ace);
-      steelCard1.enhancement = CardEnhancement.Steel;
-      const steelCard2 = new Card(Suit.Hearts, Rank.King);
-      steelCard2.enhancement = CardEnhancement.Steel;
-      const normalCard = new Card(Suit.Diamonds, Rank.Queen);
+      // 修复后：钢铁小丑基于牌库中钢铁牌数量提供倍率
+      // 直接测试效果函数，传入 steelCardsInDeck
+      const context = {
+        steelCardsInDeck: 2,
+        scoredCards: [new Card(Suit.Hearts, Rank.Ace)],
+        handType: PokerHandType.HighCard,
+        gameState: { money: 10, interestCap: 20, hands: 3, discards: 2 }
+      };
 
-      const heldCards = [steelCard1, steelCard2, normalCard];
-
-      const result = JokerSystem.processHeld(jokerSlots, heldCards);
-
+      const result = joker.effect!(context);
       console.log('[测试] 钢铁小丑结果:', result);
-      expect(result.effects.length).toBeGreaterThan(0);
-      expect(result.effects[0].jokerName).toBe('钢铁小丑');
-      // 2张钢铁牌 * 10倍率 = 20
-      expect(result.multBonus).toBe(20);
+
+      expect(result.multMultiplier).toBeDefined();
+      // 2张钢铁牌 * 0.2 = 0.4, 1 + 0.4 = 1.4
+      expect(result.multMultiplier).toBeCloseTo(1.4, 1);
     });
 
     it('processHeld: 没有钢制小丑时不应返回效果', () => {
