@@ -44,6 +44,7 @@ export class GameBoard {
   private jokerDetailModal: JokerDetailModal;
   private consumableDetailModal: ConsumableDetailModal;
   private layoutManager: ResponsiveLayoutManager | null = null;
+  private fullscreenButton: HTMLElement | null = null;
 
   constructor(container: HTMLElement, gameState: GameState, callbacks: GameBoardCallbacks = {}) {
     this.container = container;
@@ -55,6 +56,72 @@ export class GameBoard {
     this.jokerDetailModal = JokerDetailModal.getInstance();
     this.consumableDetailModal = ConsumableDetailModal.getInstance();
     this.render();
+    this.createFullscreenButton();
+  }
+
+  /**
+   * 创建全屏按钮
+   * 在非全屏状态下显示在右上角，全屏后自动隐藏
+   */
+  private createFullscreenButton(): void {
+    // 检查是否支持全屏
+    if (!document.fullscreenEnabled) {
+      return;
+    }
+
+    // 创建全屏按钮
+    this.fullscreenButton = document.createElement('button');
+    this.fullscreenButton.className = 'fullscreen-btn';
+    this.fullscreenButton.innerHTML = '⛶'; // 全屏图标
+    this.fullscreenButton.title = '进入全屏';
+    
+    // 添加点击事件
+    this.fullscreenButton.addEventListener('click', () => {
+      this.toggleFullscreen();
+    });
+
+    // 添加到body
+    document.body.appendChild(this.fullscreenButton);
+
+    // 监听全屏变化事件
+    document.addEventListener('fullscreenchange', () => {
+      this.updateFullscreenButton();
+    });
+
+    // 初始状态更新
+    this.updateFullscreenButton();
+  }
+
+  /**
+   * 切换全屏状态
+   */
+  private toggleFullscreen(): void {
+    if (!document.fullscreenElement) {
+      // 进入全屏
+      document.documentElement.requestFullscreen().catch(err => {
+        console.log('无法进入全屏:', err);
+      });
+    } else {
+      // 退出全屏
+      document.exitFullscreen().catch(err => {
+        console.log('无法退出全屏:', err);
+      });
+    }
+  }
+
+  /**
+   * 更新全屏按钮状态
+   */
+  private updateFullscreenButton(): void {
+    if (!this.fullscreenButton) return;
+
+    if (document.fullscreenElement) {
+      // 全屏状态下隐藏按钮
+      this.fullscreenButton.style.display = 'none';
+    } else {
+      // 非全屏状态下显示按钮
+      this.fullscreenButton.style.display = 'flex';
+    }
   }
 
   /**
