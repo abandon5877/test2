@@ -6,6 +6,7 @@ import { HandComponent } from './HandComponent';
 import { HAND_BASE_VALUES, PokerHandType } from '../../types/pokerHands';
 import { PokerHandDetector } from '../../systems/PokerHandDetector';
 import { BossSystem } from '../../systems/BossSystem';
+import { BossType } from '../../types/game';
 import { ScoringSystem } from '../../systems/ScoringSystem';
 import type { ScoreResult } from '../../systems/ScoringSystem';
 import { HandRanksModal } from './HandRanksModal';
@@ -1744,19 +1745,45 @@ export class GameBoard {
    * 处理出牌
    */
   private handlePlayHand(): void {
-    // 检查 Boss 限制
-    if (!this.gameState.canPlayHand()) {
-      // 获取 Boss 限制信息
-      const selectedCards = this.gameState.cardPile.hand.getSelectedCards();
-      if (selectedCards.length > 0) {
-        const handResult = PokerHandDetector.detect(selectedCards);
-        const bossResult = BossSystem.canPlayHand(this.gameState.bossState, handResult.handType);
-        if (bossResult.canPlay === false && bossResult.message) {
-          Toast.error(bossResult.message);
+    // 检查基本限制
+    if (this.gameState.handsRemaining <= 0) {
+      Toast.warning('没有剩余出牌次数！');
+      return;
+    }
+
+    const selectedCount = this.gameState.cardPile.hand.getSelectionCount();
+    if (selectedCount <= 0) {
+      Toast.warning('请先选择要出的卡牌！');
+      return;
+    }
+
+    const selectedCards = this.gameState.cardPile.hand.getSelectedCards();
+    const handResult = PokerHandDetector.detect(selectedCards);
+    const currentBoss = this.gameState.bossState.getCurrentBoss();
+
+    // 检查 Boss 限制 - 眼睛Boss: 不能重复打出相同牌型
+    const bossResult = BossSystem.canPlayHand(this.gameState.bossState, handResult.handType);
+    if (bossResult.canPlay === false && bossResult.message) {
+      Toast.error(bossResult.message);
+      return;
+    }
+
+    // 检查通灵Boss: 必须正好打出5张牌
+    if (currentBoss === BossType.PSYCHIC && selectedCards.length !== 5) {
+      Toast.error('通灵Boss: 必须正好打出5张牌！');
+      return;
+    }
+
+    // 检查天青铃铛Boss: 必须选择特定牌
+    if (currentBoss === BossType.CERULEAN_BELL) {
+      const requiredCardId = this.gameState.bossState.getRequiredCardId();
+      if (requiredCardId) {
+        const hasRequiredCard = selectedCards.some(card => card.toString() === requiredCardId);
+        if (!hasRequiredCard) {
+          Toast.error('天青铃铛Boss: 必须选择指定的特定牌！');
           return;
         }
       }
-      return;
     }
 
     const scoreResult = this.gameState.playHand();
