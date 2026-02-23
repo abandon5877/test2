@@ -866,7 +866,7 @@ export class GameBoard {
    * - 小屏幕 (宽度<600px): 紧凑布局，较小字体
    * - 中等屏幕 (600px-1200px): 标准布局
    * - 大屏幕 (宽度>1200px): 限制最大尺寸，避免太空
-   * - 文字自适应：显示不下时自动缩小字号
+   * - 文字自适应：每个可变文字外层有固定大小的父容器，文字根据父容器大小动态调整
    */
   private createHandPreviewArea(): HTMLElement {
     const area = document.createElement('div');
@@ -887,10 +887,15 @@ export class GameBoard {
       <div class="preview-left-column" style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 25%; height: 90%; flex-shrink: 0;">
         <!-- 牌型区域：占2/3高度，单行显示，字体可放大 -->
         <div class="preview-hand-type-container" style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 66.67%; margin-bottom: 4px; width: 100%; overflow: hidden;">
-          <div class="hand-preview-name auto-fit-text" id="preview-hand-type" data-max-font="48" style="font-size: clamp(0.875rem, 3vw, 3rem); font-weight: bold; color: #ffd700; line-height: 1; text-align: center; width: 100%;">选择卡牌查看牌型</div>
+          <!-- 固定大小的父容器，初次渲染后大小固定 -->
+          <div class="auto-fit-text-container" data-container-id="hand-type" style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; overflow: hidden;">
+            <div class="hand-preview-name auto-fit-text" id="preview-hand-type" data-max-font="48" data-container-id="hand-type" style="font-size: clamp(0.875rem, 3vw, 3rem); font-weight: bold; color: #ffd700; line-height: 1; text-align: center; white-space: nowrap;">选择卡牌查看牌型</div>
+          </div>
         </div>
         <!-- 选牌数：占1/3高度，强制单行 -->
-        <div class="hand-preview-selected auto-fit-text" id="preview-selected-count" data-max-font="20" style="font-size: clamp(0.625rem, 1.5vw, 1.25rem); color: #9ca3af; line-height: 1; text-align: center; height: 33.33%; display: flex; align-items: center; justify-content: center; width: 100%; white-space: nowrap; overflow: hidden;">已选择 0 张卡牌</div>
+        <div class="auto-fit-text-container" data-container-id="selected-count" style="width: 100%; height: 33.33%; display: flex; align-items: center; justify-content: center; overflow: hidden;">
+          <div class="hand-preview-selected auto-fit-text" id="preview-selected-count" data-max-font="20" data-container-id="selected-count" style="font-size: clamp(0.625rem, 1.5vw, 1.25rem); color: #9ca3af; line-height: 1; text-align: center; white-space: nowrap;">已选择 0 张卡牌</div>
+        </div>
       </div>
 
       <!-- 右列：筹码/倍率信息和预计分数，宽度占比 75%，高度占90% -->
@@ -900,8 +905,12 @@ export class GameBoard {
           <!-- 左边：筹码信息 -->
           <div class="preview-chips-section" style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 45%; height: 100%; overflow: hidden; gap: 4px;">
             <!-- 基础值和加成各占50%高度，1:1比例 -->
-            <div class="auto-fit-text" id="preview-base-chips" data-max-font="32" style="font-size: clamp(0.75rem, 2vw, 2rem); color: #60a5fa; white-space: nowrap; line-height: 1; width: 100%; height: 50%; text-align: center; display: flex; align-items: center; justify-content: flex-end; padding-right: 8px;">0 筹码</div>
-            <div class="auto-fit-text" id="preview-chip-bonus" data-max-font="24" style="font-size: clamp(0.625rem, 1.8vw, 1.5rem); color: #93c5fd; white-space: nowrap; line-height: 1; width: 100%; height: 50%; text-align: center; display: flex; align-items: center; justify-content: flex-end; padding-right: 8px;">+ 0</div>
+            <div class="auto-fit-text-container" data-container-id="base-chips" style="width: 100%; height: 50%; display: flex; align-items: center; justify-content: flex-end; padding-right: 8px; overflow: hidden;">
+              <div class="auto-fit-text" id="preview-base-chips" data-max-font="32" data-container-id="base-chips" style="font-size: clamp(0.75rem, 2vw, 2rem); color: #60a5fa; white-space: nowrap; line-height: 1; text-align: center;">0 筹码</div>
+            </div>
+            <div class="auto-fit-text-container" data-container-id="chip-bonus" style="width: 100%; height: 50%; display: flex; align-items: center; justify-content: flex-end; padding-right: 8px; overflow: hidden;">
+              <div class="auto-fit-text" id="preview-chip-bonus" data-max-font="24" data-container-id="chip-bonus" style="font-size: clamp(0.625rem, 1.8vw, 1.5rem); color: #93c5fd; white-space: nowrap; line-height: 1; text-align: center;">+ 0</div>
+            </div>
           </div>
           <!-- 中间：乘号 -->
           <div class="preview-multiply-sign" style="display: flex; align-items: center; justify-content: center; width: 10%; height: 100%;">
@@ -910,38 +919,87 @@ export class GameBoard {
           <!-- 右边：倍率信息 -->
           <div class="preview-mult-section" style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 45%; height: 100%; overflow: hidden; gap: 4px;">
             <!-- 基础值和加成各占50%高度，1:1比例 -->
-            <div class="auto-fit-text" id="preview-base-mult" data-max-font="32" style="font-size: clamp(0.75rem, 2vw, 2rem); color: #f87171; white-space: nowrap; line-height: 1; width: 100%; height: 50%; text-align: center; display: flex; align-items: center; justify-content: flex-start; padding-left: 8px;">1 倍率</div>
-            <div class="auto-fit-text" id="preview-mult-bonus" data-max-font="24" style="font-size: clamp(0.625rem, 1.8vw, 1.5rem); color: #fca5a5; white-space: nowrap; line-height: 1; width: 100%; height: 50%; text-align: center; display: flex; align-items: center; justify-content: flex-start; padding-left: 8px;">+ 0</div>
+            <div class="auto-fit-text-container" data-container-id="base-mult" style="width: 100%; height: 50%; display: flex; align-items: center; justify-content: flex-start; padding-left: 8px; overflow: hidden;">
+              <div class="auto-fit-text" id="preview-base-mult" data-max-font="32" data-container-id="base-mult" style="font-size: clamp(0.75rem, 2vw, 2rem); color: #f87171; white-space: nowrap; line-height: 1; text-align: center;">1 倍率</div>
+            </div>
+            <div class="auto-fit-text-container" data-container-id="mult-bonus" style="width: 100%; height: 50%; display: flex; align-items: center; justify-content: flex-start; padding-left: 8px; overflow: hidden;">
+              <div class="auto-fit-text" id="preview-mult-bonus" data-max-font="24" data-container-id="mult-bonus" style="font-size: clamp(0.625rem, 1.8vw, 1.5rem); color: #fca5a5; white-space: nowrap; line-height: 1; text-align: center;">+ 0</div>
+            </div>
           </div>
         </div>
         <!-- 右列第二行：预计分数 -->
-        <div class="preview-total-row auto-fit-text" id="preview-total-score" data-max-font="28" style="font-size: clamp(0.75rem, 2vw, 1.75rem); color: #fbbf24; font-weight: bold; white-space: nowrap; line-height: 1; height: 40%; width: 100%; text-align: center; display: flex; align-items: center; justify-content: center; overflow: hidden;">
-          -
+        <div class="auto-fit-text-container" data-container-id="total-score" style="width: 100%; height: 40%; display: flex; align-items: center; justify-content: center; overflow: hidden;">
+          <div class="preview-total-row auto-fit-text" id="preview-total-score" data-max-font="28" data-container-id="total-score" style="font-size: clamp(0.75rem, 2vw, 1.75rem); color: #fbbf24; font-weight: bold; white-space: nowrap; line-height: 1; text-align: center;">
+            -
+          </div>
         </div>
       </div>
     `;
+
+    // 初始化父容器固定大小
+    requestAnimationFrame(() => {
+      this.fixContainerSizes();
+    });
 
     return area;
   }
 
   /**
+   * 固定父容器大小
+   * 在初次渲染完成后，记录每个容器的大小并设为固定值
+   */
+  private fixContainerSizes(): void {
+    const previewArea = document.getElementById('hand-preview-area');
+    if (!previewArea) return;
+
+    const containers = previewArea.querySelectorAll('.auto-fit-text-container');
+    
+    containers.forEach((container) => {
+      const element = container as HTMLElement;
+      // 如果已经固定过大小，跳过
+      if (element.dataset.fixed === 'true') return;
+      
+      const rect = element.getBoundingClientRect();
+      const parentRect = element.parentElement?.getBoundingClientRect();
+      
+      if (rect.width > 0 && rect.height > 0) {
+        // 将大小固定为当前实际大小
+        element.style.width = `${rect.width}px`;
+        element.style.height = `${rect.height}px`;
+        element.style.flex = 'none';
+        element.dataset.fixed = 'true';
+      }
+    });
+  }
+
+  /**
    * 调整预览区域文字大小以适应容器
    * 根据文字长度动态计算最合适的字号，支持放大和缩小
+   * 基于固定大小的父容器来判断是否越界
    * 出牌后牌型变化时重新计算
    */
   private adjustPreviewFontSizes(): void {
     const previewArea = document.getElementById('hand-preview-area');
     if (!previewArea) return;
 
+    // 确保父容器大小已固定
+    this.fixContainerSizes();
+
     const autoFitElements = previewArea.querySelectorAll('.auto-fit-text');
     
     autoFitElements.forEach((el) => {
       const element = el as HTMLElement;
-      const parent = element.parentElement;
-      if (!parent) return;
+      // 通过 data-container-id 找到对应的固定大小父容器
+      const containerId = element.dataset.containerId;
+      const container = containerId 
+        ? previewArea.querySelector(`.auto-fit-text-container[data-container-id="${containerId}"]`) as HTMLElement
+        : element.parentElement;
       
-      const parentWidth = parent.clientWidth;
-      const parentHeight = parent.clientHeight;
+      if (!container) return;
+      
+      // 使用父容器的固定大小来判断越界
+      const containerWidth = container.clientWidth;
+      const containerHeight = container.clientHeight;
       
       // 获取最大字体限制（从 data 属性或默认值）
       const maxFontSize = parseInt(element.dataset.maxFont || '48');
@@ -960,9 +1018,9 @@ export class GameBoard {
         // 尝试设置更大的字体
         element.style.fontSize = `${nextFontSize}px`;
         
-        // 检查是否溢出
-        const isOverflowX = element.scrollWidth > parentWidth;
-        const isOverflowY = element.scrollHeight > parentHeight;
+        // 检查是否溢出（基于固定大小的父容器）
+        const isOverflowX = element.scrollWidth > containerWidth;
+        const isOverflowY = element.scrollHeight > containerHeight;
         
         if (isOverflowX || isOverflowY) {
           // 如果溢出，回退到上一个大小
