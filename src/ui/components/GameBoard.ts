@@ -149,6 +149,7 @@ export class GameBoard {
         this.gameState.handsRemaining,
         this.gameState.discardsRemaining
       );
+      this.handComponent.setBossState(this.gameState.bossState);
     }
   }
 
@@ -158,6 +159,7 @@ export class GameBoard {
   refreshHandOnly(): void {
     if (this.handComponent) {
       this.handComponent.setHand(this.gameState.cardPile.hand);
+      this.handComponent.setBossState(this.gameState.bossState);
     }
   }
 
@@ -176,6 +178,7 @@ export class GameBoard {
         this.gameState.handsRemaining,
         this.gameState.discardsRemaining
       );
+      this.handComponent.setBossState(this.gameState.bossState);
     }
   }
 
@@ -603,91 +606,177 @@ export class GameBoard {
    * 长按或悬停显示 Boss 详细效果
    */
   private setupBossTooltip(element: HTMLElement): void {
+    // 点击显示Boss效果弹窗
+    element.addEventListener('click', () => {
+      this.showBossEffectModal();
+    });
+  }
+
+  /**
+   * 显示Boss效果弹窗
+   */
+  private showBossEffectModal(): void {
     const currentBoss = this.gameState.bossState.getCurrentBoss();
-    if (!currentBoss) return;
+    const currentBlind = this.gameState.currentBlind;
 
-    const bossConfig = BossSystem.getBossConfig(currentBoss);
-    if (!bossConfig) return;
-
-    // 创建提示框
-    const tooltip = document.createElement('div');
-    tooltip.className = 'boss-tooltip';
-    tooltip.style.cssText = `
-      position: absolute;
-      top: 100%;
+    // 创建弹窗背景
+    const modal = document.createElement('div');
+    modal.className = 'boss-effect-modal';
+    modal.style.cssText = `
+      position: fixed;
+      top: 0;
       left: 0;
       right: 0;
-      margin-top: 8px;
-      padding: 12px;
-      background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
-      border: 2px solid #ef4444;
-      border-radius: 8px;
-      box-shadow: 0 4px 20px rgba(239, 68, 68, 0.4);
-      z-index: 100;
-      display: none;
-      pointer-events: none;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
     `;
 
-    const bossName = document.createElement('div');
-    bossName.textContent = bossConfig.name;
-    bossName.style.cssText = `
+    // 创建弹窗内容
+    const content = document.createElement('div');
+    content.style.cssText = `
+      background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+      border: 3px solid #ef4444;
+      border-radius: 16px;
+      padding: 32px;
+      max-width: 400px;
+      width: 90%;
+      box-shadow: 0 8px 40px rgba(239, 68, 68, 0.5);
+    `;
+
+    // 标题
+    const title = document.createElement('div');
+    title.textContent = '盲注信息';
+    title.style.cssText = `
+      font-size: ${this.scaled(24)};
+      font-weight: bold;
+      color: #fbbf24;
+      text-align: center;
+      margin-bottom: 20px;
+    `;
+    content.appendChild(title);
+
+    // 盲注名称
+    if (currentBlind) {
+      const blindName = document.createElement('div');
+      blindName.textContent = currentBlind.name;
+      blindName.style.cssText = `
+        font-size: ${this.scaled(20)};
+        font-weight: bold;
+        color: #ffffff;
+        text-align: center;
+        margin-bottom: 8px;
+      `;
+      content.appendChild(blindName);
+
+      // 目标分数
+      const targetScore = document.createElement('div');
+      targetScore.textContent = `目标分数: ${currentBlind.targetScore}`;
+      targetScore.style.cssText = `
+        font-size: ${this.scaled(16)};
+        color: #9ca3af;
+        text-align: center;
+        margin-bottom: 20px;
+      `;
+      content.appendChild(targetScore);
+    }
+
+    // Boss信息
+    if (currentBoss) {
+      const bossConfig = BossSystem.getBossConfig(currentBoss);
+      if (bossConfig) {
+        const divider = document.createElement('div');
+        divider.style.cssText = `
+          height: 2px;
+          background: linear-gradient(90deg, transparent, #ef4444, transparent);
+          margin: 16px 0;
+        `;
+        content.appendChild(divider);
+
+        const bossTitle = document.createElement('div');
+        bossTitle.textContent = 'Boss效果';
+        bossTitle.style.cssText = `
+          font-size: ${this.scaled(18)};
+          font-weight: bold;
+          color: #ef4444;
+          text-align: center;
+          margin-bottom: 12px;
+        `;
+        content.appendChild(bossTitle);
+
+        const bossName = document.createElement('div');
+        bossName.textContent = bossConfig.name;
+        bossName.style.cssText = `
+          font-size: ${this.scaled(20)};
+          font-weight: bold;
+          color: #ffffff;
+          text-align: center;
+          margin-bottom: 8px;
+        `;
+        content.appendChild(bossName);
+
+        const bossDesc = document.createElement('div');
+        bossDesc.textContent = bossConfig.description;
+        bossDesc.style.cssText = `
+          font-size: ${this.scaled(16)};
+          color: #d1d5db;
+          text-align: center;
+          line-height: 1.5;
+        `;
+        content.appendChild(bossDesc);
+      }
+    } else {
+      const noBoss = document.createElement('div');
+      noBoss.textContent = '当前没有Boss效果';
+      noBoss.style.cssText = `
+        font-size: ${this.scaled(16)};
+        color: #6b7280;
+        text-align: center;
+        margin-top: 20px;
+      `;
+      content.appendChild(noBoss);
+    }
+
+    // 关闭按钮
+    const closeBtn = document.createElement('button');
+    closeBtn.textContent = '关闭';
+    closeBtn.style.cssText = `
+      margin-top: 24px;
+      width: 100%;
+      padding: 12px;
+      background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+      border: none;
+      border-radius: 8px;
+      color: white;
       font-size: ${this.scaled(16)};
       font-weight: bold;
-      color: #ef4444;
-      margin-bottom: 6px;
+      cursor: pointer;
+      transition: transform 0.2s;
     `;
-
-    const bossDesc = document.createElement('div');
-    bossDesc.textContent = bossConfig.description;
-    bossDesc.style.cssText = `
-      font-size: ${this.scaled(14)};
-      color: #d1d5db;
-      line-height: 1.4;
-    `;
-
-    tooltip.appendChild(bossName);
-    tooltip.appendChild(bossDesc);
-    element.appendChild(tooltip);
-
-    let pressTimer: ReturnType<typeof setTimeout> | null = null;
-    let isShowing = false;
-
-    const showTooltip = () => {
-      if (!isShowing) {
-        tooltip.style.display = 'block';
-        isShowing = true;
-      }
-    };
-
-    const hideTooltip = () => {
-      if (isShowing) {
-        tooltip.style.display = 'none';
-        isShowing = false;
-      }
-      if (pressTimer) {
-        clearTimeout(pressTimer);
-        pressTimer = null;
-      }
-    };
-
-    // 鼠标悬停
-    element.addEventListener('mouseenter', showTooltip);
-    element.addEventListener('mouseleave', hideTooltip);
-
-    // 触摸长按
-    element.addEventListener('touchstart', (e) => {
-      e.preventDefault();
-      pressTimer = setTimeout(showTooltip, 300);
+    closeBtn.addEventListener('mouseover', () => {
+      closeBtn.style.transform = 'scale(1.05)';
     });
-    element.addEventListener('touchend', hideTooltip);
-    element.addEventListener('touchcancel', hideTooltip);
-
-    // 鼠标长按
-    element.addEventListener('mousedown', () => {
-      pressTimer = setTimeout(showTooltip, 300);
+    closeBtn.addEventListener('mouseout', () => {
+      closeBtn.style.transform = 'scale(1)';
     });
-    element.addEventListener('mouseup', hideTooltip);
-    element.addEventListener('mouseleave', hideTooltip);
+    closeBtn.addEventListener('click', () => {
+      modal.remove();
+    });
+    content.appendChild(closeBtn);
+
+    modal.appendChild(content);
+
+    // 点击背景关闭
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        modal.remove();
+      }
+    });
+
+    document.body.appendChild(modal);
   }
 
   /**

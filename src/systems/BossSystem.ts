@@ -203,9 +203,10 @@ export class BossSystem {
   }
 
   /**
-   * 检查卡牌是否失效
+   * 检查卡牌是否失效（完全不计分）
+   * 用于花色/人头牌/柱子失效类Boss，卡牌完全不贡献分数
    */
-  static isCardDebuffed(bossState: BossState, card: Card): boolean {
+  static isCardDisabled(bossState: BossState, card: Card): boolean {
     const currentBoss = bossState.getCurrentBoss();
     if (!currentBoss) return false;
 
@@ -225,6 +226,15 @@ export class BossSystem {
       default:
         return false;
     }
+  }
+
+  /**
+   * 检查卡牌是否被削弱（不计增强效果，但基础分还算）
+   * 目前没有被削弱的Boss，所有失效类Boss都是完全不计分
+   */
+  static isCardDebuffed(bossState: BossState, card: Card): boolean {
+    // 所有失效类Boss都使用 isCardDisabled，这里没有削弱的Boss
+    return false;
   }
 
   /**

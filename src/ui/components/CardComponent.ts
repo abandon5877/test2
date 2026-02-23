@@ -121,21 +121,28 @@ export class CardComponent {
 
   /**
    * 渲染一张卡牌
+   * @param isDisabled - 是否被Boss效果失效（显示红叉）
    */
-  static renderCard(card: Card, isSelected: boolean = false): HTMLElement {
+  static renderCard(card: Card, isSelected: boolean = false, isDisabled: boolean = false): HTMLElement {
     const cardElement = document.createElement('div');
-    cardElement.className = `card ${isSelected ? 'selected' : ''}`;
+    cardElement.className = `card ${isSelected ? 'selected' : ''} ${isDisabled ? 'disabled' : ''}`;
     cardElement.dataset.cardId = `${card.suit}${card.rank}`;
-    
+
     const suitColor = this.suitColors[card.suit];
     const suitSymbol = this.suitSymbols[card.suit];
-    
+
     // 应用卡牌版本视觉效果
     this.applyEditionVisuals(cardElement, card.edition);
-    
+
+    // 如果被失效，添加失效样式
+    if (isDisabled) {
+      cardElement.style.opacity = '0.6';
+      cardElement.style.filter = 'grayscale(0.5)';
+    }
+
     // 创建卡牌内容
     const colorClass = suitColor === 'red' ? 'card-suit-red' : 'card-suit-black';
-    
+
     // 左上角
     const topCorner = document.createElement('div');
     topCorner.className = `card-corner card-corner-top ${colorClass}`;
@@ -143,12 +150,12 @@ export class CardComponent {
       <span>${card.rank}</span>
       <span>${suitSymbol}</span>
     `;
-    
+
     // 中心图案
     const center = document.createElement('div');
     center.className = `card-center ${colorClass}`;
     center.textContent = suitSymbol;
-    
+
     // 右下角（旋转180度）
     const bottomCorner = document.createElement('div');
     bottomCorner.className = `card-corner card-corner-bottom ${colorClass}`;
@@ -156,7 +163,7 @@ export class CardComponent {
       <span>${card.rank}</span>
       <span>${suitSymbol}</span>
     `;
-    
+
     // 增强标记 - 放在右上角（与版本标记错开）
     if (card.enhancement !== CardEnhancement.None) {
       const enhancementBadge = document.createElement('div');
@@ -180,7 +187,7 @@ export class CardComponent {
       enhancementBadge.title = this.getEnhancementName(card.enhancement);
       cardElement.appendChild(enhancementBadge);
     }
-    
+
     // 封印标记 - 放在左下角（与版本标记错开）
     if (card.seal !== SealType.None) {
       const sealBadge = document.createElement('div');
@@ -197,7 +204,7 @@ export class CardComponent {
       sealBadge.title = this.getSealName(card.seal);
       cardElement.appendChild(sealBadge);
     }
-    
+
     // 版本标记 - 放在左上角
     if (card.edition !== CardEdition.None) {
       const editionBadge = document.createElement('div');
@@ -222,11 +229,41 @@ export class CardComponent {
       editionBadge.title = this.getEditionName(card.edition);
       cardElement.appendChild(editionBadge);
     }
-    
+
+    // 失效标记 - 红叉
+    if (isDisabled) {
+      const disabledOverlay = document.createElement('div');
+      disabledOverlay.className = 'card-disabled-overlay';
+      disabledOverlay.style.cssText = `
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 20;
+        pointer-events: none;
+      `;
+
+      const redX = document.createElement('div');
+      redX.textContent = '❌';
+      redX.style.cssText = `
+        font-size: 48px;
+        color: #ef4444;
+        text-shadow: 0 0 10px rgba(239, 68, 68, 0.8);
+        opacity: 0.9;
+      `;
+
+      disabledOverlay.appendChild(redX);
+      cardElement.appendChild(disabledOverlay);
+    }
+
     cardElement.appendChild(topCorner);
     cardElement.appendChild(center);
     cardElement.appendChild(bottomCorner);
-    
+
     return cardElement;
   }
 

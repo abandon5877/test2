@@ -25,6 +25,7 @@ interface EffectAccumulator {
   freeReroll: boolean;
   discardReset: boolean;
   heldCardRetrigger: boolean;
+  copyScoredCardToDeck: boolean;
   effects: JokerEffectDetail[];
   copiedConsumableIds: string[];
 }
@@ -37,6 +38,7 @@ type CopyType = 'blueprint' | 'brainstorm';
 export interface ProcessedScoreResult extends ScoreResult {
   jokerEffects: JokerEffectDetail[];
   totalMoneyEarned: number;
+  copyScoredCardToDeck?: boolean;
 }
 
 export interface JokerEffectDetail {
@@ -275,6 +277,7 @@ export class JokerSystem {
       freeReroll: false,
       discardReset: false,
       heldCardRetrigger: false,
+      copyScoredCardToDeck: false,
       effects: [],
       copiedConsumableIds: []
     };
@@ -324,6 +327,7 @@ export class JokerSystem {
     if (result.freeReroll) accumulator.freeReroll = true;
     if (result.discardReset) accumulator.discardReset = true;
     if (result.heldCardRetrigger) accumulator.heldCardRetrigger = true;
+    if (result.copyScoredCardToDeck) accumulator.copyScoredCardToDeck = true;
 
     // 处理特殊效果
     if (result.copiedConsumableId) accumulator.copiedConsumableIds.push(result.copiedConsumableId);
@@ -490,6 +494,7 @@ export class JokerSystem {
       chipBonus: accumulator.chipBonus,
       multBonus: accumulator.multBonus,
       multMultiplier: accumulator.multMultiplier,
+      copyScoredCardToDeck: accumulator.copyScoredCardToDeck,
       effects: accumulator.effects
     };
   }
@@ -1187,7 +1192,8 @@ export class JokerSystem {
       totalChips: Math.floor(finalChips),
       totalMultiplier: finalMult,
       jokerEffects,
-      totalMoneyEarned
+      totalMoneyEarned,
+      copyScoredCardToDeck: handPlayedResult.copyScoredCardToDeck
     };
   }
 

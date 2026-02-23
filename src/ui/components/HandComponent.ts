@@ -2,6 +2,8 @@ import { Card } from '../../models/Card';
 import { Hand } from '../../models/Hand';
 import { CardComponent } from './CardComponent';
 import { calculateOverlap, getElementWidth } from '../../utils/overlapCalculator';
+import { BossState } from '../../models/BossState';
+import { BossSystem } from '../../systems/BossSystem';
 
 export interface HandComponentCallbacks {
   onCardSelect?: (card: Card, index: number, isSelected: boolean) => void;
@@ -25,6 +27,7 @@ export class HandComponent {
   private resizeObserver: ResizeObserver | null = null;
   private resizeTimeout: number | null = null;
   private lastContainerWidth: number = 0;
+  private bossState: BossState | null = null;
 
   constructor(container: HTMLElement, hand: Hand, callbacks: HandComponentCallbacks = {}) {
     this.container = container;
@@ -81,6 +84,15 @@ export class HandComponent {
   }
 
   /**
+   * 设置Boss状态，用于显示失效卡牌
+   */
+  setBossState(bossState: BossState | null): void {
+    this.bossState = bossState;
+    // 重新渲染以更新失效标记
+    this.render();
+  }
+
+  /**
    * 渲染手牌区域
    * 只渲染手牌，不包含按钮
    * 手牌重叠范围根据中间区域宽度动态调整，避免越界
@@ -133,40 +145,42 @@ export class HandComponent {
     if (cards.length > 0) {
       const firstCard = cards[0];
       const isFirstSelected = selectedIndices.has(0);
-      const firstCardElement = CardComponent.renderCard(firstCard, isFirstSelected);
-      
+      const isFirstDisabled = this.bossState ? BossSystem.isCardDisabled(this.bossState, firstCard) : false;
+      const firstCardElement = CardComponent.renderCard(firstCard, isFirstSelected, isFirstDisabled);
+
       // 临时添加到 DOM 以获取实际尺寸
       firstCardElement.style.position = 'relative';
       firstCardElement.style.flexShrink = '0';
       handArea.appendChild(firstCardElement);
-      
+
       // 强制回流以确保尺寸计算正确
       handArea.offsetHeight;
-      
+
       // 获取实际卡牌宽度
       const actualWidth = getElementWidth(firstCardElement);
       if (actualWidth > 0) {
         cardWidth = actualWidth;
       }
-      
+
       // 重新获取容器宽度（此时 handArea 已渲染）
       const actualCenterWidth = getElementWidth(handArea) || centerWidth;
-      
+
       // 计算重叠量
       overlap = this.calculateCardOverlap(actualCenterWidth, totalCards, cardWidth);
-      
+
       // 设置样式（初始禁用动画，避免渲染时的闪烁）
       firstCardElement.style.zIndex = '0';
       firstCardElement.style.transition = 'none';
       this.setCardVisualState(firstCardElement, 0, isFirstSelected, totalCards);
       firstCardElement.addEventListener('click', () => this.handleCardClick(0));
       this.cardElements.push(firstCardElement);
-      
+
       // 渲染剩余卡牌
       for (let index = 1; index < cards.length; index++) {
         const card = cards[index];
         const isSelected = selectedIndices.has(index);
-        const cardElement = CardComponent.renderCard(card, isSelected);
+        const isDisabled = this.bossState ? BossSystem.isCardDisabled(this.bossState, card) : false;
+        const cardElement = CardComponent.renderCard(card, isSelected, isDisabled);
         
         // 设置卡牌样式（初始禁用动画）
         cardElement.style.position = 'relative';

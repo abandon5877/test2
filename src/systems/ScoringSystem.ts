@@ -33,6 +33,7 @@ export interface ScoreResult {
   moneyBonus?: number; // 金币奖励（Gold/Lucky）
   destroyedCards?: readonly Card[]; // 被摧毁的卡牌（Glass效果）
   heldMultMultiplier?: number; // 手持卡牌倍率乘数（Steel效果）
+  copyScoredCardToDeck?: boolean; // DNA效果：复制计分牌到卡组
 }
 
 export interface CardScoreDetail {
@@ -292,15 +293,15 @@ export class ScoringSystem {
       let cardMultBonus = 0;
       const enhancements: string[] = [];
 
-      // 检查卡牌是否失效（Boss效果，如柱子）
-      const isDebuffed = bossState ? BossSystem.isCardDebuffed(bossState, card) : false;
+      // 检查卡牌是否完全失效（Boss效果）
+      const isDisabled = bossState ? BossSystem.isCardDisabled(bossState, card) : false;
 
-      if (isDebuffed) {
-        // 卡牌失效，只保留基础筹码值，不应用任何附加效果
+      if (isDisabled) {
+        // 卡牌完全失效，不计分
         enhancements.push('失效 (Boss效果)');
         cardDetails.push({
           card: card.toString(),
-          baseChips: cardBaseChips,
+          baseChips: 0,
           chipBonus: 0,
           multBonus: 0,
           enhancements
@@ -463,6 +464,7 @@ export class ScoringSystem {
     let allCardsScore = false;
     // 水花飞溅生效后的所有计分牌（包含原始计分牌和踢牌）
     let allScoringCards: readonly Card[] = handResult.scoringCards;
+    let copyScoredCardToDeck = false;
 
     if (jokerSlots) {
       // 检查是否有水花飞溅效果（所有牌计分）
@@ -572,6 +574,7 @@ export class ScoringSystem {
       totalChips = jokerResult.totalChips;
       totalMultiplier = jokerResult.totalMultiplier * heldMultMultiplier;
       jokerEffects = [...jokerEffects, ...jokerResult.jokerEffects];
+      copyScoredCardToDeck = jokerResult.copyScoredCardToDeck || false;
     }
 
     // 修复3: 应用手持卡牌倍率乘数（Steel效果）
@@ -618,7 +621,8 @@ export class ScoringSystem {
       // 修复3: 添加增强效果相关字段
       moneyBonus: totalLuckyMoney + sealMoneyBonus,
       destroyedCards: destroyedCards.length > 0 ? destroyedCards : undefined,
-      heldMultMultiplier: heldMultMultiplier > 1 ? heldMultMultiplier : undefined
+      heldMultMultiplier: heldMultMultiplier > 1 ? heldMultMultiplier : undefined,
+      copyScoredCardToDeck
     };
   }
 

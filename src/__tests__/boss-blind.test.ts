@@ -423,56 +423,61 @@ describe('Boss盲注系统', () => {
   describe('其他Boss效果（可扩展）', () => {
     it('梅花Boss应该使梅花牌失效', () => {
       BossSystem.setBoss(bossState, BossType.CLUB);
-      
+
       const clubCard = new Card(Suit.Clubs, Rank.Ace);
       const spadeCard = new Card(Suit.Spades, Rank.Ace);
-      
-      expect(BossSystem.isCardDebuffed(bossState, clubCard)).toBe(true);
-      expect(BossSystem.isCardDebuffed(bossState, spadeCard)).toBe(false);
+
+      // 花色失效Boss使用 isCardDisabled（完全失效）
+      expect(BossSystem.isCardDisabled(bossState, clubCard)).toBe(true);
+      expect(BossSystem.isCardDisabled(bossState, spadeCard)).toBe(false);
     });
 
     it('黑桃Boss应该使黑桃牌失效', () => {
       BossSystem.setBoss(bossState, BossType.GOAD);
-      
+
       const spadeCard = new Card(Suit.Spades, Rank.Ace);
       const heartCard = new Card(Suit.Hearts, Rank.Ace);
-      
-      expect(BossSystem.isCardDebuffed(bossState, spadeCard)).toBe(true);
-      expect(BossSystem.isCardDebuffed(bossState, heartCard)).toBe(false);
+
+      // 花色失效Boss使用 isCardDisabled（完全失效）
+      expect(BossSystem.isCardDisabled(bossState, spadeCard)).toBe(true);
+      expect(BossSystem.isCardDisabled(bossState, heartCard)).toBe(false);
     });
 
     it('红桃Boss应该使红桃牌失效', () => {
       BossSystem.setBoss(bossState, BossType.HEAD);
-      
+
       const heartCard = new Card(Suit.Hearts, Rank.Ace);
       const diamondCard = new Card(Suit.Diamonds, Rank.Ace);
-      
-      expect(BossSystem.isCardDebuffed(bossState, heartCard)).toBe(true);
-      expect(BossSystem.isCardDebuffed(bossState, diamondCard)).toBe(false);
+
+      // 花色失效Boss使用 isCardDisabled（完全失效）
+      expect(BossSystem.isCardDisabled(bossState, heartCard)).toBe(true);
+      expect(BossSystem.isCardDisabled(bossState, diamondCard)).toBe(false);
     });
 
     it('方片Boss应该使方片牌失效', () => {
       BossSystem.setBoss(bossState, BossType.WINDOW);
-      
+
       const diamondCard = new Card(Suit.Diamonds, Rank.Ace);
       const clubCard = new Card(Suit.Clubs, Rank.Ace);
-      
-      expect(BossSystem.isCardDebuffed(bossState, diamondCard)).toBe(true);
-      expect(BossSystem.isCardDebuffed(bossState, clubCard)).toBe(false);
+
+      // 花色失效Boss使用 isCardDisabled（完全失效）
+      expect(BossSystem.isCardDisabled(bossState, diamondCard)).toBe(true);
+      expect(BossSystem.isCardDisabled(bossState, clubCard)).toBe(false);
     });
 
     it('植物Boss应该使人头牌失效', () => {
       BossSystem.setBoss(bossState, BossType.PLANT);
-      
+
       const jack = new Card(Suit.Spades, Rank.Jack);
       const queen = new Card(Suit.Spades, Rank.Queen);
       const king = new Card(Suit.Spades, Rank.King);
       const ace = new Card(Suit.Spades, Rank.Ace);
-      
-      expect(BossSystem.isCardDebuffed(bossState, jack)).toBe(true);
-      expect(BossSystem.isCardDebuffed(bossState, queen)).toBe(true);
-      expect(BossSystem.isCardDebuffed(bossState, king)).toBe(true);
-      expect(BossSystem.isCardDebuffed(bossState, ace)).toBe(false);
+
+      // 人头牌失效Boss使用 isCardDisabled（完全失效）
+      expect(BossSystem.isCardDisabled(bossState, jack)).toBe(true);
+      expect(BossSystem.isCardDisabled(bossState, queen)).toBe(true);
+      expect(BossSystem.isCardDisabled(bossState, king)).toBe(true);
+      expect(BossSystem.isCardDisabled(bossState, ace)).toBe(false);
     });
 
     it('水Boss应该使弃牌次数为0', () => {
@@ -514,15 +519,15 @@ describe('Boss盲注系统', () => {
       const card2 = new Card(Suit.Hearts, Rank.King);
 
       // 初始状态下，牌没有出过，不应该失效
-      expect(BossSystem.isCardDebuffed(bossState, card1)).toBe(false);
-      expect(BossSystem.isCardDebuffed(bossState, card2)).toBe(false);
+      expect(BossSystem.isCardDisabled(bossState, card1)).toBe(false);
+      expect(BossSystem.isCardDisabled(bossState, card2)).toBe(false);
 
       // 记录card1被出过
       bossState.recordCardPlayed(card1);
 
       // 现在card1应该失效，card2仍然有效
-      expect(BossSystem.isCardDebuffed(bossState, card1)).toBe(true);
-      expect(BossSystem.isCardDebuffed(bossState, card2)).toBe(false);
+      expect(BossSystem.isCardDisabled(bossState, card1)).toBe(true);
+      expect(BossSystem.isCardDisabled(bossState, card2)).toBe(false);
     });
 
     it('柱子Boss在新底注后应该重置', () => {
@@ -532,13 +537,13 @@ describe('Boss盲注系统', () => {
 
       // 出牌并记录
       bossState.recordCardPlayed(card);
-      expect(BossSystem.isCardDebuffed(bossState, card)).toBe(true);
+      expect(BossSystem.isCardDisabled(bossState, card)).toBe(true);
 
       // 新底注重置
       bossState.onNewAnte();
 
       // 牌应该重新生效
-      expect(BossSystem.isCardDebuffed(bossState, card)).toBe(false);
+      expect(BossSystem.isCardDisabled(bossState, card)).toBe(false);
     });
   });
 });

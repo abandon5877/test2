@@ -368,6 +368,14 @@ export class GameState implements GameStateInterface {
       this.roundStats.highestHandScore = scoreResult.totalScore;
     }
 
+    // 处理DNA效果：复制计分牌到卡组
+    if (scoreResult.copyScoredCardToDeck && scoreResult.scoringCards.length > 0) {
+      const cardToCopy = scoreResult.scoringCards[0];
+      const copiedCard = cardToCopy.clone();
+      this.addCardToDeck(copiedCard, 'bottom');
+      logger.info('DNA effect: Card copied to deck', { card: cardToCopy.toString() });
+    }
+
     // 将打出的牌移到弃牌堆
     if (scoreResult.destroyedCards && scoreResult.destroyedCards.length > 0) {
       logger.info('Glass cards destroyed', { count: scoreResult.destroyedCards.length });
@@ -375,10 +383,10 @@ export class GameState implements GameStateInterface {
     } else {
       this.cardPile.playSelected();
     }
-    
+
     // 记录已出的牌（用于柱子Boss效果）
     BossSystem.afterPlayHand(this.bossState, selectedCards, scoreResult.handType);
-    
+
     this.drawCards(selectedCards.length);
 
     logger.info('Hand played', { 

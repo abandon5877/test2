@@ -544,11 +544,12 @@ export const JOKERS: Joker[] = [
     trigger: JokerTrigger.ON_HAND_PLAYED,
     effect: (context: JokerEffectContext): JokerEffectResult => {
       // 检查是否是第一手（handsPlayed === 0）且只有1张牌
-      if (context.handsPlayed === 0 && 
-          context.scoredCards && 
+      if (context.handsPlayed === 0 &&
+          context.scoredCards &&
           context.scoredCards.length === 1) {
         return {
-          message: 'DNA: 永久复制该牌加入卡组'
+          message: 'DNA: 永久复制该牌加入卡组',
+          copyScoredCardToDeck: true
         };
       }
       return {};
