@@ -580,12 +580,8 @@ export const TAROT_CARDS: TarotData[] = [
     description: '生成1张随机小丑牌',
     type: ConsumableType.TAROT,
     cost: 4,
-    useCondition: '需要至少1个小丑牌空位',
+    useCondition: '无特殊条件',
     use: (context: ConsumableEffectContext): ConsumableEffectResult => {
-      if (context.canAddJoker && !context.canAddJoker()) {
-        return { success: false, message: '小丑牌槽位已满' };
-      }
-
       console.log('[Judgement] 审判牌被使用, context.addJoker 存在:', !!context.addJoker);
       let jokerAdded = false;
       if (context.addJoker) {
@@ -601,11 +597,6 @@ export const TAROT_CARDS: TarotData[] = [
         message: jokerAdded ? '审判: 生成1张随机小丑牌' : '审判: 小丑槽位已满，无法生成',
         affectedCards: []
       };
-    },
-    canUse: (context: ConsumableEffectContext): boolean => {
-      // 如果没有 canAddJoker 函数，默认允许使用（向后兼容）
-      if (!context.canAddJoker) return true;
-      return context.canAddJoker();
     }
   },
 

@@ -765,7 +765,7 @@ export class CardComponent {
         animation: negative-pulse 2s infinite;
       `;
       negativeBadge.textContent = '🌑';
-      negativeBadge.title = '负片 (不占用槽位)';
+      negativeBadge.title = '负片 (卡槽+1)';
       cardElement.appendChild(negativeBadge);
     }
 

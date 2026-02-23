@@ -311,13 +311,11 @@ export class OpenPackComponent {
         return;
       }
       this.callbacks.onCardSelected(card, 'keep');
-    } else if (card instanceof Consumable && 
+    } else if (card instanceof Consumable &&
         (this.pack.type === 'arcana' || this.pack.type === 'celestial' || this.pack.type === 'spectral')) {
       // 消耗牌默认放入槽位
-      if (!this.gameState.hasAvailableConsumableSlot()) {
-        Toast.warning('消耗牌槽位已满！请先使用或出售现有的消耗牌。');
-        return;
-      }
+      // 不在这里检查槽位，让 addConsumable 来决定是否可以添加
+      // 这样负片消耗牌在槽位满时也可以添加
       this.callbacks.onCardSelected(card, 'keep');
     } else {
       // 其他卡牌直接选择

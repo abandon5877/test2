@@ -503,11 +503,6 @@ class Game {
             console.log('[Game] addJoker 结果:', success);
             return success;
           },
-          canAddJoker: (): boolean => {
-            const availableSlots = this.gameState.getJokerSlots().getAvailableSlots();
-            console.log('[Game] canAddJoker 检查, 可用槽位:', availableSlots);
-            return availableSlots > 0;
-          },
           addEditionToRandomJoker: (edition: string): boolean => {
             console.log('[Game] addEditionToRandomJoker 被调用, edition:', edition);
             const jokers = this.gameState.jokers;
@@ -561,15 +556,17 @@ class Game {
           } else {
             Toast.error(result.message || '使用失败');
             // 使用失败，放入槽位
-            if (this.gameState.hasAvailableConsumableSlot()) {
-              this.gameState.addConsumable(card);
+            const added = this.gameState.addConsumable(card);
+            if (added) {
               Toast.info(`${card.name} 已放入消耗牌槽位`);
+            } else {
+              Toast.error('消耗牌槽位已满！');
             }
           }
         } else {
           // 无法使用，放入槽位
-          if (this.gameState.hasAvailableConsumableSlot()) {
-            this.gameState.addConsumable(card);
+          const added = this.gameState.addConsumable(card);
+          if (added) {
             Toast.info(`${card.name} 已放入消耗牌槽位`);
           } else {
             Toast.error('消耗牌槽位已满！');
@@ -577,8 +574,8 @@ class Game {
         }
       } else {
         // 放入消耗牌槽位
-        if (this.gameState.hasAvailableConsumableSlot()) {
-          this.gameState.addConsumable(card);
+        const added = this.gameState.addConsumable(card);
+        if (added) {
           Toast.success(`获得消耗牌: ${card.name}`);
         } else {
           Toast.error('消耗牌槽位已满！');
@@ -923,15 +920,20 @@ class Game {
 
     // 处理新生成的消耗牌
     if (result.newConsumableIds && result.newConsumableIds.length > 0) {
+      let skippedCount = 0;
       for (const consumableId of result.newConsumableIds) {
-        if (!this.gameState.hasAvailableConsumableSlot()) {
-          Toast.warning('消耗牌槽位已满，部分生成被跳过');
-          break;
-        }
+        // 不预先检查槽位，让 addConsumable 来决定是否可以添加
+        // 这样负片消耗牌在槽位满时也可以添加
         const newConsumable = getConsumableById(consumableId);
         if (newConsumable) {
-          this.gameState.addConsumable(newConsumable);
+          const success = this.gameState.addConsumable(newConsumable);
+          if (!success) {
+            skippedCount++;
+          }
         }
+      }
+      if (skippedCount > 0) {
+        Toast.warning(`消耗牌槽位已满，${skippedCount}张生成被跳过`);
       }
     }
 

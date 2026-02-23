@@ -150,11 +150,8 @@ export class ShopComponent {
         return false;
       }
     } else if (shopItem.type === 'consumable') {
-      if (!this.gameState.hasAvailableConsumableSlot()) {
-        console.warn('[ShopComponent.buyItem] 购买失败：消耗牌槽位已满');
-        Toast.warning('消耗牌槽位已满！');
-        return false;
-      }
+      // 不在这里检查槽位，让 addConsumable 来决定是否可以添加
+      // 这样负片消耗牌在槽位满时也可以购买
     }
 
     // 扣除金钱
@@ -587,8 +584,9 @@ export class ShopComponent {
         icon.textContent = '🤡';
         name.textContent = joker.name;
         description.textContent = joker.description;
-        // 根据稀有度设置边框颜色
-        card.className = `joker-card ${joker.rarity}`;
+        // 根据稀有度和版本设置边框颜色
+        const editionClass = joker.edition && joker.edition !== 'none' ? joker.edition : '';
+        card.className = `joker-card ${joker.rarity} ${editionClass}`.trim();
         // 重新应用样式
         card.style.display = 'flex';
         card.style.flexDirection = 'column';

@@ -281,12 +281,8 @@ export const SPECTRAL_CONSUMABLES: Consumable[] = [
     description: '创建1张稀有小丑，金钱设为$0',
     type: ConsumableType.SPECTRAL,
     cost: 6,
-    useCondition: '需要至少1个小丑牌空位',
+    useCondition: '无特殊条件',
     use: (context: ConsumableEffectContext): ConsumableEffectResult => {
-      if (context.canAddJoker && !context.canAddJoker()) {
-        return { success: false, message: '小丑牌槽位已满' };
-      }
-
       let jokerAdded = false;
       if (context.addJoker) {
         jokerAdded = context.addJoker('rare');
@@ -297,11 +293,6 @@ export const SPECTRAL_CONSUMABLES: Consumable[] = [
         message: jokerAdded ? '怨灵: 创建稀有小丑，金钱设为$0' : '怨灵: 金钱设为$0（小丑槽位已满）',
         setMoney: 0
       };
-    },
-    canUse: (context: ConsumableEffectContext): boolean => {
-      // 如果没有 canAddJoker 函数，默认允许使用（向后兼容）
-      if (!context.canAddJoker) return true;
-      return context.canAddJoker();
     }
   }),
 
@@ -552,12 +543,8 @@ export const SPECTRAL_CONSUMABLES: Consumable[] = [
     description: '创建1张传奇小丑（卡包限定，0.3%概率）',
     type: ConsumableType.SPECTRAL,
     cost: 0,
-    useCondition: '需要至少1个小丑牌空位',
+    useCondition: '无特殊条件',
     use: (context: ConsumableEffectContext): ConsumableEffectResult => {
-      if (context.canAddJoker && !context.canAddJoker()) {
-        return { success: false, message: '小丑牌槽位已满' };
-      }
-
       let jokerAdded = false;
       if (context.addJoker) {
         jokerAdded = context.addJoker('legendary');
@@ -567,11 +554,6 @@ export const SPECTRAL_CONSUMABLES: Consumable[] = [
         success: true,
         message: jokerAdded ? '灵魂: 创建传奇小丑' : '灵魂: 小丑槽位已满，无法创建'
       };
-    },
-    canUse: (context: ConsumableEffectContext): boolean => {
-      // 如果没有 canAddJoker 函数，默认允许使用（向后兼容）
-      if (!context.canAddJoker) return true;
-      return context.canAddJoker();
     }
   }),
 

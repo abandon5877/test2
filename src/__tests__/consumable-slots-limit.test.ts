@@ -77,18 +77,64 @@ describe('消耗牌槽位限制测试', () => {
       expect((result as any).planetBonus).toBe(1);
     });
 
-    it('负片消耗牌不应占用槽位', () => {
-      // 添加负片消耗牌（不占用槽位）
+    it('负片消耗牌应提供额外槽位', () => {
+      // 添加负片消耗牌（槽位+1）
       consumableSlots.addConsumable({ id: 'test1', name: '测试1', isNegative: true } as any);
       consumableSlots.addConsumable({ id: 'test2', name: '测试2', isNegative: true } as any);
 
-      // 应该还有2个槽位可用
+      // 2个负片消耗牌提供2个额外槽位，总共4个槽位
+      // 但2个负片消耗牌本身占用了2个槽位，所以可用槽位 = 4 - 2 = 2
+      expect(consumableSlots.getEffectiveMaxSlots()).toBe(4);
+      expect(consumableSlots.getAvailableSlots()).toBe(2);
+
+      // 可以生成2张塔罗牌（因为可用槽位是2）
       const result = JokerSystem.clampConsumableGeneration(
         { tarotBonus: 2, message: '生成2张塔罗牌' },
         consumableSlots
       );
 
       expect(result.tarotBonus).toBe(2);
+    });
+
+    it('负片消耗牌允许超出基础槽位限制', () => {
+      // 填满2个基础槽位
+      consumableSlots.addConsumable({ id: 'normal1', name: '普通1', isNegative: false } as any);
+      consumableSlots.addConsumable({ id: 'normal2', name: '普通2', isNegative: false } as any);
+
+      // 基础槽位已满，但添加负片消耗牌应该成功（因为它提供额外槽位）
+      expect(consumableSlots.addConsumable({ id: 'neg1', name: '负片1', isNegative: true } as any)).toBe(true);
+
+      // 现在有效槽位是3，已使用3，可用0
+      expect(consumableSlots.getEffectiveMaxSlots()).toBe(3);
+      expect(consumableSlots.getConsumableCount()).toBe(3);
+      expect(consumableSlots.getAvailableSlots()).toBe(0);
+    });
+
+    it('多张负片消耗牌可以累积额外槽位', () => {
+      // 添加3张负片消耗牌
+      expect(consumableSlots.addConsumable({ id: 'neg1', name: '负片1', isNegative: true } as any)).toBe(true);
+      expect(consumableSlots.addConsumable({ id: 'neg2', name: '负片2', isNegative: true } as any)).toBe(true);
+      expect(consumableSlots.addConsumable({ id: 'neg3', name: '负片3', isNegative: true } as any)).toBe(true);
+
+      // 有效槽位 = 2基础 + 3负片 = 5
+      expect(consumableSlots.getEffectiveMaxSlots()).toBe(5);
+      expect(consumableSlots.getConsumableCount()).toBe(3);
+      expect(consumableSlots.getAvailableSlots()).toBe(2);
+    });
+
+    it('混合普通和负片消耗牌时槽位计算正确', () => {
+      // 添加1个普通 + 1个负片
+      consumableSlots.addConsumable({ id: 'normal1', name: '普通1', isNegative: false } as any);
+      consumableSlots.addConsumable({ id: 'neg1', name: '负片1', isNegative: true } as any);
+
+      // 有效槽位 = 2基础 + 1负片 = 3
+      expect(consumableSlots.getEffectiveMaxSlots()).toBe(3);
+      expect(consumableSlots.getConsumableCount()).toBe(2);
+      expect(consumableSlots.getAvailableSlots()).toBe(1);
+
+      // 可以再添加1个普通消耗牌
+      expect(consumableSlots.addConsumable({ id: 'normal2', name: '普通2', isNegative: false } as any)).toBe(true);
+      expect(consumableSlots.getConsumableCount()).toBe(3);
     });
   });
 

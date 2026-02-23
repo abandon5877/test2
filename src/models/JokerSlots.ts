@@ -82,12 +82,26 @@ export class JokerSlots {
   }
 
   addJoker(joker: JokerInterface): boolean {
-    if (this.jokers.length >= this.maxSlots) {
+    // 计算添加此小丑牌后的有效槽位
+    // 如果要添加的是负片小丑牌，需要预先考虑它提供的额外槽位
+    const currentNegativeCount = this.jokers.filter(j => j.edition === 'negative').length;
+    const isAddingNegative = joker.edition === 'negative';
+    const effectiveMaxSlots = this.maxSlots + currentNegativeCount + (isAddingNegative ? 1 : 0);
+
+    if (this.jokers.length >= effectiveMaxSlots) {
       return false;
     }
     this.jokers.push(joker);
 
     return true;
+  }
+
+  /**
+   * 获取有效最大槽位数（考虑负片版本小丑牌）
+   */
+  getEffectiveMaxSlots(): number {
+    const negativeJokerCount = this.jokers.filter(j => j.edition === 'negative').length;
+    return this.maxSlots + negativeJokerCount;
   }
 
   removeJoker(index: number): JokerInterface | null {
@@ -155,7 +169,7 @@ export class JokerSlots {
   }
 
   getAvailableSlots(): number {
-    return this.maxSlots - this.jokers.length;
+    return this.getEffectiveMaxSlots() - this.jokers.length;
   }
 
   getMaxSlots(): number {

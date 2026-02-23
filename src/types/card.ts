@@ -50,7 +50,7 @@ export enum CardEdition {
   Foil = 'foil',           // 箔片: +50筹码
   Holographic = 'holographic',  // 全息: +10倍率
   Polychrome = 'polychrome',    // 多色: x1.5倍率
-  Negative = 'negative'     // 负片: 不占用小丑槽位
+  Negative = 'negative'     // 负片: 小丑槽位+1
 }
 
 // 蜡封类型（Seal Type）

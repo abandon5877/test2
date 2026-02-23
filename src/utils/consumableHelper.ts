@@ -53,9 +53,6 @@ export class ConsumableHelper {
         }
         return this.gameState.addJoker(joker);
       },
-      canAddJoker: (): boolean => {
-        return this.gameState.getJokerSlots().getAvailableSlots() > 0;
-      },
       addEditionToRandomJoker: (edition: string): boolean => {
         const jokers = this.gameState.jokers;
         const eligibleJokers = jokers.filter(j => j.edition === JokerEdition.None);
@@ -171,11 +168,8 @@ export class ConsumableHelper {
     let skippedCount = 0;
 
     for (const consumableId of newConsumableIds) {
-      if (!this.gameState.hasAvailableConsumableSlot()) {
-        skippedCount++;
-        continue;
-      }
-
+      // 不预先检查槽位，让 addConsumable 来决定是否可以添加
+      // 这样负片消耗牌在槽位满时也可以添加
       const newConsumable = getConsumableById(consumableId);
       if (newConsumable) {
         const success = this.gameState.addConsumable(newConsumable);

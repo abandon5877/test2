@@ -24,31 +24,33 @@ export class ConsumableSlots {
   }
 
   /**
-   * 获取非负片消耗牌数量（用于槽位限制检查）
+   * 获取负片消耗牌数量（用于计算额外槽位）
    */
-  getNonNegativeConsumableCount(): number {
-    return this.consumables.filter(c => !c.isNegative).length;
+  getNegativeConsumableCount(): number {
+    return this.consumables.filter(c => c.isNegative).length;
+  }
+
+  /**
+   * 获取有效最大槽位数（考虑负片消耗牌+1槽位效果）
+   */
+  getEffectiveMaxSlots(): number {
+    return this.maxSlots + this.getNegativeConsumableCount();
   }
 
   /**
    * 添加消耗牌
    */
   addConsumable(consumable: ConsumableInterface): boolean {
-    // 负片牌总是可以添加，不占用槽位
-    if (consumable.isNegative) {
-      this.consumables.push(consumable);
-      logger.info('负片消耗牌添加成功', {
-        consumableId: consumable.id,
-        consumableName: consumable.name
-      });
-      return true;
-    }
+    // 计算添加此消耗牌后的有效槽位
+    // 如果要添加的是负片消耗牌，需要预先考虑它提供的额外槽位
+    const currentNegativeCount = this.getNegativeConsumableCount();
+    const isAddingNegative = consumable.isNegative;
+    const effectiveMaxSlots = this.maxSlots + currentNegativeCount + (isAddingNegative ? 1 : 0);
 
-    // 非负片牌受槽位限制
-    if (this.getNonNegativeConsumableCount() >= this.maxSlots) {
+    if (this.consumables.length >= effectiveMaxSlots) {
       logger.warn('Cannot add consumable: max slots reached', {
-        current: this.getNonNegativeConsumableCount(),
-        max: this.maxSlots
+        current: this.consumables.length,
+        max: effectiveMaxSlots
       });
       return false;
     }
@@ -57,6 +59,7 @@ export class ConsumableSlots {
     logger.info('Consumable added', {
       consumableId: consumable.id,
       consumableName: consumable.name,
+      isNegative: consumable.isNegative,
       slot: this.consumables.length - 1
     });
     return true;
@@ -104,10 +107,10 @@ export class ConsumableSlots {
   }
 
   /**
-   * 获取可用槽位数量（只考虑非负片消耗牌）
+   * 获取可用槽位数量（考虑负片消耗牌+1槽位效果）
    */
   getAvailableSlots(): number {
-    return this.maxSlots - this.getNonNegativeConsumableCount();
+    return this.getEffectiveMaxSlots() - this.consumables.length;
   }
 
   /**
@@ -126,10 +129,10 @@ export class ConsumableSlots {
   }
 
   /**
-   * 检查是否还有空槽位（只考虑非负片牌）
+   * 检查是否还有空槽位（考虑负片消耗牌+1槽位效果）
    */
   hasAvailableSlot(): boolean {
-    return this.getNonNegativeConsumableCount() < this.maxSlots;
+    return this.consumables.length < this.getEffectiveMaxSlots();
   }
 
   /**

@@ -26,7 +26,6 @@ export interface ConsumableEffectContext {
   readonly jokers?: readonly { edition?: string; hasEdition?: boolean; sellPrice?: number; sticker?: string }[];
   readonly addJoker?: (rarity?: 'rare' | 'legendary') => boolean;
   readonly copyRandomJoker?: () => { success: boolean; copiedJokerName?: string };
-  readonly canAddJoker?: () => boolean;
   readonly addEditionToRandomJoker?: (edition: string) => boolean;
   readonly destroyOtherJokers?: () => number;
 }
@@ -51,7 +50,7 @@ export interface ConsumableInterface {
   readonly type: ConsumableType;
   readonly cost: number;
   readonly useCondition?: string; // 使用条件描述
-  readonly isNegative?: boolean; // 负片效果：不占用槽位
+  readonly isNegative?: boolean; // 负片效果：消耗牌槽位+1
   sellValueBonus: number; // 礼品卡等增加的售价加成
   use(context: ConsumableEffectContext): ConsumableEffectResult;
   canUse(context: ConsumableEffectContext): boolean;
