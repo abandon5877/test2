@@ -8,6 +8,7 @@ import { CopyEffectHelper } from './CopyEffectHelper';
 import { PokerHandDetector } from './PokerHandDetector';
 import { ProbabilitySystem } from './ProbabilitySystem';
 import { ConsumableSlots } from '../models/ConsumableSlots';
+import { setGrosMichelDestroyed } from '../data/jokers';
 
 const logger = createModuleLogger('JokerSystem');
 
@@ -699,6 +700,12 @@ export class JokerSystem {
         if (result.destroySelf) {
           destroyedJokers.push(i);
           jokerSlots.removeJoker(i);
+
+          // 如果大麦克自毁，设置全局状态以解锁卡文迪什
+          if (joker.id === 'gros_michel') {
+            setGrosMichelDestroyed(true);
+            logger.info('大麦克已自毁，卡文迪什现在可以被刷到');
+          }
         }
 
         // 处理摧毁右侧小丑

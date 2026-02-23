@@ -15,7 +15,7 @@ import { GamePhase, BossType } from '../types/game';
 import { ConsumableType } from '../types/consumable';
 import type { BlindType } from '../types/game';
 import type { Suit, Rank, CardEnhancement, SealType, CardEdition } from '../types/card';
-import { getJokerById } from '../data/jokers';
+import { getJokerById, setGrosMichelDestroyed, isGrosMichelDestroyed } from '../data/jokers';
 import { getConsumableById } from '../data/consumables/index';
 import { HandLevel } from '../models/HandLevelState';
 import { PokerHandType } from '../types/pokerHands';
@@ -31,6 +31,8 @@ const SAVE_KEY = 'balatro_game_save';
 export interface SaveData {
   version: string;
   timestamp: number;
+  // 大麦克自毁状态（卡文迪什解锁条件）
+  grosMichelDestroyed?: boolean;
   gameState: {
     phase: GamePhase;
     ante: number;
@@ -184,6 +186,8 @@ export class Storage {
       const saveData: SaveData = {
         version: this.CURRENT_VERSION,
         timestamp: Date.now(),
+        // 保存大麦克自毁状态
+        grosMichelDestroyed: isGrosMichelDestroyed(),
         gameState: this.serializeGameState(gameState),
         // 修复1: 保存商店信息
         shop: gameState.shop ? this.serializeShop(gameState.shop) : undefined,
@@ -214,6 +218,8 @@ export class Storage {
     return {
       version: this.CURRENT_VERSION,
       timestamp: Date.now(),
+      // 保存大麦克自毁状态
+      grosMichelDestroyed: isGrosMichelDestroyed(),
       gameState: this.serializeGameState(gameState),
       // 修复1: 保存商店信息
       shop: gameState.shop ? this.serializeShop(gameState.shop) : undefined,
@@ -253,6 +259,12 @@ export class Storage {
     console.log('[Storage.restoreGameState] 开始恢复游戏存档');
     const gameState = new GameState();
     const data = saveData.gameState;
+
+    // 恢复大麦克自毁状态（卡文迪什解锁条件）
+    if (saveData.grosMichelDestroyed !== undefined) {
+      setGrosMichelDestroyed(saveData.grosMichelDestroyed);
+      logger.info('[Storage.restoreGameState] 大麦克自毁状态已恢复', { grosMichelDestroyed: saveData.grosMichelDestroyed });
+    }
 
     // 修复Boss盲注问题: 先恢复Boss分配信息，这样在恢复currentBlind时才能正确获取Boss类型
     if (saveData.bossAssignments && saveData.bossAssignments.length > 0) {

@@ -2,7 +2,7 @@ import type { GameState } from '../models/GameState';
 import type { ConsumableEffectContext, ConsumableEffectResult } from '../types/consumable';
 import type { Joker } from '../models/Joker';
 import { JokerEdition, JokerRarity } from '../types/joker';
-import { getRandomJoker } from '../data/jokers';
+import { getRandomJoker, getRandomJokerByRarity } from '../data/jokers';
 import { getConsumableById } from '../data/consumables';
 
 export interface ConsumableCallbacks {
@@ -47,9 +47,14 @@ export class ConsumableHelper {
       jokers: jokersWithSellPrice,
       lastUsedConsumable: this.gameState.lastUsedConsumable ?? undefined,
       addJoker: (rarity?: 'rare' | 'legendary'): boolean => {
-        const joker = getRandomJoker();
+        let joker: Joker;
         if (rarity) {
-          (joker as Joker).rarity = rarity === 'rare' ? JokerRarity.RARE : JokerRarity.LEGENDARY;
+          // 根据指定稀有度获取对应的小丑牌
+          const targetRarity = rarity === 'rare' ? JokerRarity.RARE : JokerRarity.LEGENDARY;
+          joker = getRandomJokerByRarity(targetRarity);
+        } else {
+          // 没有指定稀有度，使用默认随机生成
+          joker = getRandomJoker();
         }
         return this.gameState.addJoker(joker);
       },

@@ -15,7 +15,7 @@ import { showAlert, showConfirm } from './ui/components/Modal';
 import { ScaleContainer } from './ui/components/ScaleContainer';
 import { Toast } from './ui/components/Toast';
 import { Suit, Rank } from './types/card';
-import { getRandomJokers, getRandomJoker } from './data/jokers';
+import { getRandomJokers, getRandomJoker, getRandomJokerByRarity } from './data/jokers';
 import { getRandomConsumables, getConsumableById } from './data/consumables';
 import { JokerEdition, JokerRarity } from './types/joker';
 
@@ -495,10 +495,16 @@ class Game {
           lastUsedConsumable: this.gameState.lastUsedConsumable ?? undefined,
           addJoker: (rarity?: 'rare' | 'legendary'): boolean => {
             console.log('[Game] addJoker 被调用, rarity:', rarity);
-            const joker = getRandomJoker();
-            console.log('[Game] 生成的随机小丑牌:', joker.id, joker.name);
+            let joker: Joker;
             if (rarity) {
-              (joker as Joker).rarity = rarity as JokerRarity;
+              // 根据指定稀有度获取对应的小丑牌
+              const targetRarity = rarity === 'rare' ? JokerRarity.RARE : JokerRarity.LEGENDARY;
+              joker = getRandomJokerByRarity(targetRarity);
+              console.log('[Game] 生成的指定稀有度小丑牌:', joker.id, joker.name, 'rarity:', joker.rarity);
+            } else {
+              // 没有指定稀有度，使用默认随机生成
+              joker = getRandomJoker();
+              console.log('[Game] 生成的随机小丑牌:', joker.id, joker.name);
             }
             const success = this.gameState.addJoker(joker);
             console.log('[Game] addJoker 结果:', success);

@@ -21,7 +21,7 @@ import { ConsumableDataManager } from '../data/ConsumableDataManager';
 import { getConsumableById } from '../data/consumables';
 import type { JokerInterface } from '../types/joker';
 import type { ConsumableInterface } from '../types/consumable';
-import { getJokerById } from '../data/jokers';
+import { getJokerById, resetGrosMichelDestroyed } from '../data/jokers';
 import { CardEnhancement } from '../types/card';
 import { ConsumableType } from '../types/consumable';
 import { PokerHandType } from '../types/pokerHands';
@@ -120,12 +120,15 @@ export class GameState implements GameStateInterface {
     this.cardPile.deck.shuffle();
     this.handsRemaining = this.getMaxHandsPerRound();
     this.discardsRemaining = this.getMaxDiscardsPerRound();
-    
+
     // 重置Boss选择状态并初始化盲注配置
     this.bossSelectionState.reset();
     this.bossState.clearBoss();
     this.initializeBlindConfigsForNewGame();
-    
+
+    // 重置大麦克自毁状态（新游戏时卡文迪什被锁定）
+    resetGrosMichelDestroyed();
+
     logger.info('New game started', { ante: this.ante, money: this.money });
   }
 

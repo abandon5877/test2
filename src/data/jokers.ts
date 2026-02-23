@@ -7,6 +7,52 @@ import type { ConsumableInterface } from '../types/consumable';
 import { generateRandomJokerEdition } from './probabilities';
 import { cardMatchesSuit, isRedCard, isBlackCard, getSuitColor } from '../utils/suitUtils';
 import { ProbabilitySystem, PROBABILITIES } from '../systems/ProbabilitySystem';
+import { createModuleLogger } from '../utils/logger';
+
+const logger = createModuleLogger('JokerData');
+
+/**
+ * 小丑牌稀有度权重配置（基于Balatro官方规则）
+ * 注意：传说(Legendary)小丑牌只能通过灵魂(The Soul)幻灵牌获得
+ * 商店和卡包生成概率：普通70%、罕见25%、稀有5%
+ */
+export const JOKER_RARITY_WEIGHTS = {
+  [JokerRarity.COMMON]: 0.70,    // 70% 普通
+  [JokerRarity.UNCOMMON]: 0.25,  // 25% 罕见
+  [JokerRarity.RARE]: 0.05,      // 5% 稀有
+  // 传说小丑牌不在此权重中，只能通过灵魂牌获得
+} as const;
+
+/**
+ * 全局状态：大麦克是否已自毁
+ * 卡文迪什只有在大麦克自毁后才能被刷到
+ */
+let grosMichelDestroyed = false;
+
+/**
+ * 设置大麦克自毁状态
+ * @param destroyed 是否已自毁
+ */
+export function setGrosMichelDestroyed(destroyed: boolean): void {
+  grosMichelDestroyed = destroyed;
+  logger.info('大麦克自毁状态更新', { destroyed });
+}
+
+/**
+ * 获取大麦克自毁状态
+ * @returns 是否已自毁
+ */
+export function isGrosMichelDestroyed(): boolean {
+  return grosMichelDestroyed;
+}
+
+/**
+ * 重置大麦克自毁状态（新游戏时调用）
+ */
+export function resetGrosMichelDestroyed(): void {
+  grosMichelDestroyed = false;
+  logger.info('大麦克自毁状态已重置');
+}
 
 export const JOKERS: Joker[] = [
   new Joker({
@@ -3218,15 +3264,89 @@ export function getJokersByRarity(rarity: JokerRarity): Joker[] {
   return JOKERS.filter(joker => joker.rarity === rarity).map(j => j.clone() as Joker);
 }
 
-export function getRandomJokers(count: number, vouchersUsed: string[] = []): Joker[] {
-  const shuffled = [...JOKERS].sort(() => Math.random() - 0.5);
-  const jokers = shuffled.slice(0, count).map(j => j.clone() as Joker);
+/**
+ * 根据稀有度权重随机选择一个稀有度
+ * 注意：传说(Legendary)小丑牌只能通过灵魂(The Soul)幻灵牌获得
+ * 商店和卡包生成概率：普通70%、罕见25%、稀有5%
+ * @returns 选中的稀有度
+ */
+function selectRandomRarity(): JokerRarity {
+  const random = Math.random();
+  let cumulative = 0;
 
-  // 应用版本概率
-  for (const joker of jokers) {
-    const edition = generateRandomJokerEdition(vouchersUsed);
-    if (edition !== JokerEdition.None) {
-      joker.setEdition(edition);
+  cumulative += JOKER_RARITY_WEIGHTS[JokerRarity.COMMON];
+  if (random < cumulative) return JokerRarity.COMMON;
+
+  cumulative += JOKER_RARITY_WEIGHTS[JokerRarity.UNCOMMON];
+  if (random < cumulative) return JokerRarity.UNCOMMON;
+
+  // 剩余概率为稀有（5%）
+  return JokerRarity.RARE;
+}
+
+/**
+ * 获取可用于生成的小丑牌池
+ * 根据大麦克自毁状态决定是否包含卡文迪什
+ */
+function getAvailableJokersForSpawn(): Joker[] {
+  return JOKERS.filter(joker => {
+    // 卡文迪什只有在大麦克自毁后才能被刷到
+    if (joker.id === 'cavendish' && !grosMichelDestroyed) {
+      return false;
+    }
+    return true;
+  });
+}
+
+/**
+ * 根据稀有度从小丑牌池中随机选择一个小丑牌
+ * @param pool 小丑牌池
+ * @param rarity 目标稀有度
+ * @returns 选中的小丑牌，如果没有对应稀有度的牌则返回undefined
+ */
+function getRandomJokerFromPoolByRarity(pool: Joker[], rarity: JokerRarity): Joker | undefined {
+  const jokersOfRarity = pool.filter(j => j.rarity === rarity);
+  if (jokersOfRarity.length === 0) return undefined;
+
+  const randomIndex = Math.floor(Math.random() * jokersOfRarity.length);
+  return jokersOfRarity[randomIndex];
+}
+
+export function getRandomJokers(count: number, vouchersUsed: string[] = []): Joker[] {
+  const pool = getAvailableJokersForSpawn();
+  const jokers: Joker[] = [];
+
+  logger.debug('生成随机小丑牌', { count, poolSize: pool.length, grosMichelDestroyed });
+
+  for (let i = 0; i < count; i++) {
+    // 根据稀有度权重选择稀有度
+    const targetRarity = selectRandomRarity();
+
+    // 从对应稀有度中随机选择一个小丑牌
+    let selectedJoker = getRandomJokerFromPoolByRarity(pool, targetRarity);
+
+    // 如果对应稀有度没有可用的小丑牌（比如卡文迪什被锁定），则回退到普通稀有度
+    if (!selectedJoker) {
+      selectedJoker = getRandomJokerFromPoolByRarity(pool, JokerRarity.COMMON);
+    }
+
+    // 如果仍然没有，从整个池中随机选择（兜底方案）
+    if (!selectedJoker && pool.length > 0) {
+      const randomIndex = Math.floor(Math.random() * pool.length);
+      selectedJoker = pool[randomIndex];
+    }
+
+    if (selectedJoker) {
+      const clonedJoker = selectedJoker.clone() as Joker;
+
+      // 应用版本概率
+      const edition = generateRandomJokerEdition(vouchersUsed);
+      if (edition !== JokerEdition.None) {
+        clonedJoker.setEdition(edition);
+      }
+
+      jokers.push(clonedJoker);
+      logger.debug('生成小丑牌', { name: clonedJoker.name, rarity: clonedJoker.rarity, edition });
     }
   }
 
@@ -3234,14 +3354,81 @@ export function getRandomJokers(count: number, vouchersUsed: string[] = []): Jok
 }
 
 export function getRandomJoker(vouchersUsed: string[] = []): Joker {
-  const randomIndex = Math.floor(Math.random() * JOKERS.length);
-  const joker = JOKERS[randomIndex].clone() as Joker;
+  const pool = getAvailableJokersForSpawn();
+
+  // 根据稀有度权重选择稀有度
+  const targetRarity = selectRandomRarity();
+
+  // 从对应稀有度中随机选择一个小丑牌
+  let selectedJoker = getRandomJokerFromPoolByRarity(pool, targetRarity);
+
+  // 如果对应稀有度没有可用的小丑牌，则回退到普通稀有度
+  if (!selectedJoker) {
+    selectedJoker = getRandomJokerFromPoolByRarity(pool, JokerRarity.COMMON);
+  }
+
+  // 如果仍然没有，从整个池中随机选择（兜底方案）
+  if (!selectedJoker && pool.length > 0) {
+    const randomIndex = Math.floor(Math.random() * pool.length);
+    selectedJoker = pool[randomIndex];
+  }
+
+  // 兜底：如果还是没有，从所有小丑牌中选择（包含被锁定的）
+  if (!selectedJoker) {
+    const randomIndex = Math.floor(Math.random() * JOKERS.length);
+    selectedJoker = JOKERS[randomIndex];
+  }
+
+  const joker = selectedJoker.clone() as Joker;
 
   // 应用版本概率
   const edition = generateRandomJokerEdition(vouchersUsed);
   if (edition !== JokerEdition.None) {
     joker.setEdition(edition);
   }
+
+  return joker;
+}
+
+/**
+ * 根据指定稀有度获取随机小丑牌
+ * 用于幻灵牌等指定稀有度生成小丑牌的场景
+ * @param rarity 目标稀有度
+ * @param vouchersUsed 已使用的优惠券列表
+ * @returns 对应稀有度的随机小丑牌
+ */
+export function getRandomJokerByRarity(rarity: JokerRarity, vouchersUsed: string[] = []): Joker {
+  const pool = getAvailableJokersForSpawn();
+
+  // 从对应稀有度中随机选择一个小丑牌
+  let selectedJoker = getRandomJokerFromPoolByRarity(pool, rarity);
+
+  // 如果对应稀有度没有可用的小丑牌（比如卡文迪什被锁定且是目标稀有度），则回退到普通稀有度
+  if (!selectedJoker) {
+    selectedJoker = getRandomJokerFromPoolByRarity(pool, JokerRarity.COMMON);
+  }
+
+  // 如果仍然没有，从整个池中随机选择（兜底方案）
+  if (!selectedJoker && pool.length > 0) {
+    const randomIndex = Math.floor(Math.random() * pool.length);
+    selectedJoker = pool[randomIndex];
+  }
+
+  // 兜底：如果还是没有，从所有小丑牌中选择（包含被锁定的）
+  if (!selectedJoker) {
+    const randomIndex = Math.floor(Math.random() * JOKERS.length);
+    selectedJoker = JOKERS[randomIndex];
+  }
+
+  const joker = selectedJoker.clone() as Joker;
+
+  // 应用版本概率
+  const edition = generateRandomJokerEdition(vouchersUsed);
+  if (edition !== JokerEdition.None) {
+    joker.setEdition(edition);
+  }
+
+  logger.debug('根据稀有度生成小丑牌', { name: joker.name, rarity: joker.rarity, edition });
 
   return joker;
 }
