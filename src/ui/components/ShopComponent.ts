@@ -1155,7 +1155,8 @@ ${description}
     const success = this.gameState.getJokerSlots().swapJokers(fromIndex, targetIndex);
     console.log('[Shop Joker Drag] Swap result:', success);
     if (success) {
-      this.render();
+      // 只刷新右侧区域，避免重新渲染商店物品
+      this.refreshRightPanel();
       // 交换小丑牌后自动保存
       Storage.autoSave(this.gameState);
     }
@@ -1287,8 +1288,9 @@ ${description}
       const success = this.gameState.getJokerSlots().swapJokers(this.draggedJokerIndex, this.touchCurrentIndex);
       console.log('[Shop Joker Touch] Swap result:', success);
       if (success) {
-        console.log('[Shop Joker Touch] Swap successful, calling render and autoSave');
-        this.render();
+        console.log('[Shop Joker Touch] Swap successful, calling refreshRightPanel and autoSave');
+        // 只刷新右侧区域，避免重新渲染商店物品
+        this.refreshRightPanel();
         // 交换小丑牌后自动保存
         Storage.autoSave(this.gameState);
       } else {
