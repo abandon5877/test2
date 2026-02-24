@@ -487,7 +487,7 @@ export class JokerSystem {
     recursionDepth = 0
   ): void {
     // 限制递归深度，防止蓝图↔头脑风暴死循环
-    if (recursionDepth > 2) return;
+    if (recursionDepth > 20) return;
 
     // 获取目标小丑
     const targetJoker = copyType === 'blueprint'
@@ -603,7 +603,7 @@ export class JokerSystem {
     recursionDepth = 0
   ): JokerEffectResult | undefined {
     // 限制递归深度，防止蓝图↔头脑风暴死循环
-    if (recursionDepth > 2) return undefined;
+    if (recursionDepth > 20) return undefined;
 
     // 获取目标小丑
     const targetJoker = copyType === 'blueprint'
