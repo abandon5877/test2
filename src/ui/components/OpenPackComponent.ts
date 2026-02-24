@@ -379,6 +379,7 @@ export class OpenPackComponent {
         description: card.description,
         rarity: card.rarity,
         cost: card.cost,
+        edition: card.edition,
         disabled: card.disabled,
         faceDown: card.faceDown
       });

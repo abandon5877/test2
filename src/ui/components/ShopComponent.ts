@@ -1036,15 +1036,38 @@ export class ShopComponent {
     const description = this.getItemDescription(shopItem);
     const cost = shopItem.cost;
     const canAfford = this.gameState.money >= cost;
-    
+
+    // 构建附加属性信息
+    let extraInfo = '';
+    if (shopItem.type === 'joker') {
+      const joker = shopItem.item as Joker;
+      if (joker.edition && joker.edition !== JokerEdition.None) {
+        extraInfo = this.getEditionText(joker.edition);
+      }
+    }
+
     return `
-【类型】${typeLabel}
+【类型】${typeLabel}${extraInfo ? '\n\n【附加属性】' + extraInfo : ''}
 
 【效果说明】
 ${description}
 
 【价格】${canAfford ? '💰' : '❌'} $${cost}${canAfford ? '' : ' (金钱不足)'}
     `.trim();
+  }
+
+  /**
+   * 获取版本文本
+   */
+  private getEditionText(edition: JokerEdition): string {
+    const editionMap: Record<JokerEdition, string> = {
+      [JokerEdition.None]: '',
+      [JokerEdition.Foil]: '🥈 闪箔 (+50筹码)',
+      [JokerEdition.Holographic]: '✨ 全息 (+10倍率)',
+      [JokerEdition.Polychrome]: '🌈 多彩 (×1.5倍率)',
+      [JokerEdition.Negative]: '🌑 负片 (+1小丑槽位)'
+    };
+    return editionMap[edition] || '';
   }
 
   /**
