@@ -28,7 +28,6 @@ export interface GameBoardCallbacks {
   onDiscard?: () => void;
   onSortByRank?: () => void;
   onSortBySuit?: () => void;
-  onEnterShop?: () => void;
   onEndRound?: () => void;
 }
 

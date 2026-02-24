@@ -730,33 +730,6 @@ export class GameState implements GameStateInterface {
     }
   }
 
-  enterShop(): void {
-    logger.info('[GameState.enterShop] 尝试进入商店', {
-      phase: this.phase,
-      isRoundWon: this.isRoundWon(),
-      hasShop: !!this.shop
-    });
-    if (this.phase === GamePhase.PLAYING && this.isRoundWon()) {
-      this.phase = GamePhase.SHOP;
-      // 获取玩家已有的小丑牌ID，避免商店生成重复的小丑牌
-      const playerJokerIds = this.jokerSlots.getJokers().map(j => j.id);
-      const allowDuplicates = this.hasShowman();
-      if (!this.shop) {
-        logger.info('[GameState.enterShop] 创建新商店');
-        this.shop = new Shop();
-        // Shop 构造函数已调用 refresh，无需重复刷新
-      } else {
-        logger.info('[GameState.enterShop] 使用已有商店');
-      }
-      logger.info('[GameState.enterShop] 成功进入商店');
-    } else {
-      logger.warn('[GameState.enterShop] 无法进入商店', {
-        phase: this.phase,
-        isRoundWon: this.isRoundWon()
-      });
-    }
-  }
-
   /**
    * 骨头先生 (Mr. Bones) 救场后进入商店
    * 被救场算作胜利，推进盲注，但骨头先生自毁

@@ -639,7 +639,7 @@ describe('Shop Buy/Sell/Usage System', () => {
   // ==========================================
   describe('Integration Tests', () => {
     describe('GameState Integration', () => {
-      it('should create shop instance when entering shop', () => {
+      it('should create shop instance when completing blind', () => {
         expect(gameState.shop).toBeNull();
 
         // Simulate completing a blind
@@ -653,7 +653,7 @@ describe('Shop Buy/Sell/Usage System', () => {
         } as any;
         (gameState as any).roundScore = 1000; // Won the round
 
-        gameState.enterShop();
+        gameState.completeBlind();
 
         expect(gameState.shop).not.toBeNull();
         expect(gameState.phase).toBe(GamePhase.SHOP);

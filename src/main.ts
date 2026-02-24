@@ -372,7 +372,6 @@ class Game {
       onDiscard: () => this.handleDiscard(),
       onSortByRank: () => this.handleSortByRank(),
       onSortBySuit: () => this.handleSortBySuit(),
-      onEnterShop: () => this.handleEnterShop(),
       onEndRound: () => this.handleEndRound()
     });
 
@@ -380,9 +379,8 @@ class Game {
     if (this.gameState.isRoundComplete()) {
       if (this.gameState.isRoundWon()) {
         setTimeout(() => {
-          // 先调用completeBlind计算奖励，再进入商店
+          // completeBlind 已经完成了进入商店的所有工作
           this.gameState.completeBlind();
-          this.gameState.enterShop();
           this.showShop();
         }, 500);
       } else {
@@ -931,9 +929,8 @@ class Game {
     if (this.gameState.isRoundComplete()) {
       if (this.gameState.isRoundWon()) {
         setTimeout(() => {
-          // 先调用completeBlind计算奖励，再进入商店
+          // completeBlind 已经完成了进入商店的所有工作
           this.gameState.completeBlind();
-          this.gameState.enterShop();
           this.showShop();
         }, 1000);
       } else {
@@ -976,15 +973,6 @@ class Game {
   }
 
   /**
-   * 处理进入商店
-   */
-  private handleEnterShop(): void {
-    this.gameState.enterShop();
-    Storage.autoSave(this.gameState); // 修复: 进入商店后立即存档
-    this.showShop();
-  }
-
-  /**
    * 处理结束回合
    */
   private handleEndRound(): void {
@@ -993,7 +981,7 @@ class Game {
       return;
     }
 
-    // 先调用completeBlind计算奖励
+    // 先调用completeBlind计算奖励（已完成进入商店的所有工作）
     this.gameState.completeBlind();
 
     // 计算剩余出牌次数奖励
@@ -1007,7 +995,6 @@ class Game {
       'success'
     );
 
-    this.gameState.enterShop();
     Storage.autoSave(this.gameState); // 修复: 进入商店后立即存档
     this.showShop();
   }
