@@ -1,7 +1,9 @@
 import { GameState } from '../../models/GameState';
 import { Card } from '../../models/Card';
-import { Suit, Rank } from '../../types/card';
+import { Suit, Rank, CardEnhancement, SealType } from '../../types/card';
 import { CardManager, CardLocation } from '../../systems/CardManager';
+import { CardComponent } from './CardComponent';
+import { CardDetailModal } from './CardDetailModal';
 
 export class DeckOverviewModal {
   private modal: HTMLElement | null = null;
@@ -166,6 +168,10 @@ export class DeckOverviewModal {
     const discardSection = this.createLocationSection('弃牌堆', cardPile.discard.getCards(), 'discard');
     body.appendChild(discardSection);
 
+    // 图例说明
+    const legend = this.createLegend();
+    body.appendChild(legend);
+
     content.appendChild(header);
     content.appendChild(body);
     this.modal.appendChild(content);
@@ -227,34 +233,37 @@ export class DeckOverviewModal {
     // 创建带滚动条的容器
     const scrollContainer = document.createElement('div');
     scrollContainer.className = 'deck-cards-scroll';
-    scrollContainer.style.maxHeight = 'min(200px, 25vh)';
+    scrollContainer.style.maxHeight = 'min(280px, 35vh)';
     scrollContainer.style.overflowY = 'auto';
     scrollContainer.style.scrollbarWidth = 'thin';
     scrollContainer.style.scrollbarColor = 'rgba(251, 191, 36, 0.5) rgba(0, 0, 0, 0.3)';
+    scrollContainer.style.padding = '8px';
 
     const cardsGrid = document.createElement('div');
-    cardsGrid.className = 'grid grid-cols-10 gap-1';
+    cardsGrid.style.cssText = `
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: flex-start;
+    `;
 
-    // 按点数排序
+    // 按点数排序，同点数按花色排序
     const rankOrder = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
+    const suitOrder = [Suit.Spades, Suit.Hearts, Suit.Diamonds, Suit.Clubs];
     const sortedCards = [...cards].sort((a, b) => {
       const aIndex = rankOrder.indexOf(a.rank);
       const bIndex = rankOrder.indexOf(b.rank);
-      return aIndex - bIndex;
+      if (aIndex !== bIndex) return aIndex - bIndex;
+      // 同点数按花色排序
+      return suitOrder.indexOf(a.suit) - suitOrder.indexOf(b.suit);
     });
 
+    // 渲染每张卡牌
     sortedCards.forEach(card => {
-      const cardItem = document.createElement('div');
-      cardItem.className = 'bg-black/30 rounded p-1 text-center text-xs';
-
-      const suitColor = (card.suit === Suit.Hearts || card.suit === Suit.Diamonds) ? 'text-red-400' : 'text-gray-300';
-
-      cardItem.innerHTML = `
-        <div class="${suitColor}">${card.suit}</div>
-        <div class="text-white">${card.rank}</div>
-      `;
-
-      cardsGrid.appendChild(cardItem);
+      const cardElement = CardComponent.renderCompactCard(card, (clickedCard) => {
+        CardDetailModal.getInstance().show({ card: clickedCard });
+      });
+      cardsGrid.appendChild(cardElement);
     });
 
     scrollContainer.appendChild(cardsGrid);
@@ -284,5 +293,66 @@ export class DeckOverviewModal {
     }
 
     return section;
+  }
+
+  /**
+   * 创建图例说明
+   */
+  private createLegend(): HTMLElement {
+    const legend = document.createElement('div');
+    legend.className = 'mt-4 pt-4 border-t border-yellow-500/30';
+    legend.style.cssText = `
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      justify-content: center;
+      font-size: 12px;
+      padding: 12px;
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 8px;
+    `;
+
+    // 增强效果图例
+    const enhancementLegend = document.createElement('div');
+    enhancementLegend.style.cssText = 'display: flex; flex-direction: column; gap: 4px;';
+    enhancementLegend.innerHTML = `
+      <div style="color: #9ca3af; font-size: 11px; margin-bottom: 2px;">增强效果</div>
+      <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+        <span style="cursor: help;" title="奖励：计分时+30筹码">⭐</span>
+        <span style="cursor: help;" title="倍率：计分时+4倍率">✨</span>
+        <span style="cursor: help;" title="万能：可当作任意花色使用">🌈</span>
+        <span style="cursor: help;" title="玻璃：计分时x2倍率，但有1/4几率自毁">💎</span>
+        <span style="cursor: help;" title="钢铁：手持时+1.5倍率">⚙️</span>
+        <span style="cursor: help;" title="石头：固定50筹码，无点数和花色">🪨</span>
+        <span style="cursor: help;" title="黄金：回合结束时获得$3">🏆</span>
+        <span style="cursor: help;" title="幸运：计分时20%几率+20筹码，5%几率+5倍率">🍀</span>
+      </div>
+    `;
+
+    // 蜡封图例
+    const sealLegend = document.createElement('div');
+    sealLegend.style.cssText = 'display: flex; flex-direction: column; gap: 4px;';
+    sealLegend.innerHTML = `
+      <div style="color: #9ca3af; font-size: 11px; margin-bottom: 2px;">蜡封</div>
+      <div style="display: flex; gap: 6px;">
+        <span style="cursor: help;" title="金蜡封：打出时获得$3">🟡</span>
+        <span style="cursor: help;" title="红蜡封：重新触发一次卡牌效果">🔴</span>
+        <span style="cursor: help;" title="蓝蜡封：生成一张星球牌">🔵</span>
+        <span style="cursor: help;" title="紫蜡封：生成一张塔罗牌">🟣</span>
+      </div>
+    `;
+
+    // 提示文字
+    const tipLegend = document.createElement('div');
+    tipLegend.style.cssText = 'display: flex; flex-direction: column; justify-content: center; color: #6b7280; font-size: 11px;';
+    tipLegend.innerHTML = `
+      <div>💡 点击卡牌查看详情</div>
+    `;
+
+    legend.appendChild(enhancementLegend);
+    legend.appendChild(sealLegend);
+    legend.appendChild(tipLegend);
+
+    return legend;
   }
 }

@@ -3,6 +3,7 @@ import { Suit, CardEnhancement, SealType, CardEdition } from '../../types/card';
 import { JokerDetailModal } from './JokerDetailModal';
 import { Joker } from '../../models/Joker';
 import { JokerRarity, JokerTrigger, JokerEdition } from '../../types/joker';
+import { CardDetailModal } from './CardDetailModal';
 
 export class CardComponent {
   private static suitSymbols: Record<Suit, string> = {
@@ -364,6 +365,134 @@ export class CardComponent {
 
     // 添加增强效果特定的CSS类
     element.classList.add(`enhancement-${enhancement.toLowerCase()}`);
+  }
+
+  /**
+   * 渲染紧凑卡牌（用于卡组概览等列表场景）
+   * @param card - 卡牌对象
+   * @param onClick - 点击回调
+   * @returns 卡牌DOM元素
+   */
+  static renderCompactCard(
+    card: Card,
+    onClick?: (card: Card) => void
+  ): HTMLElement {
+    const cardElement = document.createElement('div');
+    cardElement.className = 'compact-card';
+    cardElement.style.cssText = `
+      position: relative;
+      width: 60px;
+      height: 84px;
+      background: linear-gradient(145deg, #ffffff 0%, #f0f0f0 100%);
+      border: 2px solid #d4af37;
+      border-radius: 6px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+      user-select: none;
+      flex-shrink: 0;
+    `;
+
+    // 应用增强效果视觉
+    this.applyEnhancementVisuals(cardElement, card.enhancement);
+
+    // 花色和点数
+    const suitColor = (card.suit === Suit.Hearts || card.suit === Suit.Diamonds)
+      ? '#e74c3c' : '#2c3e50';
+
+    // 创建内容容器
+    const contentDiv = document.createElement('div');
+    contentDiv.innerHTML = `
+      <div style="
+        font-size: 20px;
+        color: ${suitColor};
+        font-weight: bold;
+        line-height: 1;
+        text-align: center;
+      ">${this.suitSymbols[card.suit]}</div>
+      <div style="
+        font-size: 16px;
+        color: ${suitColor};
+        font-weight: bold;
+        line-height: 1;
+        margin-top: 2px;
+        text-align: center;
+      ">${card.rank}</div>
+    `;
+    cardElement.appendChild(contentDiv);
+
+    // 增强效果图标（右上角）
+    if (card.enhancement !== CardEnhancement.None) {
+      const enhancementBadge = document.createElement('div');
+      enhancementBadge.style.cssText = `
+        position: absolute;
+        top: 2px;
+        right: 2px;
+        font-size: 12px;
+        background: rgba(255, 255, 255, 0.9);
+        border-radius: 50%;
+        width: 16px;
+        height: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+      `;
+      enhancementBadge.textContent = this.enhancementIcons[card.enhancement];
+      enhancementBadge.title = this.enhancementShortNames[card.enhancement];
+      cardElement.appendChild(enhancementBadge);
+    }
+
+    // 蜡封标记（左下角）
+    if (card.seal !== SealType.None) {
+      const sealBadge = document.createElement('div');
+      sealBadge.style.cssText = `
+        position: absolute;
+        bottom: 2px;
+        left: 2px;
+        font-size: 10px;
+        background: rgba(255, 255, 255, 0.9);
+        border-radius: 50%;
+        width: 14px;
+        height: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+      `;
+      sealBadge.textContent = this.sealIcons[card.seal];
+      sealBadge.title = this.getSealName(card.seal);
+      cardElement.appendChild(sealBadge);
+    }
+
+    // 版本效果指示（顶部边框颜色变化）
+    if (card.edition !== CardEdition.None) {
+      const editionColor = this.editionColors[card.edition].border;
+      if (editionColor) {
+        cardElement.style.borderColor = editionColor;
+        cardElement.style.borderWidth = '3px';
+      }
+    }
+
+    // 悬停效果
+    cardElement.addEventListener('mouseenter', () => {
+      cardElement.style.transform = 'translateY(-4px) scale(1.05)';
+      cardElement.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.3)';
+    });
+    cardElement.addEventListener('mouseleave', () => {
+      cardElement.style.transform = 'translateY(0) scale(1)';
+      cardElement.style.boxShadow = 'none';
+    });
+
+    // 点击事件
+    if (onClick) {
+      cardElement.addEventListener('click', () => onClick(card));
+    }
+
+    return cardElement;
   }
 
   /**
