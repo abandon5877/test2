@@ -43,6 +43,45 @@ export class CardComponent {
     [CardEnhancement.Lucky]: '#2ecc71'
   };
 
+  // 增强效果边框颜色
+  private static enhancementBorderColors: Record<CardEnhancement, string> = {
+    [CardEnhancement.None]: '#d4af37',
+    [CardEnhancement.Bonus]: '#f39c12',
+    [CardEnhancement.Mult]: '#9b59b6',
+    [CardEnhancement.Wild]: '#e74c3c',
+    [CardEnhancement.Glass]: '#3498db',
+    [CardEnhancement.Steel]: '#95a5a6',
+    [CardEnhancement.Stone]: '#7f8c8d',
+    [CardEnhancement.Gold]: '#f1c40f',
+    [CardEnhancement.Lucky]: '#2ecc71'
+  };
+
+  // 增强效果背景渐变
+  private static enhancementBackgrounds: Record<CardEnhancement, string> = {
+    [CardEnhancement.None]: 'linear-gradient(145deg, #ffffff 0%, #f0f0f0 100%)',
+    [CardEnhancement.Bonus]: 'linear-gradient(145deg, #fff9e6 0%, #ffe4b3 100%)',
+    [CardEnhancement.Mult]: 'linear-gradient(145deg, #f5e6ff 0%, #e4b3ff 100%)',
+    [CardEnhancement.Wild]: 'linear-gradient(145deg, #ffe6e6 0%, #ffb3b3 100%)',
+    [CardEnhancement.Glass]: 'linear-gradient(145deg, #e6f3ff 0%, #b3d9ff 100%)',
+    [CardEnhancement.Steel]: 'linear-gradient(145deg, #f0f0f0 0%, #d0d0d0 100%)',
+    [CardEnhancement.Stone]: 'linear-gradient(145deg, #e8e8e8 0%, #c0c0c0 100%)',
+    [CardEnhancement.Gold]: 'linear-gradient(145deg, #fffbe6 0%, #ffedb3 100%)',
+    [CardEnhancement.Lucky]: 'linear-gradient(145deg, #e6fff0 0%, #b3ffd9 100%)'
+  };
+
+  // 增强效果简称
+  private static enhancementShortNames: Record<CardEnhancement, string> = {
+    [CardEnhancement.None]: '',
+    [CardEnhancement.Bonus]: '奖励',
+    [CardEnhancement.Mult]: '倍率',
+    [CardEnhancement.Wild]: '万能',
+    [CardEnhancement.Glass]: '玻璃',
+    [CardEnhancement.Steel]: '钢铁',
+    [CardEnhancement.Stone]: '石头',
+    [CardEnhancement.Gold]: '黄金',
+    [CardEnhancement.Lucky]: '幸运'
+  };
+
   private static sealIcons: Record<SealType, string> = {
     [SealType.None]: '',
     [SealType.Gold]: '🟡',
@@ -138,6 +177,9 @@ export class CardComponent {
 
     // 应用卡牌版本视觉效果
     this.applyEditionVisuals(cardElement, card.edition);
+
+    // 应用增强效果视觉效果（边框颜色和背景）
+    this.applyEnhancementVisuals(cardElement, card.enhancement);
 
     // 如果被失效，添加失效样式
     if (isDisabled) {
@@ -266,6 +308,14 @@ export class CardComponent {
     cardElement.appendChild(center);
     cardElement.appendChild(bottomCorner);
 
+    // 增强效果标签 - 放在卡牌底部
+    if (card.enhancement !== CardEnhancement.None) {
+      const enhancementLabel = document.createElement('div');
+      enhancementLabel.className = 'card-enhancement-label';
+      enhancementLabel.textContent = this.enhancementShortNames[card.enhancement];
+      cardElement.appendChild(enhancementLabel);
+    }
+
     return cardElement;
   }
 
@@ -294,6 +344,26 @@ export class CardComponent {
     } else if (edition === CardEdition.Negative) {
       element.classList.add('negative-effect');
     }
+  }
+
+  /**
+   * 应用增强效果视觉效果到卡牌元素
+   */
+  private static applyEnhancementVisuals(element: HTMLElement, enhancement: CardEnhancement): void {
+    if (enhancement === CardEnhancement.None) return;
+
+    // 应用背景渐变
+    element.style.background = this.enhancementBackgrounds[enhancement];
+
+    // 应用边框颜色（如果卡牌没有版本效果）
+    const currentBorderColor = element.style.borderColor;
+    if (!currentBorderColor || currentBorderColor === 'rgb(212, 175, 55)') {
+      element.style.borderColor = this.enhancementBorderColors[enhancement];
+      element.style.borderWidth = '3px';
+    }
+
+    // 添加增强效果特定的CSS类
+    element.classList.add(`enhancement-${enhancement.toLowerCase()}`);
   }
 
   /**

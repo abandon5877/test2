@@ -4,6 +4,8 @@ import { CardComponent } from './CardComponent';
 import { calculateOverlap, getElementWidth } from '../../utils/overlapCalculator';
 import { BossState } from '../../models/BossState';
 import { BossSystem } from '../../systems/BossSystem';
+import { LongPressHandler } from '../../utils/LongPressHandler';
+import { CardDetailModal } from './CardDetailModal';
 
 export interface HandComponentCallbacks {
   onCardSelect?: (card: Card, index: number, isSelected: boolean) => void;
@@ -28,11 +30,14 @@ export class HandComponent {
   private resizeTimeout: number | null = null;
   private lastContainerWidth: number = 0;
   private bossState: BossState | null = null;
+  private cardDetailModal: CardDetailModal;
+  private longPressCleanups: (() => void)[] = [];
 
   constructor(container: HTMLElement, hand: Hand, callbacks: HandComponentCallbacks = {}) {
     this.container = container;
     this.hand = hand;
     this.callbacks = callbacks;
+    this.cardDetailModal = CardDetailModal.getInstance();
     this.render();
     this.setupResizeListener();
   }
@@ -86,6 +91,10 @@ export class HandComponent {
    * 渲染手牌（无动画版本，用于排序等操作）
    */
   private renderWithoutAnimation(): void {
+    // 清理之前的事件绑定
+    this.longPressCleanups.forEach(cleanup => cleanup());
+    this.longPressCleanups = [];
+
     this.container.innerHTML = '';
     this.cardElements = [];
 
@@ -158,7 +167,11 @@ export class HandComponent {
       firstCardElement.style.zIndex = '0';
       firstCardElement.style.transition = 'none';
       this.setCardVisualState(firstCardElement, 0, isFirstSelected, totalCards);
-      firstCardElement.addEventListener('click', () => this.handleCardClick(0));
+
+      // 绑定长按交互：长按显示详情，单击选择
+      const cleanup1 = this.bindCardInteraction(firstCardElement, firstCard, 0);
+      this.longPressCleanups.push(cleanup1);
+
       this.cardElements.push(firstCardElement);
 
       // 渲染剩余卡牌
@@ -167,20 +180,21 @@ export class HandComponent {
         const isSelected = selectedIndices.has(index);
         const isDisabled = this.bossState ? BossSystem.isCardDisabled(this.bossState, card) : false;
         const cardElement = CardComponent.renderCard(card, isSelected, isDisabled);
-        
+
         // 设置卡牌样式（排序时永久禁用动画）
         cardElement.style.position = 'relative';
         cardElement.style.flexShrink = '0';
         cardElement.style.marginLeft = `-${overlap}px`;
         cardElement.style.zIndex = String(index);
         cardElement.style.transition = 'none';
-        
+
         // 统一设置卡牌视觉状态
         this.setCardVisualState(cardElement, index, isSelected, totalCards);
-        
-        // 添加点击事件
-        cardElement.addEventListener('click', () => this.handleCardClick(index));
-        
+
+        // 绑定长按交互：长按显示详情，单击选择
+        const cleanup = this.bindCardInteraction(cardElement, card, index);
+        this.longPressCleanups.push(cleanup);
+
         handArea.appendChild(cardElement);
         this.cardElements.push(cardElement);
       }
@@ -222,6 +236,10 @@ export class HandComponent {
    * 手牌重叠范围根据中间区域宽度动态调整，避免越界
    */
   render(): void {
+    // 清理之前的事件绑定
+    this.longPressCleanups.forEach(cleanup => cleanup());
+    this.longPressCleanups = [];
+
     this.container.innerHTML = '';
     this.cardElements = [];
 
@@ -296,7 +314,11 @@ export class HandComponent {
       firstCardElement.style.zIndex = '0';
       firstCardElement.style.transition = 'none';
       this.setCardVisualState(firstCardElement, 0, isFirstSelected, totalCards);
-      firstCardElement.addEventListener('click', () => this.handleCardClick(0));
+
+      // 绑定长按交互：长按显示详情，单击选择
+      const cleanup1 = this.bindCardInteraction(firstCardElement, firstCard, 0);
+      this.longPressCleanups.push(cleanup1);
+
       this.cardElements.push(firstCardElement);
 
       // 渲染剩余卡牌
@@ -305,20 +327,21 @@ export class HandComponent {
         const isSelected = selectedIndices.has(index);
         const isDisabled = this.bossState ? BossSystem.isCardDisabled(this.bossState, card) : false;
         const cardElement = CardComponent.renderCard(card, isSelected, isDisabled);
-        
+
         // 设置卡牌样式（初始禁用动画）
         cardElement.style.position = 'relative';
         cardElement.style.flexShrink = '0';
         cardElement.style.marginLeft = `-${overlap}px`;
         cardElement.style.zIndex = String(index);
         cardElement.style.transition = 'none';
-        
+
         // 统一设置卡牌视觉状态
         this.setCardVisualState(cardElement, index, isSelected, totalCards);
-        
-        // 添加点击事件
-        cardElement.addEventListener('click', () => this.handleCardClick(index));
-        
+
+        // 绑定长按交互：长按显示详情，单击选择
+        const cleanup = this.bindCardInteraction(cardElement, card, index);
+        this.longPressCleanups.push(cleanup);
+
         handArea.appendChild(cardElement);
         this.cardElements.push(cardElement);
       }
@@ -542,5 +565,31 @@ export class HandComponent {
       clearTimeout(this.resizeTimeout);
       this.resizeTimeout = null;
     }
+
+    // 清理长按事件绑定
+    this.longPressCleanups.forEach(cleanup => cleanup());
+    this.longPressCleanups = [];
+  }
+
+  /**
+   * 绑定卡牌交互事件
+   * 长按显示详情，单击选择/取消选择
+   */
+  private bindCardInteraction(
+    cardElement: HTMLElement,
+    card: Card,
+    index: number
+  ): () => void {
+    return LongPressHandler.bind(
+      cardElement,
+      () => {
+        // 长按显示详情
+        this.cardDetailModal.show({ card });
+      },
+      () => {
+        // 单击切换选择
+        this.handleCardClick(index);
+      }
+    );
   }
 }
