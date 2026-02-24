@@ -384,6 +384,12 @@ export class GameState implements GameStateInterface {
       this.roundStats.highestHandScore = scoreResult.totalScore;
     }
 
+    // 处理计分时的金钱奖励（幸运牌、金牌蜡封、小丑牌等）
+    if (scoreResult.moneyBonus && scoreResult.moneyBonus > 0) {
+      this.money += scoreResult.moneyBonus;
+      logger.info('计分金钱奖励', { moneyBonus: scoreResult.moneyBonus, newMoney: this.money });
+    }
+
     // 处理DNA效果：复制计分牌到卡组
     if (scoreResult.copyScoredCardToDeck && scoreResult.scoringCards.length > 0) {
       const cardToCopy = scoreResult.scoringCards[0];
