@@ -672,12 +672,16 @@ export class GameState implements GameStateInterface {
     this.currentBlind = null;
 
     // 在进入商店前刷新商店商品（新轮次）
+    // 获取玩家已有的小丑牌ID，避免商店生成重复的小丑牌
+    const playerJokerIds = this.jokerSlots.getJokers().map(j => j.id);
     if (this.shop) {
       logger.info('[GameState.completeBlind] 进入新商店轮次，刷新商店商品');
-      this.shop.enterNewShop();
+      this.shop.enterNewShop(playerJokerIds);
     } else {
       logger.info('[GameState.completeBlind] 创建新商店');
       this.shop = new Shop();
+      // 新创建的商店需要刷新以应用玩家小丑牌过滤
+      this.shop.refresh(playerJokerIds);
     }
 
     this.phase = GamePhase.SHOP;
@@ -714,9 +718,13 @@ export class GameState implements GameStateInterface {
     });
     if (this.phase === GamePhase.PLAYING && this.isRoundWon()) {
       this.phase = GamePhase.SHOP;
+      // 获取玩家已有的小丑牌ID，避免商店生成重复的小丑牌
+      const playerJokerIds = this.jokerSlots.getJokers().map(j => j.id);
       if (!this.shop) {
         logger.info('[GameState.enterShop] 创建新商店');
         this.shop = new Shop();
+        // 新创建的商店需要刷新以应用玩家小丑牌过滤
+        this.shop.refresh(playerJokerIds);
       } else {
         logger.info('[GameState.enterShop] 使用已有商店');
       }
@@ -802,8 +810,9 @@ export class GameState implements GameStateInterface {
       this.money -= currentRerollCost;
     }
 
-    // 执行刷新
-    this.shop.rerollShop();
+    // 执行刷新，传入玩家已有的小丑牌ID避免生成重复
+    const playerJokerIds = this.jokerSlots.getJokers().map(j => j.id);
+    this.shop.rerollShop(playerJokerIds);
 
     logger.info('Shop rerolled', {
       freeReroll: isFreeReroll,
@@ -1161,7 +1170,9 @@ export class GameState implements GameStateInterface {
 
   applyVoucher(voucherId: string): void {
     if (this.shop) {
-      this.shop.applyVoucher(voucherId);
+      // 传入玩家已有的小丑牌ID，避免商店生成重复的小丑牌
+      const playerJokerIds = this.jokerSlots.getJokers().map(j => j.id);
+      this.shop.applyVoucher(voucherId, playerJokerIds);
     }
 
     switch (voucherId) {

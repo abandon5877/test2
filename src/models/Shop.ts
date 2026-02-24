@@ -73,11 +73,12 @@ export class Shop {
     logger.info('[Shop] 构造函数完成，商品数量:', this.items.length);
   }
 
-  refresh(): void {
+  refresh(playerJokerIds: string[] = []): void {
     logger.info('[Shop.refresh] 开始刷新商店', {
       isFirstShopVisit: this.isFirstShopVisit,
       baseRerollCost: this.baseRerollCost,
-      rerollCount: this.rerollCount
+      rerollCount: this.rerollCount,
+      playerJokerCount: playerJokerIds.length
     });
 
     this.items = [];
@@ -86,7 +87,7 @@ export class Shop {
 
     // 2张随机卡片
     logger.info('[Shop.refresh] 生成2张随机卡片');
-    this.generateRandomCards(2);
+    this.generateRandomCards(2, playerJokerIds);
 
     // 2个补充包
     if (this.isFirstShopVisit) {
@@ -117,19 +118,20 @@ export class Shop {
     });
   }
 
-  enterNewShop(): void {
-    logger.info('[Shop.enterNewShop] 进入新商店');
+  enterNewShop(playerJokerIds: string[] = []): void {
+    logger.info('[Shop.enterNewShop] 进入新商店', { playerJokerCount: playerJokerIds.length });
     this.rerollCount = 0;
     this.rerollCost = this.baseRerollCost;
-    this.refresh();
+    this.refresh(playerJokerIds);
     this.isFirstShopVisit = true;
     logger.info('[Shop.enterNewShop] 完成');
   }
 
-  rerollShop(): void {
+  rerollShop(playerJokerIds: string[] = []): void {
     logger.info('[Shop.rerollShop] 开始刷新商店', {
       currentRerollCount: this.rerollCount,
-      baseRerollCost: this.baseRerollCost
+      baseRerollCost: this.baseRerollCost,
+      playerJokerCount: playerJokerIds.length
     });
 
     const packsAndVouchers = this.items.filter(item =>
@@ -146,7 +148,7 @@ export class Shop {
     this.itemIdCounter = 0;
     logger.info('[Shop.rerollShop] 清空商品，itemIdCounter重置为0');
 
-    this.generateRandomCards(2);
+    this.generateRandomCards(2, playerJokerIds);
 
     for (const item of packsAndVouchers) {
       if (!item.sold) {
@@ -164,13 +166,14 @@ export class Shop {
     });
   }
 
-  private generateRandomCards(count: number): void {
+  private generateRandomCards(count: number, playerJokerIds: string[] = []): void {
     const weights = this.calculateItemWeights();
     const totalWeight = weights.joker + weights.tarot + weights.planet + weights.playingCard;
-    logger.info('[Shop.generateRandomCards] 生成随机卡片', { count, weights, totalWeight });
+    logger.info('[Shop.generateRandomCards] 生成随机卡片', { count, weights, totalWeight, playerJokerCount: playerJokerIds.length });
 
-    // 获取当前商店中已有的小丑牌ID
-    const existingJokerIds = this.getJokers().map(item => (item.item as Joker).id);
+    // 获取当前商店中已有的小丑牌ID，并合并玩家已有的小丑牌ID
+    const shopJokerIds = this.getJokers().map(item => (item.item as Joker).id);
+    const existingJokerIds = [...new Set([...shopJokerIds, ...playerJokerIds])];
 
     for (let i = 0; i < count; i++) {
       const rand = Math.random() * totalWeight;
@@ -425,7 +428,7 @@ export class Shop {
     };
   }
 
-  applyVoucher(voucherId: string): void {
+  applyVoucher(voucherId: string, playerJokerIds: string[] = []): void {
     logger.info(`[Shop.applyVoucher] 应用优惠券:`, voucherId);
     if (!this.vouchersUsed.includes(voucherId)) {
       this.vouchersUsed.push(voucherId);
@@ -435,11 +438,11 @@ export class Shop {
     const oldBaseRerollCost = this.baseRerollCost;
     switch (voucherId) {
       case 'voucher_overstock':
-        this.addExtraSlot();
+        this.addExtraSlot(playerJokerIds);
         break;
       case 'voucher_overstock_plus':
-        this.addExtraSlot();
-        this.addExtraSlot();
+        this.addExtraSlot(playerJokerIds);
+        this.addExtraSlot(playerJokerIds);
         this.refreshItemPrices();
         break;
       case 'voucher_clearance':
@@ -482,9 +485,10 @@ export class Shop {
     return [...this.vouchersUsed];
   }
 
-  private addExtraSlot(): void {
-    // 获取当前商店中已有的小丑牌ID
-    const existingJokerIds = this.getJokers().map(item => (item.item as Joker).id);
+  private addExtraSlot(playerJokerIds: string[] = []): void {
+    // 获取当前商店中已有的小丑牌ID，并合并玩家已有的小丑牌ID
+    const shopJokerIds = this.getJokers().map(item => (item.item as Joker).id);
+    const existingJokerIds = [...new Set([...shopJokerIds, ...playerJokerIds])];
 
     if (Math.random() < 0.5) {
       const joker = getRandomJokers(1, this.vouchersUsed, existingJokerIds)[0];
