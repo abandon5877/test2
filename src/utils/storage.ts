@@ -561,6 +561,18 @@ export class Storage {
       }
     }
 
+    // 修复: 如果回合已完成但phase仍为PLAYING，修正为SHOP
+    // 这防止从商店存档恢复时闪一下游戏板界面
+    if (gameState.phase === GamePhase.PLAYING && gameState.isRoundComplete() && gameState.isRoundWon()) {
+      logger.info('[Storage.restoreGameState] 回合已完成，修正phase从PLAYING到SHOP');
+      gameState.phase = GamePhase.SHOP;
+      // 确保商店存在
+      if (!gameState.shop) {
+        logger.info('[Storage.restoreGameState] 创建新商店');
+        gameState.shop = new Shop();
+      }
+    }
+
     return gameState;
   }
 

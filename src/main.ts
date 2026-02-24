@@ -756,6 +756,7 @@ class Game {
    */
   private handleBlindSelect(blindType: BlindType): void {
     if (this.gameState.selectBlind(blindType)) {
+      Storage.autoSave(this.gameState); // 修复: 选择关卡后立即存档
       this.showGameBoard();
     } else {
       showAlert('错误', '选择关卡失败', 'error');
@@ -849,6 +850,7 @@ class Game {
    */
   private handleEnterShop(): void {
     this.gameState.enterShop();
+    Storage.autoSave(this.gameState); // 修复: 进入商店后立即存档
     this.showShop();
   }
 
@@ -876,6 +878,7 @@ class Game {
     );
 
     this.gameState.enterShop();
+    Storage.autoSave(this.gameState); // 修复: 进入商店后立即存档
     this.showShop();
   }
 
@@ -898,6 +901,7 @@ class Game {
    */
   private handleNextRound(): void {
     this.gameState.exitShop();
+    Storage.autoSave(this.gameState); // 修复: 退出商店后立即存档
     this.showBlindSelect();
   }
 
