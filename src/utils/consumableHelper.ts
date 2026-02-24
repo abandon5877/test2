@@ -215,6 +215,9 @@ export class ConsumableHelper {
       // 处理结果
       this.handleResult(result, consumable.id, consumable.type);
 
+      // 修复: 先移除使用的消耗牌，释放槽位，再添加新生成的消耗牌
+      this.gameState.removeConsumable(index);
+
       // 处理新生成的消耗牌
       if (result.newConsumableIds && result.newConsumableIds.length > 0) {
         const { addedCount, skippedCount } = this.handleNewConsumables(result.newConsumableIds);
@@ -252,9 +255,6 @@ export class ConsumableHelper {
           }
         }
       }
-
-      // 从消耗牌槽中移除
-      this.gameState.removeConsumable(index);
 
       // 显示成功消息
       if (result.message && (!result.newConsumableIds || result.newConsumableIds.length === 0) && !result.copiedConsumableId) {
