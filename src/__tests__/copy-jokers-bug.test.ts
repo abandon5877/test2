@@ -7,6 +7,7 @@ import { getJokerById } from '../data/jokers';
 import { PokerHandType } from '../types/pokerHands';
 import { CopyEffectHelper } from '../systems/CopyEffectHelper';
 import { Joker } from '../models/Joker';
+import { JokerSystem } from '../systems/JokerSystem';
 
 describe('复制类小丑牌重复计算问题检查', () => {
   describe('蓝图 (Blueprint)', () => {
@@ -213,6 +214,143 @@ describe('复制类小丑牌重复计算问题检查', () => {
       const target = CopyEffectHelper.getBrainstormTarget(1, jokers);
 
       expect(target).toBeNull();
+    });
+  });
+
+  describe('蓝图+DNA组合测试', () => {
+    it('蓝图复制DNA时应该正确触发copyScoredCardToDeck效果', () => {
+      const jokerSlots = new JokerSlots(5);
+      const blueprint = getJokerById('blueprint')!;
+      const dna = getJokerById('dna')!;
+
+      // 顺序：蓝图(左), DNA(右)
+      jokerSlots.addJoker(blueprint);
+      jokerSlots.addJoker(dna);
+
+      // 第一手只出一张K
+      const cards = [
+        new Card(Suit.Spades, Rank.King),
+      ];
+
+      const result = JokerSystem.processHandPlayed(
+        jokerSlots,
+        cards,
+        PokerHandType.HighCard,
+        5, // currentChips
+        1, // currentMult
+        undefined, // gameState
+        0, // handsPlayed = 0 (第一手)
+        undefined, // discardsUsed
+        undefined, // deckSize
+        undefined, // initialDeckSize
+        undefined, // handsRemaining
+        undefined, // mostPlayedHand
+        undefined, // consumableSlots
+        undefined, // handTypeHistoryCount
+        false, // isPreview
+        cards // playedCards
+      );
+
+      console.log('蓝图+DNA测试结果:', {
+        copyScoredCardToDeck: result.copyScoredCardToDeck,
+        effects: result.effects
+      });
+
+      // 蓝图复制DNA的效果，应该触发copyScoredCardToDeck
+      expect(result.copyScoredCardToDeck).toBe(true);
+
+      // 应该有两个效果：DNA自己的 + 蓝图复制的
+      const dnaEffects = result.effects.filter(e => e.effect.includes('DNA'));
+      expect(dnaEffects.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('蓝图在最右侧时不应复制DNA（因为没有右侧小丑）', () => {
+      const jokerSlots = new JokerSlots(5);
+      const jolly = getJokerById('jolly_joker')!; // 开心小丑，对子时+8倍率
+      const blueprint = getJokerById('blueprint')!;
+
+      // 顺序：开心小丑(左), 蓝图(右)
+      jokerSlots.addJoker(jolly);
+      jokerSlots.addJoker(blueprint);
+
+      // 出对子，应该只有开心小丑自己的效果，没有复制效果
+      const cards = [
+        new Card(Suit.Spades, Rank.Ace),
+        new Card(Suit.Hearts, Rank.Ace),
+      ];
+
+      const result = JokerSystem.processHandPlayed(
+        jokerSlots,
+        cards,
+        PokerHandType.OnePair,
+        5,
+        1,
+        undefined,
+        0,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        false,
+        cards
+      );
+
+      // 蓝图在最右侧，没有右侧小丑可复制
+      // 开心小丑的效果不应该触发copyScoredCardToDeck
+      expect(result.copyScoredCardToDeck).toBeFalsy();
+
+      // 应该只有开心小丑自己的效果，没有蓝图的复制效果
+      const blueprintEffects = result.effects.filter(e => e.jokerName === '蓝图');
+      expect(blueprintEffects.length).toBe(0);
+
+      // 开心小丑应该有一个效果
+      const jollyEffects = result.effects.filter(e => e.jokerName === '开心小丑');
+      expect(jollyEffects.length).toBe(1);
+    });
+
+    it('头脑风暴复制DNA时也应该正确触发copyScoredCardToDeck效果', () => {
+      const jokerSlots = new JokerSlots(5);
+      const dna = getJokerById('dna')!;
+      const brainstorm = getJokerById('brainstorm')!;
+
+      // 顺序：DNA(左), 头脑风暴(右)
+      jokerSlots.addJoker(dna);
+      jokerSlots.addJoker(brainstorm);
+
+      // 第一手只出一张K
+      const cards = [
+        new Card(Suit.Spades, Rank.King),
+      ];
+
+      const result = JokerSystem.processHandPlayed(
+        jokerSlots,
+        cards,
+        PokerHandType.HighCard,
+        5,
+        1,
+        undefined,
+        0, // handsPlayed = 0
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        false,
+        cards
+      );
+
+      console.log('头脑风暴+DNA测试结果:', {
+        copyScoredCardToDeck: result.copyScoredCardToDeck,
+        effects: result.effects
+      });
+
+      // 头脑风暴复制DNA的效果，应该触发copyScoredCardToDeck
+      expect(result.copyScoredCardToDeck).toBe(true);
     });
   });
 });

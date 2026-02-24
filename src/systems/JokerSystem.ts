@@ -517,6 +517,7 @@ export class JokerSystem {
     if (result.freeReroll) accumulator.freeReroll = true;
     if (result.discardReset) accumulator.discardReset = true;
     if (result.heldCardRetrigger) accumulator.heldCardRetrigger = true;
+    if (result.copyScoredCardToDeck) accumulator.copyScoredCardToDeck = true;
 
     // 处理特殊效果
     if (result.copiedConsumableId) accumulator.copiedConsumableIds.push(result.copiedConsumableId);
@@ -607,6 +608,7 @@ export class JokerSystem {
     if (result.freeReroll) accumulator.freeReroll = true;
     if (result.discardReset) accumulator.discardReset = true;
     if (result.heldCardRetrigger) accumulator.heldCardRetrigger = true;
+    if (result.copyScoredCardToDeck) accumulator.copyScoredCardToDeck = true;
 
     // 处理特殊效果
     if (result.copiedConsumableId) accumulator.copiedConsumableIds.push(result.copiedConsumableId);
@@ -786,6 +788,7 @@ export class JokerSystem {
       multBonus: accumulator.multBonus,
       multMultiplier: accumulator.multMultiplier,
       moneyBonus: accumulator.moneyBonus,
+      copyScoredCardToDeck: accumulator.copyScoredCardToDeck,
       effects: accumulator.effects
     };
   }
