@@ -77,15 +77,15 @@ export class SealSystem {
   ): {
     totalMoneyBonus: number;
     retriggerCards: Map<Card, number>;
-    shouldGeneratePlanet: boolean;
     planetHandType?: PokerHandType;
-    shouldGenerateTarot: boolean;
+    tarotCount: number; // 紫色蜡封数量，每张生成一张塔罗牌
+    planetCount: number; // 蓝色蜡封数量，每张生成一张星球牌
   } {
     let totalMoneyBonus = 0;
     const retriggerCards = new Map<Card, number>();
-    let shouldGeneratePlanet = false;
     let planetHandType: PokerHandType | undefined;
-    let shouldGenerateTarot = false;
+    let tarotCount = 0;
+    let planetCount = 0;
 
     for (const card of cards) {
       const effects = this.calculateSealEffects(card, isPlayed, isDiscarded, lastPlayedHandType);
@@ -98,24 +98,24 @@ export class SealSystem {
         retriggerCards.set(card, effects.retriggerCount);
       }
       
-      // Blue Seal
+      // Blue Seal - 每张蓝色蜡封生成一张星球牌
       if (effects.generatePlanet) {
-        shouldGeneratePlanet = true;
+        planetCount++;
         planetHandType = effects.planetHandType;
       }
       
-      // Purple Seal
+      // Purple Seal - 每张紫色蜡封生成一张塔罗牌
       if (effects.generateTarot) {
-        shouldGenerateTarot = true;
+        tarotCount++;
       }
     }
 
     return {
       totalMoneyBonus,
       retriggerCards,
-      shouldGeneratePlanet,
       planetHandType,
-      shouldGenerateTarot
+      tarotCount,
+      planetCount
     };
   }
 
@@ -125,13 +125,13 @@ export class SealSystem {
   static getSealDescription(seal: SealType): string {
     switch (seal) {
       case SealType.Gold:
-        return '黄金蜡封: 打出并计分时+$3';
+        return '黄金蜡封: 打出并计分时获得$3';
       case SealType.Red:
-        return '红色蜡封: 触发两次';
+        return '红色蜡封: 计分时触发两次';
       case SealType.Blue:
-        return '蓝色蜡封: 回合结束生成星球牌';
+        return '蓝色蜡封: 回合结束时若在手牌中，生成一张对应最后出牌牌型的星球牌';
       case SealType.Purple:
-        return '紫色蜡封: 弃牌时生成塔罗牌';
+        return '紫色蜡封: 弃牌时生成一张随机塔罗牌';
       default:
         return '';
     }

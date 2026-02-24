@@ -1,6 +1,8 @@
 import { Consumable } from '../models/Consumable';
 import { ConsumableType, type ConsumableEffectContext, type ConsumableEffectResult } from '../types/consumable';
 import { CONSUMABLES } from './consumables/index';
+import { PLANET_CARDS } from './planetCards';
+import { PokerHandType } from '../types/pokerHands';
 import { createModuleLogger } from '../utils/logger';
 
 const logger = createModuleLogger('ConsumableDataManager');
@@ -256,6 +258,18 @@ export class ConsumableDataManager {
    */
   static getSpectralCards(): Consumable[] {
     return ConsumableDataManager.getByType(ConsumableType.SPECTRAL);
+  }
+
+  /**
+   * 根据牌型获取对应的星球牌
+   */
+  static getPlanetCardByHandType(handType: PokerHandType): Consumable | undefined {
+    ConsumableDataManager.ensureInitialized();
+    const planetInfo = PLANET_CARDS[handType];
+    if (!planetInfo) {
+      return undefined;
+    }
+    return ConsumableDataManager.getById(planetInfo.id);
   }
 
   /**

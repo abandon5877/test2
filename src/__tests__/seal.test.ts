@@ -61,7 +61,7 @@ describe('Seal System', () => {
     it('should have correct description', () => {
       const description = SealSystem.getSealDescription(SealType.Gold);
       expect(description).toContain('黄金蜡封');
-      expect(description).toContain('+$3');
+      expect(description).toContain('获得$3');
     });
   });
 
@@ -236,7 +236,7 @@ describe('Seal System', () => {
 
       const result = SealSystem.calculateSealsForCards(cards, false, true);
 
-      expect(result.shouldGenerateTarot).toBe(true);
+      expect(result.tarotCount).toBe(2); // 两张紫色蜡封应该生成2张塔罗牌
     });
 
     it('should have correct description', () => {
@@ -302,8 +302,8 @@ describe('Seal System', () => {
         false,
         PAIR_HAND_TYPE
       );
-      expect(heldResult.shouldGeneratePlanet).toBe(true);
-      expect(heldResult.shouldGenerateTarot).toBe(false);
+      expect(heldResult.planetCount).toBe(1);
+      expect(heldResult.tarotCount).toBe(0);
 
       // Purple card discarded
       const discardResult = SealSystem.calculateSealsForCards(
@@ -312,8 +312,8 @@ describe('Seal System', () => {
         true,
         PAIR_HAND_TYPE
       );
-      expect(discardResult.shouldGeneratePlanet).toBe(false); // Blue not triggered when discarded
-      expect(discardResult.shouldGenerateTarot).toBe(true);
+      expect(discardResult.planetCount).toBe(0); // Blue not triggered when discarded
+      expect(discardResult.tarotCount).toBe(1);
     });
   });
 
@@ -361,8 +361,8 @@ describe('Seal System', () => {
 
       expect(result.totalMoneyBonus).toBe(0);
       expect(result.retriggerCards.size).toBe(0);
-      expect(result.shouldGeneratePlanet).toBe(false);
-      expect(result.shouldGenerateTarot).toBe(false);
+      expect(result.planetCount).toBe(0);
+      expect(result.tarotCount).toBe(0);
     });
 
     it('should handle all seal types on different cards simultaneously', () => {
@@ -377,22 +377,22 @@ describe('Seal System', () => {
       const playedResult = SealSystem.calculateSealsForCards(cards, true, false, PAIR_HAND_TYPE);
       expect(playedResult.totalMoneyBonus).toBe(3);
       expect(playedResult.retriggerCards.size).toBe(1);
-      expect(playedResult.shouldGeneratePlanet).toBe(false);
-      expect(playedResult.shouldGenerateTarot).toBe(false);
+      expect(playedResult.planetCount).toBe(0);
+      expect(playedResult.tarotCount).toBe(0);
 
       // All discarded
       const discardedResult = SealSystem.calculateSealsForCards(cards, false, true, PAIR_HAND_TYPE);
       expect(discardedResult.totalMoneyBonus).toBe(0);
       expect(discardedResult.retriggerCards.size).toBe(1);
-      expect(discardedResult.shouldGeneratePlanet).toBe(false);
-      expect(discardedResult.shouldGenerateTarot).toBe(true);
+      expect(discardedResult.planetCount).toBe(0);
+      expect(discardedResult.tarotCount).toBe(1);
 
       // All held
       const heldResult = SealSystem.calculateSealsForCards(cards, false, false, PAIR_HAND_TYPE);
       expect(heldResult.totalMoneyBonus).toBe(0);
       expect(heldResult.retriggerCards.size).toBe(1);
-      expect(heldResult.shouldGeneratePlanet).toBe(true);
-      expect(heldResult.shouldGenerateTarot).toBe(false);
+      expect(heldResult.planetCount).toBe(1);
+      expect(heldResult.tarotCount).toBe(0);
     });
 
     it('should not double count seal effects', () => {

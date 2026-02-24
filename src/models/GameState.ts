@@ -17,6 +17,7 @@ import { BossState } from './BossState';
 import { BossSelectionSystem, BossRerollResult } from '../systems/BossSelectionSystem';
 import { BossSystem } from '../systems/BossSystem';
 import { PokerHandDetector } from '../systems/PokerHandDetector';
+import { SealSystem } from '../systems/SealSystem';
 import { initializeBlindConfigs, resetBlindConfigs } from '../data/blinds';
 import { ConsumableDataManager } from '../data/ConsumableDataManager';
 import { getConsumableById } from '../data/consumables';
@@ -59,6 +60,7 @@ export class GameState implements GameStateInterface {
   private roundStats: RoundStats;
   private playedHandTypes: Set<string> = new Set();
   private handTypeHistory: Map<string, number> = new Map(); // 牌型历史统计（用于Supernova）
+  private lastPlayedHandType: PokerHandType | null = null; // 最后打出的牌型（用于蓝色蜡封）
   private lastPlayScore: number = 0;
   private skippedBlinds: Set<string> = new Set();
   private currentBlindPosition: BlindType = BlindType.SMALL_BLIND;
@@ -74,6 +76,7 @@ export class GameState implements GameStateInterface {
   private extraHandSizeFromVouchers: number = 0;
   private extraHandsFromVouchers: number = 0;
   private extraDiscardsFromVouchers: number = 0;
+  private anteDownFromVouchers: number = 0; // 象形文字优惠券减少的底注
   lastUsedConsumable: { id: string; type: ConsumableType } | null = null;
   isEndlessMode: boolean = false; // 无尽模式标志
 
@@ -105,6 +108,7 @@ export class GameState implements GameStateInterface {
     this.handLevelState = new HandLevelState();
     this.roundStats = this.createEmptyRoundStats();
     this.playedHandTypes.clear();
+    this.lastPlayedHandType = null;
     this.lastPlayScore = 0;
     this.skippedBlinds.clear();
     this.currentBlindPosition = BlindType.SMALL_BLIND;
@@ -117,6 +121,7 @@ export class GameState implements GameStateInterface {
     this.extraHandSizeFromVouchers = 0;
     this.extraHandsFromVouchers = 0;
     this.extraDiscardsFromVouchers = 0;
+    this.anteDownFromVouchers = 0;
     // 重置后再初始化CardPile和计算剩余次数
     this.cardPile = new CardPile(this.getMaxHandSize());
     this.cardPile.deck.shuffle();
@@ -165,9 +170,10 @@ export class GameState implements GameStateInterface {
       return false;
     }
 
-    const blind = Blind.create(this.ante, blindType);
+    const effectiveAnte = this.getAnte();
+    const blind = Blind.create(effectiveAnte, blindType);
     if (!blind) {
-      logger.error('Failed to create blind', { ante: this.ante, blindType });
+      logger.error('Failed to create blind', { ante: effectiveAnte, blindType });
       return false;
     }
 
@@ -193,6 +199,7 @@ export class GameState implements GameStateInterface {
     this.discardsRemaining = this.getMaxDiscardsPerRound();
     this.roundStats = this.createEmptyRoundStats();
     this.playedHandTypes.clear();
+    this.lastPlayedHandType = null;
 
     // 处理证书 (Certificate) 效果：回合开始前将带印章的牌放入牌库顶部
     // 这样发牌时就能抽到手牌中
@@ -243,7 +250,8 @@ export class GameState implements GameStateInterface {
       return false;
     }
 
-    const blindToSkip = Blind.create(this.ante, this.currentBlindPosition);
+    const effectiveAnte = this.getAnte();
+    const blindToSkip = Blind.create(effectiveAnte, this.currentBlindPosition);
 
     if (!blindToSkip) {
       logger.error('Failed to create blind to skip');
@@ -255,7 +263,7 @@ export class GameState implements GameStateInterface {
       return false;
     }
 
-    const skipKey = `${this.ante}-${blindToSkip.type}`;
+    const skipKey = `${effectiveAnte}-${blindToSkip.type}`;
     if (this.skippedBlinds.has(skipKey)) {
       logger.warn('Cannot skip blind: already skipped this blind');
       return false;
@@ -404,6 +412,8 @@ export class GameState implements GameStateInterface {
     const scoreResult = ScoringSystem.calculate(selectedCards, undefined, gameState, heldCards, this.jokerSlots, currentTotalCards, initialDeckSize, handsPlayed, discardsUsed, handsRemaining, mostPlayedHand, handTypeHistoryCount, false, this.handLevelState, this.bossState);
 
     this.playedHandTypes.add(scoreResult.handType);
+    // 更新最后打出的牌型（用于蓝色蜡封）
+    this.lastPlayedHandType = scoreResult.handType as PokerHandType;
     // 更新牌型历史统计（用于Supernova）
     const currentCount = this.handTypeHistory.get(scoreResult.handType) || 0;
     this.handTypeHistory.set(scoreResult.handType, currentCount + 1);
@@ -581,6 +591,19 @@ export class GameState implements GameStateInterface {
       }
     }
 
+    // 处理紫色蜡封：弃牌时生成塔罗牌（每张紫色蜡封生成一张）
+    const sealEffects = SealSystem.calculateSealsForCards(discardedCards, false, true);
+    for (let i = 0; i < sealEffects.tarotCount; i++) {
+      const tarotCard = ConsumableDataManager.getRandomByType(ConsumableType.TAROT);
+      if (this.consumableSlots.hasAvailableSlot()) {
+        this.consumableSlots.addConsumable(tarotCard);
+        logger.info('紫色蜡封效果：生成塔罗牌', { tarotCard: tarotCard.name, index: i + 1, total: sealEffects.tarotCount });
+      } else {
+        logger.info('紫色蜡封效果：消耗品槽位已满，无法生成塔罗牌', { index: i + 1, total: sealEffects.tarotCount });
+        break;
+      }
+    }
+
     // 抽牌 - 考虑蛇Boss限制
     const currentBoss = this.bossState.getCurrentBoss();
     if (currentBoss === BossType.SERPENT) {
@@ -748,6 +771,26 @@ export class GameState implements GameStateInterface {
       totalMoney: this.money,
       ante: this.ante
     });
+
+    // 处理蓝色蜡封：回合结束时如果留在手牌中，生成对应最后出牌牌型的星球牌（每张蓝色蜡封生成一张）
+    if (this.lastPlayedHandType) {
+      const handCards = this.cardPile.hand.getCards();
+      const sealEffects = SealSystem.calculateSealsForCards(handCards, false, false, this.lastPlayedHandType);
+      for (let i = 0; i < sealEffects.planetCount; i++) {
+        if (sealEffects.planetHandType) {
+          const planetCard = ConsumableDataManager.getPlanetCardByHandType(sealEffects.planetHandType);
+          if (planetCard) {
+            if (this.consumableSlots.hasAvailableSlot()) {
+              this.consumableSlots.addConsumable(planetCard);
+              logger.info('蓝色蜡封效果：生成星球牌', { planetCard: planetCard.name, handType: sealEffects.planetHandType, index: i + 1, total: sealEffects.planetCount });
+            } else {
+              logger.info('蓝色蜡封效果：消耗品槽位已满，无法生成星球牌', { index: i + 1, total: sealEffects.planetCount });
+              break;
+            }
+          }
+        }
+      }
+    }
 
     this.cardPile.returnToDeckAndShuffle();
 
@@ -1163,7 +1206,8 @@ export class GameState implements GameStateInterface {
   }
 
   getAnte(): number {
-    return this.ante;
+    // 考虑象形文字优惠券的底注减少效果，最小为1
+    return Math.max(1, this.ante - this.anteDownFromVouchers);
   }
 
   getPhase(): GamePhase {
@@ -1396,6 +1440,7 @@ export class GameState implements GameStateInterface {
       this.discardsRemaining = this.getMaxDiscardsPerRound();
       this.roundStats = this.createEmptyRoundStats();
       this.playedHandTypes.clear();
+      this.lastPlayedHandType = null;
       this.dealInitialHand();
     }
   }
@@ -1442,6 +1487,20 @@ export class GameState implements GameStateInterface {
         // 导演剪辑版+：设置无限重掷
         this.bossSelectionState.setUnlimitedRerolls(true);
         logger.info('Retcon voucher applied: unlimited boss rerolls enabled');
+        break;
+      case 'voucher_hieroglyph':
+        // 象形文字：底注-1，每回合出牌次数-1
+        this.anteDownFromVouchers += 1;
+        this.extraHandsFromVouchers -= 1;
+        this.handsRemaining = this.getMaxHandsPerRound();
+        logger.info('Hieroglyph voucher applied: ante -1, hands per round -1');
+        break;
+      case 'voucher_petroglyph':
+        // 象形文字+：底注-1，每回合弃牌次数-1
+        this.anteDownFromVouchers += 1;
+        this.extraDiscardsFromVouchers -= 1;
+        this.discardsRemaining = this.getMaxDiscardsPerRound();
+        logger.info('Petroglyph voucher applied: ante -1, discards per round -1');
         break;
     }
   }
