@@ -351,7 +351,8 @@ describe('复制类小丑牌重复计算问题检查', () => {
       });
 
       // 头脑风暴复制DNA的效果，应该触发copyScoredCardToDeck
-      expect(result.copyScoredCardToDeck).toBe(true);
+      // 修复：copyScoredCardToDeck 现在是数字，DNA本身触发一次 + 头脑风暴复制触发一次 = 2次
+      expect(result.copyScoredCardToDeck).toBe(2);
     });
   });
 });

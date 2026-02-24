@@ -8,7 +8,7 @@ import { Suit, Rank } from '../types/card';
 describe('ON_INDEPENDENT 小丑牌测试 - 空heldCards时也应该触发', () => {
   const independentJokers = [
     { id: 'stuntman', name: '特技演员', expectedChipBonus: 250 },
-    { id: 'mime', name: '默剧演员', expectedHeldCardRetrigger: true },
+    { id: 'mime', name: '默剧演员', expectedHeldCardRetrigger: 1 }, // 修复：改为数字
     { id: 'credit_card', name: '信用卡', expectedDebtLimit: -20 },
     { id: 'pareidolia', name: '幻想性错觉', expectedAllCardsAreFace: true },
     { id: 'juggler', name: '杂耍者', expectedHandSizeBonus: 1 },

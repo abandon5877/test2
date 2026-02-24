@@ -330,8 +330,8 @@ export class ScoringSystem {
     let glassMultMultiplier = 1;
     // 蜡封金币奖励累加器
     let sealMoneyBonus = 0;
-    // 哑剧演员效果：手牌能力触发2次
-    let heldCardRetrigger = false;
+    // 哑剧演员效果：手牌能力触发次数（修复：改为数字，支持蓝图+默剧演员）
+    let heldCardRetrigger: number | undefined = undefined;
 
     for (let i = 0; i < handResult.scoringCards.length; i++) {
       const card = handResult.scoringCards[i];
@@ -582,7 +582,10 @@ export class ScoringSystem {
       let heldChipBonus = independentResult.chipBonus;
       let heldMultBonus = independentResult.multBonus;
       let heldMultMultiplier = independentResult.multMultiplier;
-      heldCardRetrigger = independentResult.heldCardRetrigger;
+      // 修复：累加触发次数
+      if (independentResult.heldCardRetrigger) {
+        heldCardRetrigger = (heldCardRetrigger || 0) + independentResult.heldCardRetrigger;
+      }
       jokerEffects.push(...independentResult.effects);
 
       // 修复: 处理手牌中的小丑牌效果（ON_HELD触发器，如高举拳头）
@@ -592,7 +595,10 @@ export class ScoringSystem {
         heldChipBonus += heldResult.chipBonus;
         heldMultBonus += heldResult.multBonus;
         heldMultMultiplier *= heldResult.multMultiplier;
-        heldCardRetrigger = heldCardRetrigger || heldResult.heldCardRetrigger;
+        // 修复：累加触发次数
+        if (heldResult.heldCardRetrigger) {
+          heldCardRetrigger = (heldCardRetrigger || 0) + heldResult.heldCardRetrigger;
+        }
         jokerEffects.push(...heldResult.effects);
       }
 
@@ -638,10 +644,11 @@ export class ScoringSystem {
     }
 
     // 修复3: 应用手持卡牌倍率乘数（Steel效果）
-    // 如果哑剧演员效果激活，Steel效果触发两次
-    if (heldCardRetrigger && steelCardCount > 0) {
-      // 哑剧演员效果：Steel卡效果触发两次
-      heldMultMultiplier = Math.pow(1.5, steelCardCount * 2);
+    // 如果哑剧演员效果激活，Steel效果触发多次（修复：支持蓝图+默剧演员）
+    if (heldCardRetrigger && heldCardRetrigger > 0 && steelCardCount > 0) {
+      // 哑剧演员效果：每个默剧演员使Steel卡效果额外触发1次
+      // 1个默剧演员：触发2次，2个默剧演员（蓝图）：触发3次，以此类推
+      heldMultMultiplier = Math.pow(1.5, steelCardCount * (1 + heldCardRetrigger));
     }
     totalMultiplier *= heldMultMultiplier;
 

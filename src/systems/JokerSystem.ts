@@ -25,7 +25,7 @@ interface EffectAccumulator {
   handBonus: number;
   freeReroll: boolean;
   discardReset: boolean;
-  heldCardRetrigger: boolean;
+  heldCardRetrigger: number; // 修复：改为数字，记录触发次数（支持蓝图+默剧演员）
   copyScoredCardToDeck: number; // 修复：改为数字，记录复制次数
   effects: JokerEffectDetail[];
   copiedConsumableIds: string[];
@@ -302,7 +302,7 @@ export class JokerSystem {
       handBonus: 0,
       freeReroll: false,
       discardReset: false,
-      heldCardRetrigger: false,
+      heldCardRetrigger: 0, // 修复：初始化为0
       copyScoredCardToDeck: 0, // 修复：初始化为0
       effects: [],
       copiedConsumableIds: []
@@ -352,7 +352,7 @@ export class JokerSystem {
     if (result.handBonus) accumulator.handBonus += result.handBonus;
     if (result.freeReroll) accumulator.freeReroll = true;
     if (result.discardReset) accumulator.discardReset = true;
-    if (result.heldCardRetrigger) accumulator.heldCardRetrigger = true;
+    if (result.heldCardRetrigger) accumulator.heldCardRetrigger += 1; // 修复：累加触发次数
     if (result.copyScoredCardToDeck) accumulator.copyScoredCardToDeck += 1; // 修复：累加复制次数
 
     // 处理特殊效果
@@ -424,7 +424,7 @@ export class JokerSystem {
     if (result.handBonus) accumulator.handBonus += result.handBonus;
     if (result.freeReroll) accumulator.freeReroll = true;
     if (result.discardReset) accumulator.discardReset = true;
-    if (result.heldCardRetrigger) accumulator.heldCardRetrigger = true;
+    if (result.heldCardRetrigger) accumulator.heldCardRetrigger += 1; // 修复：累加触发次数
     if (result.copyScoredCardToDeck) accumulator.copyScoredCardToDeck += 1; // 修复：累加复制次数
 
     // 处理特殊效果
@@ -516,7 +516,7 @@ export class JokerSystem {
     if (result.handBonus) accumulator.handBonus += result.handBonus;
     if (result.freeReroll) accumulator.freeReroll = true;
     if (result.discardReset) accumulator.discardReset = true;
-    if (result.heldCardRetrigger) accumulator.heldCardRetrigger = true;
+    if (result.heldCardRetrigger) accumulator.heldCardRetrigger += 1; // 修复：累加触发次数
     if (result.copyScoredCardToDeck) accumulator.copyScoredCardToDeck += 1; // 修复：累加复制次数
 
     // 处理特殊效果
@@ -607,7 +607,7 @@ export class JokerSystem {
     if (result.handBonus) accumulator.handBonus += result.handBonus;
     if (result.freeReroll) accumulator.freeReroll = true;
     if (result.discardReset) accumulator.discardReset = true;
-    if (result.heldCardRetrigger) accumulator.heldCardRetrigger = true;
+    if (result.heldCardRetrigger) accumulator.heldCardRetrigger += 1; // 修复：累加触发次数
     if (result.copyScoredCardToDeck) accumulator.copyScoredCardToDeck += 1; // 修复：累加复制次数
 
     // 处理特殊效果
@@ -1241,7 +1241,7 @@ export class JokerSystem {
     multBonus: number;
     multMultiplier: number;
     effects: JokerEffectDetail[];
-    heldCardRetrigger: boolean; // 哑剧演员效果：手牌能力触发2次
+    heldCardRetrigger: number; // 修复：改为数字，记录触发次数
   } {
     const accumulator = this.createEffectAccumulator();
     const jokers = jokerSlots.getActiveJokers();
@@ -1266,7 +1266,7 @@ export class JokerSystem {
 
       // 检查是否有heldCardRetrigger效果（哑剧演员）
       if (result.heldCardRetrigger) {
-        accumulator.heldCardRetrigger = true;
+        accumulator.heldCardRetrigger += 1; // 修复：累加触发次数
       }
 
       // 累加筹码和倍率加成
@@ -1304,7 +1304,7 @@ export class JokerSystem {
     multBonus: number;
     multMultiplier: number;
     effects: JokerEffectDetail[];
-    heldCardRetrigger: boolean; // 哑剧演员效果：手牌能力触发2次
+    heldCardRetrigger: number; // 修复：改为数字，记录触发次数
   } {
     const accumulator = this.createEffectAccumulator();
     const jokers = jokerSlots.getActiveJokers();
