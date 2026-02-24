@@ -27,6 +27,13 @@ import { setBossAssignments, getBossAssignments } from '../data/blinds';
 const logger = createModuleLogger('Storage');
 
 const SAVE_KEY = 'balatro_game_save';
+const UNLOCK_KEY = 'balatro_unlocks'; // 解锁数据持久化
+
+// 解锁数据接口
+export interface UnlockData {
+  version: string;
+  endlessModeUnlocked: boolean; // 无尽模式是否解锁
+}
 
 export interface SaveData {
   version: string;
@@ -937,3 +944,64 @@ export const getSaveInfo = (): { exists: boolean; timestamp?: number; version?: 
 export const autoSave = (gameState: GameState): void => Storage.autoSave(gameState);
 export const restoreGameState = (saveData: SaveData): GameState =>
   Storage.restore(saveData);
+
+/**
+ * 保存解锁数据（独立于游戏存档）
+ */
+export function saveUnlockData(data: UnlockData): boolean {
+  try {
+    localStorage.setItem(UNLOCK_KEY, JSON.stringify(data));
+    return true;
+  } catch (e) {
+    logger.error('[saveUnlockData] 保存解锁数据失败:', e);
+    return false;
+  }
+}
+
+/**
+ * 加载解锁数据
+ */
+export function loadUnlockData(): UnlockData {
+  try {
+    const data = localStorage.getItem(UNLOCK_KEY);
+    if (data) {
+      return JSON.parse(data);
+    }
+  } catch (e) {
+    logger.error('[loadUnlockData] 加载解锁数据失败:', e);
+  }
+  // 默认返回未解锁状态
+  return {
+    version: '1.0',
+    endlessModeUnlocked: false
+  };
+}
+
+/**
+ * 解锁无尽模式
+ */
+export function unlockEndlessMode(): boolean {
+  const data = loadUnlockData();
+  data.endlessModeUnlocked = true;
+  return saveUnlockData(data);
+}
+
+/**
+ * 检查无尽模式是否已解锁
+ */
+export function isEndlessModeUnlocked(): boolean {
+  return loadUnlockData().endlessModeUnlocked;
+}
+
+/**
+ * 删除解锁数据（完全重置）
+ */
+export function deleteUnlockData(): boolean {
+  try {
+    localStorage.removeItem(UNLOCK_KEY);
+    return true;
+  } catch (e) {
+    logger.error('[deleteUnlockData] 删除解锁数据失败:', e);
+    return false;
+  }
+}

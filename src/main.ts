@@ -10,7 +10,7 @@ import { Joker } from './models/Joker';
 import { Consumable } from './models/Consumable';
 import { Card } from './models/Card';
 import { Shop } from './models/Shop';
-import { Storage, hasSave, load, restoreGameState, deleteSave } from './utils/storage';
+import { Storage, hasSave, load, restoreGameState, deleteSave, isEndlessModeUnlocked, unlockEndlessMode } from './utils/storage';
 import { showAlert, showConfirm } from './ui/components/Modal';
 import { ScaleContainer } from './ui/components/ScaleContainer';
 import { Toast } from './ui/components/Toast';
@@ -124,6 +124,11 @@ class Game {
 
     // 开始新游戏按钮
     buttonContainer.appendChild(createButton('开始新游戏', 'game-btn-secondary', () => this.startNewGame()));
+
+    // 无尽模式按钮（如果已解锁）
+    if (isEndlessModeUnlocked()) {
+      buttonContainer.appendChild(createButton('🔥 无尽模式', 'game-btn-secondary', () => this.startEndlessMode(), true));
+    }
 
     // 规则说明按钮
     buttonContainer.appendChild(createButton('规则说明', 'game-btn-secondary', () => this.showRules()));
@@ -240,6 +245,52 @@ class Game {
       // 没有存档，直接开始
       this.doStartNewGame();
     }
+  }
+
+  /**
+   * 开始无尽模式
+   */
+  private startEndlessMode(): void {
+    // 如果有存档，先确认是否覆盖
+    if (hasSave()) {
+      showConfirm(
+        '确认开始无尽模式？',
+        '当前已有游戏存档，开始无尽模式将覆盖现有进度，此操作不可恢复。',
+        () => {
+          // 用户确认，执行无尽模式逻辑
+          this.doStartEndlessMode();
+        }
+      );
+    } else {
+      // 没有存档，直接开始
+      this.doStartEndlessMode();
+    }
+  }
+
+  /**
+   * 执行开始无尽模式
+   */
+  private doStartEndlessMode(): void {
+    // 删除旧存档
+    deleteSave();
+
+    // 创建新的游戏状态
+    this.gameState = new GameState();
+
+    // 设置无尽模式标志
+    this.gameState.isEndlessMode = true;
+
+    // 直接设置到底注9（无尽模式开始）
+    this.gameState.ante = 9;
+
+    // 初始化游戏
+    this.gameState.startNewGame();
+
+    // 自动存档
+    Storage.autoSave(this.gameState);
+
+    // 显示盲注选择界面
+    this.showBlindSelect();
   }
 
   /**
@@ -794,10 +845,17 @@ class Game {
     message.textContent = '你已完成底注8，击败了所有Boss盲注！';
     this.container.appendChild(message);
 
+    // 解锁信息
+    const unlockMessage = document.createElement('p');
+    unlockMessage.style.fontSize = 'clamp(1rem, 3vw, 1.25rem)';
+    unlockMessage.className = 'text-green-400 mb-[1vh] text-center font-bold';
+    unlockMessage.textContent = '🔓 无尽模式已解锁！';
+    this.container.appendChild(unlockMessage);
+
     // 最终得分
     const score = document.createElement('p');
     score.style.fontSize = 'clamp(1.5rem, 5vw, 2rem)';
-    score.className = 'text-yellow-400 mb-[1vh]';
+    score.className = 'text-yellow-400 mb-[4vh]';
     score.textContent = `最终得分: ${this.formatNumber(this.gameState.currentScore)}`;
     this.container.appendChild(score);
 
@@ -806,34 +864,21 @@ class Game {
     buttonContainer.style.gap = 'clamp(8px, 2vw, 16px)';
     buttonContainer.className = 'flex flex-col items-center';
 
-    // 继续无尽模式按钮
-    const endlessBtn = document.createElement('button');
-    endlessBtn.style.fontSize = 'clamp(1rem, 2.5vw, 1.125rem)';
-    endlessBtn.style.padding = 'clamp(10px, 2vh, 16px) clamp(20px, 4vw, 32px)';
-    endlessBtn.className = 'game-btn game-btn-primary mb-4';
-    endlessBtn.textContent = '🔥 进入无尽模式';
-    endlessBtn.addEventListener('click', () => this.enterEndlessMode());
-    buttonContainer.appendChild(endlessBtn);
-
-    // 新游戏按钮
-    const newGameBtn = document.createElement('button');
-    newGameBtn.style.fontSize = 'clamp(1rem, 2.5vw, 1.125rem)';
-    newGameBtn.style.padding = 'clamp(10px, 2vh, 16px) clamp(20px, 4vw, 32px)';
-    newGameBtn.className = 'game-btn game-btn-secondary';
-    newGameBtn.textContent = '再来一局';
-    newGameBtn.addEventListener('click', () => this.startNewGame());
-    buttonContainer.appendChild(newGameBtn);
+    // 确认按钮 - 返回主菜单
+    const confirmBtn = document.createElement('button');
+    confirmBtn.style.fontSize = 'clamp(1rem, 2.5vw, 1.125rem)';
+    confirmBtn.style.padding = 'clamp(10px, 2vh, 16px) clamp(20px, 4vw, 32px)';
+    confirmBtn.className = 'game-btn game-btn-primary';
+    confirmBtn.textContent = '确定';
+    confirmBtn.addEventListener('click', () => {
+      // 解锁无尽模式（持久化）
+      unlockEndlessMode();
+      // 返回主菜单
+      this.showMainMenu();
+    });
+    buttonContainer.appendChild(confirmBtn);
 
     this.container.appendChild(buttonContainer);
-  }
-
-  /**
-   * 进入无尽模式
-   */
-  private enterEndlessMode(): void {
-    this.gameState.isEndlessMode = true;
-    // 进入底注9（无尽模式开始）
-    this.showBlindSelect();
   }
 
   /**
@@ -988,8 +1033,8 @@ class Game {
     this.gameState.exitShop();
     Storage.autoSave(this.gameState); // 修复: 退出商店后立即存档
     
-    // 检查是否完成底注8（通关）
-    if (this.gameState.ante > 8 && !this.gameState.isEndlessMode) {
+    // 检查是否完成底注8（通关）- 只在非无尽模式下显示通关界面
+    if (this.gameState.ante === 8 && !this.gameState.isEndlessMode) {
       // 显示通关界面
       this.showGameComplete();
     } else {
