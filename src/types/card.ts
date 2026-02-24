@@ -28,6 +28,7 @@ export interface CardInterface {
   readonly seal: SealType;
   readonly isFaceCard: boolean;
   faceDown: boolean;
+  permanentBonus: number; // 永久筹码加成（远足者等效果）
   getChipValue(): number;
   toString(): string;
 }

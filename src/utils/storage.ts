@@ -131,6 +131,7 @@ interface SerializedCard {
   seal: SealType;
   edition: CardEdition;      // 修复存档: 保存卡牌版本
   faceDown: boolean;         // 修复存档: 保存卡牌翻面状态
+  permanentBonus?: number;   // 永久筹码加成（远足者效果）
 }
 
 interface SerializedJoker {
@@ -502,7 +503,8 @@ export class Storage {
                 cardData.enhancement,
                 cardData.seal,
                 (cardData as any).edition || 'none',      // 修复存档: 恢复卡牌版本
-                (cardData as any).faceDown ?? false       // 修复存档: 恢复卡牌翻面状态
+                (cardData as any).faceDown ?? false,      // 修复存档: 恢复卡牌翻面状态
+                (cardData as any).permanentBonus ?? 0     // 修复存档: 恢复永久筹码加成
               )
             )
         };
@@ -666,7 +668,8 @@ export class Storage {
       enhancement: card.enhancement,
       seal: card.seal,
       edition: card.edition,       // 修复存档: 保存卡牌版本
-      faceDown: card.faceDown      // 修复存档: 保存卡牌翻面状态
+      faceDown: card.faceDown,     // 修复存档: 保存卡牌翻面状态
+      permanentBonus: card.permanentBonus || undefined  // 保存永久筹码加成（如果有）
     };
   }
 

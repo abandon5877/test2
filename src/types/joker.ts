@@ -82,6 +82,8 @@ export interface JokerEffectContext {
   readonly consumables?: any[]; // 消耗牌列表（用于佩尔科）
   // Smeared_Joker相关
   readonly smearedJoker?: boolean; // 是否激活Smeared_Joker效果
+  // Pareidolia相关
+  readonly allCardsAreFace?: boolean; // 是否激活幻想性错觉效果（所有牌视为人头牌）
 }
 
 export interface JokerEffectResult {
@@ -130,6 +132,7 @@ export interface JokerEffectResult {
   readonly planetBonus?: number; // 行星牌奖励
   readonly copiedConsumableId?: string; // 复制的消耗牌ID（用于佩尔科）
   readonly copyScoredCardToDeck?: boolean; // 复制计分牌到卡组（DNA效果）
+  readonly modifyScoredCards?: { card: Card; permanentBonusDelta: number }[]; // 修改计分牌的永久加成（远足者效果）
 }
 
 // 小丑牌状态存储接口

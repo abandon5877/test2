@@ -19,6 +19,7 @@ export class Card implements CardInterface {
   seal: SealType;
   edition: CardEdition;
   faceDown: boolean;
+  permanentBonus: number; // 永久筹码加成（远足者等效果）
 
   constructor(
     suit: Suit,
@@ -26,7 +27,8 @@ export class Card implements CardInterface {
     enhancement: CardEnhancement = CardEnhancement.None,
     seal: SealType = SealType.None,
     edition: CardEdition = CardEdition.None,
-    faceDown: boolean = false
+    faceDown: boolean = false,
+    permanentBonus: number = 0
   ) {
     this.suit = suit;
     this.rank = rank;
@@ -34,6 +36,7 @@ export class Card implements CardInterface {
     this.seal = seal;
     this.edition = edition;
     this.faceDown = faceDown;
+    this.permanentBonus = permanentBonus;
   }
 
   get isFaceCard(): boolean {
@@ -64,13 +67,16 @@ export class Card implements CardInterface {
   getChipValue(): number {
     let baseValue = RANK_CHIP_VALUES[this.rank];
 
+    // 添加永久筹码加成（远足者等效果）
+    baseValue += this.permanentBonus;
+
     switch (this.enhancement) {
       // 修复: Bonus效果在ScoringSystem中统一处理，避免重复计算
       // case CardEnhancement.Bonus:
       //   baseValue += 30;
       //   break;
       case CardEnhancement.Stone:
-        return 50;
+        return 50 + this.permanentBonus; // 石头牌也包含永久加成
       default:
         break;
     }
@@ -86,7 +92,7 @@ export class Card implements CardInterface {
   }
 
   clone(): Card {
-    return new Card(this.suit, this.rank, this.enhancement, this.seal, this.edition, this.faceDown);
+    return new Card(this.suit, this.rank, this.enhancement, this.seal, this.edition, this.faceDown, this.permanentBonus);
   }
 
   /**
@@ -151,35 +157,35 @@ export class Card implements CardInterface {
    * 返回带有新增强效果的新卡牌实例
    */
   withEnhancement(enhancement: CardEnhancement): Card {
-    return new Card(this.suit, this.rank, enhancement, this.seal, this.edition, this.faceDown);
+    return new Card(this.suit, this.rank, enhancement, this.seal, this.edition, this.faceDown, this.permanentBonus);
   }
 
   /**
    * 返回带有新蜡封的新卡牌实例
    */
   withSeal(seal: SealType): Card {
-    return new Card(this.suit, this.rank, this.enhancement, seal, this.edition, this.faceDown);
+    return new Card(this.suit, this.rank, this.enhancement, seal, this.edition, this.faceDown, this.permanentBonus);
   }
 
   /**
    * 返回带有新版本的新卡牌实例
    */
   withEdition(edition: CardEdition): Card {
-    return new Card(this.suit, this.rank, this.enhancement, this.seal, edition, this.faceDown);
+    return new Card(this.suit, this.rank, this.enhancement, this.seal, edition, this.faceDown, this.permanentBonus);
   }
 
   /**
    * 返回带有新翻面状态的新卡牌实例
    */
   withFaceDown(faceDown: boolean): Card {
-    return new Card(this.suit, this.rank, this.enhancement, this.seal, this.edition, faceDown);
+    return new Card(this.suit, this.rank, this.enhancement, this.seal, this.edition, faceDown, this.permanentBonus);
   }
 
   /**
    * 返回带有新花色（用于塔罗牌改变花色效果）的新卡牌实例
    */
   withSuit(suit: Suit): Card {
-    return new Card(suit, this.rank, this.enhancement, this.seal, this.edition);
+    return new Card(suit, this.rank, this.enhancement, this.seal, this.edition, this.faceDown, this.permanentBonus);
   }
 
   /**
@@ -190,11 +196,28 @@ export class Card implements CardInterface {
   withIncreasedRank(amount: number): Card {
     const currentIndex = RANK_ORDER.indexOf(this.rank);
     if (currentIndex === -1) return this.clone();
-    
+
     const newIndex = Math.min(currentIndex + amount, RANK_ORDER.length - 1);
     const newRank = RANK_ORDER[newIndex];
-    
-    return new Card(this.suit, newRank, this.enhancement, this.seal, this.edition);
+
+    return new Card(this.suit, newRank, this.enhancement, this.seal, this.edition, this.faceDown, this.permanentBonus);
+  }
+
+  /**
+   * 增加永久筹码加成（远足者效果）
+   * @param amount 增加的筹码数量
+   */
+  addPermanentBonus(amount: number): void {
+    this.permanentBonus += amount;
+  }
+
+  /**
+   * 返回带有新增永久筹码加成的新卡牌实例
+   * @param amount 增加的筹码数量
+   * @returns 新卡牌实例
+   */
+  withAddedPermanentBonus(amount: number): Card {
+    return new Card(this.suit, this.rank, this.enhancement, this.seal, this.edition, this.faceDown, this.permanentBonus + amount);
   }
 
   /**

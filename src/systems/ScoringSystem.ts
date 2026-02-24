@@ -164,14 +164,15 @@ export class ScoringSystem {
   private static shouldRetriggerCard(
     card: Card,
     index: number,
-    retriggerEffects: { faceCards: boolean; lowCards: boolean; firstCard: boolean }
+    retriggerEffects: { faceCards: boolean; lowCards: boolean; firstCard: boolean },
+    allCardsAreFace = false
   ): boolean {
     const lowRanks = ['2', '3', '4', '5'];
 
     if (retriggerEffects.firstCard && index === 0) {
       return true;
     }
-    if (retriggerEffects.faceCards && card.isFaceCard) {
+    if (retriggerEffects.faceCards && (allCardsAreFace || card.isFaceCard)) {
       return true;
     }
     if (retriggerEffects.lowCards && lowRanks.includes(card.rank)) {
@@ -316,6 +317,9 @@ export class ScoringSystem {
     // 检查触发两次效果
     const retriggerEffects = this.checkRetriggerEffects(jokersToCheck);
 
+    // 检查幻想性错觉效果（所有牌视为人头牌）
+    const allCardsAreFace = JokerSystem.hasPareidolia(jokersToCheck);
+
     // 修复3: 累加Lucky金币效果和Glass摧毁
     let totalLuckyMoney = 0;
     const destroyedCards: Card[] = [];
@@ -426,7 +430,7 @@ export class ScoringSystem {
       }
 
       // 检查是否触发两次（小丑牌效果和Red Seal）
-      const shouldRetrigger = this.shouldRetriggerCard(card, i, retriggerEffects);
+      const shouldRetrigger = this.shouldRetriggerCard(card, i, retriggerEffects, allCardsAreFace);
       // Red Seal也触发两次
       const hasRedSeal = card.seal === SealType.Red;
       let retriggerCount = (shouldRetrigger || hasRedSeal) ? 2 : 1;
@@ -438,7 +442,7 @@ export class ScoringSystem {
         }
         if (retriggerEffects.firstCard && i === 0) {
           enhancements.push('触发两次 (悬挂票)');
-        } else if (retriggerEffects.faceCards && card.isFaceCard) {
+        } else if (retriggerEffects.faceCards && (allCardsAreFace || card.isFaceCard)) {
           enhancements.push('触发两次 (喜剧与悲剧)');
         } else if (retriggerEffects.lowCards) {
           enhancements.push('触发两次 (黑客)');

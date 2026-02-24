@@ -217,9 +217,9 @@ export class CardPile {
    * 序列化卡牌堆状态
    */
   serialize(): {
-    deck: Array<{ suit: string; rank: string; enhancement: string; seal: string; edition: string; faceDown: boolean }>;
-    hand: Array<{ suit: string; rank: string; enhancement: string; seal: string; edition: string; faceDown: boolean }>;
-    discard: Array<{ suit: string; rank: string; enhancement: string; seal: string; edition: string; faceDown: boolean }>;
+    deck: Array<{ suit: string; rank: string; enhancement: string; seal: string; edition: string; faceDown: boolean; permanentBonus?: number }>;
+    hand: Array<{ suit: string; rank: string; enhancement: string; seal: string; edition: string; faceDown: boolean; permanentBonus?: number }>;
+    discard: Array<{ suit: string; rank: string; enhancement: string; seal: string; edition: string; faceDown: boolean; permanentBonus?: number }>;
     handSelectedIndices: number[];
   } {
     const serializeCard = (card: Card) => ({
@@ -228,7 +228,8 @@ export class CardPile {
       enhancement: card.enhancement,
       seal: card.seal,
       edition: card.edition,       // 修复存档: 保存卡牌版本
-      faceDown: card.faceDown      // 修复存档: 保存卡牌翻面状态
+      faceDown: card.faceDown,     // 修复存档: 保存卡牌翻面状态
+      permanentBonus: card.permanentBonus || undefined  // 保存永久筹码加成（如果有）
     });
 
     return {
@@ -243,9 +244,9 @@ export class CardPile {
    * 反序列化恢复卡牌堆状态
    */
   deserialize(data: {
-    deck: Array<{ suit: string; rank: string; enhancement: string; seal: string; edition?: string; faceDown?: boolean }>;
-    hand: Array<{ suit: string; rank: string; enhancement: string; seal: string; edition?: string; faceDown?: boolean }>;
-    discard: Array<{ suit: string; rank: string; enhancement: string; seal: string; edition?: string; faceDown?: boolean }>;
+    deck: Array<{ suit: string; rank: string; enhancement: string; seal: string; edition?: string; faceDown?: boolean; permanentBonus?: number }>;
+    hand: Array<{ suit: string; rank: string; enhancement: string; seal: string; edition?: string; faceDown?: boolean; permanentBonus?: number }>;
+    discard: Array<{ suit: string; rank: string; enhancement: string; seal: string; edition?: string; faceDown?: boolean; permanentBonus?: number }>;
     handSelectedIndices: number[];
   }, maxHandSize: number): void {
     // 恢复牌堆
@@ -256,7 +257,8 @@ export class CardPile {
         c.enhancement as any,
         c.seal as any,
         c.edition as any || 'none',      // 修复存档: 恢复卡牌版本
-        c.faceDown ?? false               // 修复存档: 恢复卡牌翻面状态
+        c.faceDown ?? false,             // 修复存档: 恢复卡牌翻面状态
+        c.permanentBonus ?? 0            // 修复存档: 恢复永久筹码加成
       )
     );
 
@@ -269,7 +271,8 @@ export class CardPile {
         c.enhancement as any,
         c.seal as any,
         c.edition as any || 'none',      // 修复存档: 恢复卡牌版本
-        c.faceDown ?? false               // 修复存档: 恢复卡牌翻面状态
+        c.faceDown ?? false,             // 修复存档: 恢复卡牌翻面状态
+        c.permanentBonus ?? 0            // 修复存档: 恢复永久筹码加成
       )
     );
     this.hand.addCards(handCards);
@@ -287,7 +290,8 @@ export class CardPile {
         c.enhancement as any,
         c.seal as any,
         c.edition as any || 'none',      // 修复存档: 恢复卡牌版本
-        c.faceDown ?? false               // 修复存档: 恢复卡牌翻面状态
+        c.faceDown ?? false,             // 修复存档: 恢复卡牌翻面状态
+        c.permanentBonus ?? 0            // 修复存档: 恢复永久筹码加成
       )
     );
   }

@@ -114,7 +114,7 @@ export const JOKERS: Joker[] = [
     trigger: JokerTrigger.ON_SCORED,
     effect: (context: JokerEffectContext): JokerEffectResult => {
       if (!context.scoredCards) return {};
-      const faceCount = context.scoredCards.filter(card => card.isFaceCard).length;
+      const faceCount = context.scoredCards.filter(card => context.allCardsAreFace || card.isFaceCard).length;
       if (faceCount > 0) {
         return {
           chipBonus: faceCount * 30,
@@ -501,11 +501,15 @@ export const JOKERS: Joker[] = [
     effect: (context: JokerEffectContext): JokerEffectResult => {
       if (!context.scoredCards) return {};
       const cardCount = context.scoredCards.length;
-      const permanentBonus = (context as unknown as { jokerState?: { hikerBonus?: number } }).jokerState?.hikerBonus || 0;
       const addedBonus = cardCount * 5;
+      // 为每张计分牌添加永久+5筹码
+      const modifyScoredCards = context.scoredCards.map(card => ({
+        card,
+        permanentBonusDelta: 5
+      }));
       return {
         chipBonus: addedBonus,
-        stateUpdate: { hikerBonus: permanentBonus + addedBonus },
+        modifyScoredCards,
         message: `远足者: ${cardCount}张牌永久+${addedBonus}筹码`
       };
     }
@@ -1001,7 +1005,7 @@ export const JOKERS: Joker[] = [
     isProbability: true, // 概率触发类小丑牌
     effect: (context: JokerEffectContext): JokerEffectResult => {
       if (!context.scoredCards) return {};
-      const faceCount = context.scoredCards.filter(card => card.isFaceCard).length;
+      const faceCount = context.scoredCards.filter(card => context.allCardsAreFace || card.isFaceCard).length;
       if (faceCount > 0) {
         let money = 0;
         for (let i = 0; i < faceCount; i++) {
@@ -1753,8 +1757,8 @@ export const JOKERS: Joker[] = [
       const jokerState = (context as unknown as { jokerState?: { consecutiveHands?: number; noFaceStreak?: number } }).jokerState || {};
       const noFaceStreak = jokerState.noFaceStreak || 0;
       const scoredCards = context.scoredCards || [];
-      const hasFaceCard = scoredCards.some(card => card.isFaceCard);
-      
+      const hasFaceCard = scoredCards.some(card => context.allCardsAreFace || card.isFaceCard);
+
       if (!hasFaceCard) {
         const newStreak = noFaceStreak + 1;
         return {
@@ -1837,7 +1841,7 @@ export const JOKERS: Joker[] = [
     effect: (context: JokerEffectContext): JokerEffectResult => {
       const discardedCards = (context as unknown as { discardedCards?: Card[] }).discardedCards;
       if (discardedCards) {
-        const faceCards = discardedCards.filter(card => card.isFaceCard);
+        const faceCards = discardedCards.filter(card => context.allCardsAreFace || card.isFaceCard);
         if (faceCards.length >= 3) {
           return {
             moneyBonus: 5,
@@ -1972,7 +1976,7 @@ export const JOKERS: Joker[] = [
     trigger: JokerTrigger.ON_SCORED,
     effect: (context: JokerEffectContext): JokerEffectResult => {
       if (!context.scoredCards) return {};
-      const firstFaceCard = context.scoredCards.find(card => card.isFaceCard);
+      const firstFaceCard = context.scoredCards.find(card => context.allCardsAreFace || card.isFaceCard);
       if (firstFaceCard) {
         return {
           multMultiplier: 2,
@@ -1994,7 +1998,7 @@ export const JOKERS: Joker[] = [
     effect: (context: JokerEffectContext): JokerEffectResult => {
       const heldCards = (context as unknown as { heldCards?: Card[] }).heldCards;
       if (heldCards) {
-        const faceCards = heldCards.filter(card => card.isFaceCard);
+        const faceCards = heldCards.filter(card => context.allCardsAreFace || card.isFaceCard);
         let moneyEarned = 0;
         for (const _ of faceCards) {
           if (Math.random() < 0.5) moneyEarned++;
@@ -2094,7 +2098,7 @@ export const JOKERS: Joker[] = [
     trigger: JokerTrigger.ON_SCORED,
     effect: (context: JokerEffectContext): JokerEffectResult => {
       if (!context.scoredCards) return {};
-      const faceCount = context.scoredCards.filter(card => card.isFaceCard).length;
+      const faceCount = context.scoredCards.filter(card => context.allCardsAreFace || card.isFaceCard).length;
       if (faceCount > 0) {
         const bonus = faceCount * 5;
         return {
@@ -2560,7 +2564,7 @@ export const JOKERS: Joker[] = [
     trigger: JokerTrigger.ON_SCORED,
     effect: (context: JokerEffectContext): JokerEffectResult => {
       if (!context.scoredCards) return {};
-      const faceCards = context.scoredCards.filter(card => card.isFaceCard);
+      const faceCards = context.scoredCards.filter(card => context.allCardsAreFace || card.isFaceCard);
       if (faceCards.length > 0) {
         return {
           turnToGold: faceCards.length,

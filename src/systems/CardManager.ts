@@ -259,9 +259,9 @@ export class CardManager {
   // ========== 序列化 ==========
 
   static serialize(deck: Deck, hand: Hand, discardPile: DiscardPile): {
-    deck: Array<{ suit: Suit; rank: Rank; enhancement: CardEnhancement; seal: SealType; edition: CardEdition; faceDown: boolean }>;
-    hand: Array<{ suit: Suit; rank: Rank; enhancement: CardEnhancement; seal: SealType; edition: CardEdition; faceDown: boolean }>;
-    discard: Array<{ suit: Suit; rank: Rank; enhancement: CardEnhancement; seal: SealType; edition: CardEdition; faceDown: boolean }>;
+    deck: Array<{ suit: Suit; rank: Rank; enhancement: CardEnhancement; seal: SealType; edition: CardEdition; faceDown: boolean; permanentBonus?: number }>;
+    hand: Array<{ suit: Suit; rank: Rank; enhancement: CardEnhancement; seal: SealType; edition: CardEdition; faceDown: boolean; permanentBonus?: number }>;
+    discard: Array<{ suit: Suit; rank: Rank; enhancement: CardEnhancement; seal: SealType; edition: CardEdition; faceDown: boolean; permanentBonus?: number }>;
     handSelectedIndices: number[];
   } {
     const serializeCard = (card: Card) => ({
@@ -270,7 +270,8 @@ export class CardManager {
       enhancement: card.enhancement,
       seal: card.seal,
       edition: card.edition,
-      faceDown: card.faceDown
+      faceDown: card.faceDown,
+      permanentBonus: card.permanentBonus || undefined
     });
 
     return {
@@ -282,33 +283,27 @@ export class CardManager {
   }
 
   static deserialize(deck: Deck, hand: Hand, discardPile: DiscardPile, data: {
-    deck: Array<{ suit: Suit; rank: Rank; enhancement: CardEnhancement; seal: SealType; edition: CardEdition; faceDown: boolean }>;
-    hand: Array<{ suit: Suit; rank: Rank; enhancement: CardEnhancement; seal: SealType; edition: CardEdition; faceDown: boolean }>;
-    discard: Array<{ suit: Suit; rank: Rank; enhancement: CardEnhancement; seal: SealType; edition: CardEdition; faceDown: boolean }>;
+    deck: Array<{ suit: Suit; rank: Rank; enhancement: CardEnhancement; seal: SealType; edition: CardEdition; faceDown: boolean; permanentBonus?: number }>;
+    hand: Array<{ suit: Suit; rank: Rank; enhancement: CardEnhancement; seal: SealType; edition: CardEdition; faceDown: boolean; permanentBonus?: number }>;
+    discard: Array<{ suit: Suit; rank: Rank; enhancement: CardEnhancement; seal: SealType; edition: CardEdition; faceDown: boolean; permanentBonus?: number }>;
     handSelectedIndices: number[];
   }): void {
     // 恢复牌堆
     (deck as any)._cards = data.deck.map(c => {
-      const card = new Card(c.suit, c.rank, c.enhancement, c.seal);
-      card.edition = c.edition;
-      card.faceDown = c.faceDown;
+      const card = new Card(c.suit, c.rank, c.enhancement, c.seal, c.edition, c.faceDown, c.permanentBonus ?? 0);
       return card;
     });
 
     // 恢复手牌
     const handCards = data.hand.map(c => {
-      const card = new Card(c.suit, c.rank, c.enhancement, c.seal);
-      card.edition = c.edition;
-      card.faceDown = c.faceDown;
+      const card = new Card(c.suit, c.rank, c.enhancement, c.seal, c.edition, c.faceDown, c.permanentBonus ?? 0);
       return card;
     });
     (hand as any).cards = handCards;
 
     // 恢复弃牌堆
     const discardCards = data.discard.map(c => {
-      const card = new Card(c.suit, c.rank, c.enhancement, c.seal);
-      card.edition = c.edition;
-      card.faceDown = c.faceDown;
+      const card = new Card(c.suit, c.rank, c.enhancement, c.seal, c.edition, c.faceDown, c.permanentBonus ?? 0);
       return card;
     });
     (discardPile as any).cards = discardCards;

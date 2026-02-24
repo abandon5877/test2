@@ -67,6 +67,29 @@ export class JokerSystem {
   }
 
   /**
+   * 检查是否有幻想性错觉（Pareidolia）
+   * 幻想性错觉效果：所有牌都视为人头牌
+   */
+  static hasPareidolia(jokers: readonly JokerInterface[]): boolean {
+    return jokers.some(joker => joker.id === 'pareidolia');
+  }
+
+  /**
+   * 判断一张牌是否视为人头牌（考虑到幻想性错觉效果）
+   * @param card 要判断的牌
+   * @param jokers 当前的小丑牌列表
+   * @returns 是否视为人头牌
+   */
+  static isFaceCard(card: Card, jokers: readonly JokerInterface[]): boolean {
+    // 如果持有幻想性错觉，所有牌都视为人头牌
+    if (this.hasPareidolia(jokers)) {
+      return true;
+    }
+    // 否则使用牌的原始判断
+    return card.isFaceCard;
+  }
+
+  /**
    * 设置全局系统配置（包括Smeared_Joker、Four_Fingers、Oops!_All_6s等效果）
    */
   static setGlobalConfig(jokerSlots: JokerSlots): void {
@@ -239,7 +262,7 @@ export class JokerSystem {
   /**
    * 创建位置上下文
    */
-  private static createPositionContext(jokerSlots: JokerSlots, jokerIndex: number): Pick<JokerEffectContext, 'jokerPosition' | 'allJokers' | 'leftJokers' | 'rightJokers' | 'leftmostJoker' | 'rightmostJoker' | 'smearedJoker'> {
+  private static createPositionContext(jokerSlots: JokerSlots, jokerIndex: number): Pick<JokerEffectContext, 'jokerPosition' | 'allJokers' | 'leftJokers' | 'rightJokers' | 'leftmostJoker' | 'rightmostJoker' | 'smearedJoker' | 'allCardsAreFace'> {
     const allJokers = [...jokerSlots.getJokers()];
     const leftJokers = allJokers.slice(0, jokerIndex);
     const rightJokers = allJokers.slice(jokerIndex + 1);
@@ -251,7 +274,8 @@ export class JokerSystem {
       rightJokers,
       leftmostJoker: allJokers[0],
       rightmostJoker: allJokers[allJokers.length - 1],
-      smearedJoker: this.hasSmearedJoker(allJokers)
+      smearedJoker: this.hasSmearedJoker(allJokers),
+      allCardsAreFace: this.hasPareidolia(allJokers)
     };
   }
 
@@ -357,6 +381,80 @@ export class JokerSystem {
   }
 
   /**
+   * 处理单个小丑的效果并累加结果，返回结果对象
+   * @param joker 小丑牌
+   * @param callback 回调函数
+   * @param context 效果上下文
+   * @param accumulator 结果累加器
+   * @param effectPrefix 效果消息前缀（用于复制效果）
+   * @param consumableSlots 消耗牌槽位（可选）
+   * @param isPreview 是否为预览模式（预览时不更新状态）
+   * @returns 效果结果对象
+   */
+  private static processJokerEffectWithResult(
+    joker: JokerInterface,
+    callback: ((context: JokerEffectContext) => JokerEffectResult) | undefined,
+    context: JokerEffectContext,
+    accumulator: EffectAccumulator,
+    effectPrefix?: string,
+    consumableSlots?: ConsumableSlots,
+    isPreview = false
+  ): JokerEffectResult | undefined {
+    if (!callback) return undefined;
+
+    // 预览模式下跳过概率触发类小丑牌的效果
+    if (isPreview && joker.isProbability) {
+      return undefined;
+    }
+
+    let result = callback.call(joker, context);
+
+    // 应用消耗牌槽位限制
+    if (consumableSlots && result) {
+      result = this.clampConsumableGeneration(result, consumableSlots);
+    }
+
+    // 累加各种奖励值
+    if (result.chipBonus) accumulator.chipBonus += result.chipBonus;
+    if (result.multBonus) accumulator.multBonus += result.multBonus;
+    if (result.multMultiplier) accumulator.multMultiplier *= result.multMultiplier;
+    if (result.moneyBonus) accumulator.moneyBonus += result.moneyBonus;
+    if (result.tarotBonus) accumulator.tarotBonus += result.tarotBonus;
+    if (result.jokerBonus) accumulator.jokerBonus += result.jokerBonus;
+    if (result.handBonus) accumulator.handBonus += result.handBonus;
+    if (result.freeReroll) accumulator.freeReroll = true;
+    if (result.discardReset) accumulator.discardReset = true;
+    if (result.heldCardRetrigger) accumulator.heldCardRetrigger = true;
+    if (result.copyScoredCardToDeck) accumulator.copyScoredCardToDeck = true;
+
+    // 处理特殊效果
+    if (result.copiedConsumableId) accumulator.copiedConsumableIds.push(result.copiedConsumableId);
+
+    // 添加效果消息（只在有实际效果时添加）
+    const hasEffect = result.chipBonus || result.multBonus || result.multMultiplier ||
+                      result.moneyBonus || result.tarotBonus || result.jokerBonus ||
+                      result.handBonus || result.message;
+
+    if (hasEffect) {
+      accumulator.effects.push({
+        jokerName: joker.name,
+        effect: effectPrefix ? `${effectPrefix}${result.message || '触发效果'}` : (result.message || '触发效果'),
+        chipBonus: result.chipBonus,
+        multBonus: result.multBonus,
+        multMultiplier: result.multMultiplier,
+        moneyBonus: result.moneyBonus
+      });
+    }
+
+    // 处理状态更新（预览模式下不更新状态）
+    if (result.stateUpdate && !isPreview) {
+      joker.updateState(result.stateUpdate);
+    }
+
+    return result;
+  }
+
+  /**
    * 处理复制效果（蓝图或头脑风暴）
    * @param joker 复制小丑牌（蓝图或头脑风暴）
    * @param copyType 复制类型
@@ -446,6 +544,98 @@ export class JokerSystem {
   }
 
   /**
+   * 处理复制效果（蓝图或头脑风暴），返回结果对象
+   * @param joker 复制小丑牌（蓝图或头脑风暴）
+   * @param copyType 复制类型
+   * @param callbackName 回调函数名称
+   * @param context 效果上下文
+   * @param accumulator 结果累加器
+   * @param jokerIndex 当前小丑在槽位中的索引
+   * @param jokers 所有小丑牌数组
+   * @param consumableSlots 消耗牌槽位（可选）
+   * @param isPreview 是否为预览模式（预览时不更新状态）
+   * @returns 效果结果对象
+   */
+  private static processCopyEffectWithResult(
+    joker: JokerInterface,
+    copyType: CopyType,
+    callbackName: keyof JokerInterface,
+    context: JokerEffectContext,
+    accumulator: EffectAccumulator,
+    jokerIndex: number,
+    jokers: readonly JokerInterface[],
+    consumableSlots?: ConsumableSlots,
+    isPreview = false
+  ): JokerEffectResult | undefined {
+    // 获取目标小丑
+    const targetJoker = copyType === 'blueprint'
+      ? CopyEffectHelper.getBlueprintTarget(jokerIndex, jokers)
+      : CopyEffectHelper.getBrainstormTarget(jokerIndex, jokers);
+
+    if (!targetJoker) return undefined;
+
+    // 预览模式下跳过概率触发类小丑牌的效果
+    if (isPreview && targetJoker.isProbability) {
+      return undefined;
+    }
+
+    // 获取目标小丑的回调函数
+    const callback = targetJoker[callbackName] as ((context: JokerEffectContext) => JokerEffectResult) | undefined;
+    if (!callback) return undefined;
+
+    // 构建效果消息前缀
+    const effectPrefix = copyType === 'blueprint'
+      ? `蓝图复制 [${targetJoker.name}]: `
+      : `头脑风暴复制 [${targetJoker.name}]: `;
+
+    // 处理复制效果 - 注意：使用targetJoker作为this上下文
+    let result = callback.call(targetJoker, context);
+
+    // 应用消耗牌槽位限制
+    if (consumableSlots && result) {
+      result = this.clampConsumableGeneration(result, consumableSlots);
+    }
+
+    // 累加各种奖励值
+    if (result.chipBonus) accumulator.chipBonus += result.chipBonus;
+    if (result.multBonus) accumulator.multBonus += result.multBonus;
+    if (result.multMultiplier) accumulator.multMultiplier *= result.multMultiplier;
+    if (result.moneyBonus) accumulator.moneyBonus += result.moneyBonus;
+    if (result.tarotBonus) accumulator.tarotBonus += result.tarotBonus;
+    if (result.jokerBonus) accumulator.jokerBonus += result.jokerBonus;
+    if (result.handBonus) accumulator.handBonus += result.handBonus;
+    if (result.freeReroll) accumulator.freeReroll = true;
+    if (result.discardReset) accumulator.discardReset = true;
+    if (result.heldCardRetrigger) accumulator.heldCardRetrigger = true;
+
+    // 处理特殊效果
+    if (result.copiedConsumableId) accumulator.copiedConsumableIds.push(result.copiedConsumableId);
+
+    // 添加效果消息
+    const hasEffect = result.chipBonus || result.multBonus || result.multMultiplier ||
+                      result.moneyBonus || result.tarotBonus || result.jokerBonus ||
+                      result.handBonus || result.message;
+
+    if (hasEffect) {
+      accumulator.effects.push({
+        jokerName: joker.name,
+        effect: effectPrefix + (result.message || '触发效果'),
+        chipBonus: result.chipBonus,
+        multBonus: result.multBonus,
+        multMultiplier: result.multMultiplier,
+        moneyBonus: result.moneyBonus
+      });
+    }
+
+    // 处理状态更新 - 复制效果只更新复制小丑的状态（预览模式下不更新）
+    if (result.stateUpdate && !isPreview) {
+      joker.updateState(result.stateUpdate);
+    }
+
+    return result;
+  }
+
+  /**
    * 处理计分卡牌
    */
   static processScoredCards(
@@ -454,16 +644,19 @@ export class JokerSystem {
     handType: PokerHandType,
     currentChips: number,
     currentMult: number,
-    consumableSlots?: ConsumableSlots
+    consumableSlots?: ConsumableSlots,
+    isPreview = false
   ): {
     chipBonus: number;
     multBonus: number;
     multMultiplier: number;
     copyScoredCardToDeck: boolean;
     effects: JokerEffectDetail[];
+    modifyScoredCards?: { card: Card; permanentBonusDelta: number }[];
   } {
     const accumulator = this.createEffectAccumulator();
     const jokers = jokerSlots.getActiveJokers();
+    const allModifyScoredCards: { card: Card; permanentBonusDelta: number }[] = [];
 
     for (let i = 0; i < jokers.length; i++) {
       const joker = jokers[i];
@@ -480,16 +673,25 @@ export class JokerSystem {
       (context as unknown as { jokerState: typeof joker.state }).jokerState = joker.state;
 
       // 1. 处理小丑自身的 onScored 效果
-      this.processJokerEffect(joker, joker.onScored, context, accumulator, undefined, consumableSlots);
+      const result = this.processJokerEffectWithResult(joker, joker.onScored, context, accumulator, undefined, consumableSlots, isPreview);
+      if (result?.modifyScoredCards) {
+        allModifyScoredCards.push(...result.modifyScoredCards);
+      }
 
       // 2. 处理蓝图的复制效果
       if (joker.id === 'blueprint') {
-        this.processCopyEffect(joker, 'blueprint', 'onScored', context, accumulator, i, jokers, consumableSlots);
+        const copyResult = this.processCopyEffectWithResult(joker, 'blueprint', 'onScored', context, accumulator, i, jokers, consumableSlots, isPreview);
+        if (copyResult?.modifyScoredCards) {
+          allModifyScoredCards.push(...copyResult.modifyScoredCards);
+        }
       }
 
       // 3. 处理头脑风暴的复制效果
       if (joker.id === 'brainstorm') {
-        this.processCopyEffect(joker, 'brainstorm', 'onScored', context, accumulator, i, jokers, consumableSlots);
+        const copyResult = this.processCopyEffectWithResult(joker, 'brainstorm', 'onScored', context, accumulator, i, jokers, consumableSlots, isPreview);
+        if (copyResult?.modifyScoredCards) {
+          allModifyScoredCards.push(...copyResult.modifyScoredCards);
+        }
       }
     }
 
@@ -498,7 +700,8 @@ export class JokerSystem {
       multBonus: accumulator.multBonus,
       multMultiplier: accumulator.multMultiplier,
       copyScoredCardToDeck: accumulator.copyScoredCardToDeck,
-      effects: accumulator.effects
+      effects: accumulator.effects,
+      modifyScoredCards: allModifyScoredCards.length > 0 ? allModifyScoredCards : undefined
     };
   }
 
@@ -667,7 +870,7 @@ export class JokerSystem {
   /**
    * 处理回合结束
    */
-  static processEndRound(jokerSlots: JokerSlots, gameState?: { money: number; interestCap: number; hands: number; discards: number }, defeatedBoss?: boolean): {
+  static processEndRound(jokerSlots: JokerSlots, gameState?: { money: number; interestCap: number; hands: number; discards: number }, defeatedBoss?: boolean, heldCards?: readonly Card[]): {
     moneyBonus: number;
     effects: JokerEffectDetail[];
     destroyedJokers: number[];
@@ -678,8 +881,10 @@ export class JokerSystem {
     const effects: JokerEffectDetail[] = [];
     const destroyedJokers: number[] = [];
 
-    const context: JokerEffectContext = { gameState, defeatedBoss };
     const jokers = jokerSlots.getActiveJokers();
+    const allCardsAreFace = this.hasPareidolia(jokers);
+
+    const context: JokerEffectContext = { gameState, defeatedBoss, heldCards, allCardsAreFace };
 
     for (let i = jokers.length - 1; i >= 0; i--) {
       const joker = jokers[i];
@@ -1158,13 +1363,23 @@ export class JokerSystem {
       scoredCards,
       handType,
       baseResult.totalChips,
-      baseResult.totalMultiplier
+      baseResult.totalMultiplier,
+      undefined,
+      isPreview
     );
     console.log('[JokerSystem] processScoredCards结果:', { chipBonus: scoredResult.chipBonus, multBonus: scoredResult.multBonus, multMultiplier: scoredResult.multMultiplier });
     totalChipBonus += scoredResult.chipBonus;
     totalMultBonus += scoredResult.multBonus;
     totalMultMultiplier *= scoredResult.multMultiplier;
     jokerEffects.push(...scoredResult.effects);
+
+    // 处理 modifyScoredCards（远足者效果）- 预览模式下不修改卡牌
+    if (scoredResult.modifyScoredCards && !isPreview) {
+      for (const { card, permanentBonusDelta } of scoredResult.modifyScoredCards) {
+        card.addPermanentBonus(permanentBonusDelta);
+        console.log(`[JokerSystem] 卡牌 ${card.toString()} 永久加成 +${permanentBonusDelta}, 当前总加成: ${card.permanentBonus}`);
+      }
+    }
 
     console.log('[JokerSystem] 调用processHandPlayed前, handType:', handType);
     const handPlayedResult = this.processHandPlayed(
