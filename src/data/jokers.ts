@@ -2515,6 +2515,16 @@ export const JOKERS: Joker[] = [
         message: `全息影像: ${cardsAdded}张牌加入牌库 x${multiplier.toFixed(2)}倍率`
       };
     },
+    // 修复：添加onCardAdded回调，在卡牌添加到牌库时更新状态
+    onCardAdded: (context: JokerEffectContext): JokerEffectResult => {
+      const jokerState = (context as unknown as { jokerState?: { cardsAdded?: number } }).jokerState || {};
+      const currentCardsAdded = jokerState.cardsAdded || 0;
+      const newCardsAdded = currentCardsAdded + 1;
+      return {
+        stateUpdate: { cardsAdded: newCardsAdded },
+        message: `全息影像: 牌库添加卡牌 (${newCardsAdded}张)`
+      };
+    },
     getDynamicDescription: (state: JokerState): string => {
       const cardsAdded = state.cardsAdded || 0;
       const multiplier = 1 + (cardsAdded * 0.25);

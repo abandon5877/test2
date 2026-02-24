@@ -188,9 +188,9 @@ export class GameState implements GameStateInterface {
     // 盲注结束，将手牌和弃牌堆洗回发牌堆
     this.cardPile.returnToDeckAndShuffle();
 
-    // 重新初始化 CardPile
-    this.cardPile = new CardPile(this.getMaxHandSize());
-    this.cardPile.deck.shuffle();
+    // 修复：保留当前牌库状态，不要重新初始化 CardPile
+    // 重新初始化会导致通过DNA等效果添加的卡牌丢失
+    // 只需要清空手牌，保留牌库中的卡牌
 
     this.currentBlind = blind;
     this.phase = GamePhase.PLAYING;
