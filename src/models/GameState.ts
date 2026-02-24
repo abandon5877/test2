@@ -519,6 +519,15 @@ export class GameState implements GameStateInterface {
       this.money += discardResult.moneyBonus;
     }
 
+    // 修复交易卡：处理摧毁弃牌效果
+    if (discardResult.destroyDiscardedCard && discardedCards.length > 0) {
+      // 将弃牌从弃牌堆中移除（摧毁）
+      for (const card of discardedCards) {
+        this.cardPile.removeFromDiscard(card);
+      }
+      logger.info('交易卡效果：摧毁弃牌', { count: discardedCards.length });
+    }
+
     // 抽牌 - 考虑蛇Boss限制
     const currentBoss = this.bossState.getCurrentBoss();
     if (currentBoss === BossType.SERPENT) {

@@ -206,6 +206,19 @@ export class CardPile {
   }
 
   /**
+   * 从弃牌堆中移除指定卡牌（用于交易卡等效果）
+   */
+  removeFromDiscard(card: Card): boolean {
+    const cards = this.discard.getCards();
+    const index = cards.findIndex(c => c === card);
+    if (index !== -1) {
+      this.discard.removeCard(index);
+      return true;
+    }
+    return false;
+  }
+
+  /**
    * 发初始手牌
    */
   dealInitialHand(handSize: number): void {

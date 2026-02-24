@@ -27,6 +27,7 @@ interface EffectAccumulator {
   discardReset: boolean;
   heldCardRetrigger: number; // 修复：改为数字，记录触发次数（支持蓝图+默剧演员）
   copyScoredCardToDeck: number; // 修复：改为数字，记录复制次数
+  destroyDiscardedCard: boolean; // 修复：添加摧毁弃牌标记
   effects: JokerEffectDetail[];
   copiedConsumableIds: string[];
 }
@@ -304,6 +305,7 @@ export class JokerSystem {
       discardReset: false,
       heldCardRetrigger: 0, // 修复：初始化为0
       copyScoredCardToDeck: 0, // 修复：初始化为0
+      destroyDiscardedCard: false, // 修复：初始化为false
       effects: [],
       copiedConsumableIds: []
     };
@@ -354,6 +356,7 @@ export class JokerSystem {
     if (result.discardReset) accumulator.discardReset = true;
     if (result.heldCardRetrigger) accumulator.heldCardRetrigger += 1; // 修复：累加触发次数
     if (result.copyScoredCardToDeck) accumulator.copyScoredCardToDeck += 1; // 修复：累加复制次数
+    if (result.destroyDiscardedCard) accumulator.destroyDiscardedCard = true; // 修复：标记摧毁弃牌
 
     // 处理特殊效果
     if (result.copiedConsumableId) accumulator.copiedConsumableIds.push(result.copiedConsumableId);
@@ -426,6 +429,7 @@ export class JokerSystem {
     if (result.discardReset) accumulator.discardReset = true;
     if (result.heldCardRetrigger) accumulator.heldCardRetrigger += 1; // 修复：累加触发次数
     if (result.copyScoredCardToDeck) accumulator.copyScoredCardToDeck += 1; // 修复：累加复制次数
+    if (result.destroyDiscardedCard) accumulator.destroyDiscardedCard = true; // 修复：标记摧毁弃牌
 
     // 处理特殊效果
     if (result.copiedConsumableId) accumulator.copiedConsumableIds.push(result.copiedConsumableId);
@@ -518,6 +522,7 @@ export class JokerSystem {
     if (result.discardReset) accumulator.discardReset = true;
     if (result.heldCardRetrigger) accumulator.heldCardRetrigger += 1; // 修复：累加触发次数
     if (result.copyScoredCardToDeck) accumulator.copyScoredCardToDeck += 1; // 修复：累加复制次数
+    if (result.destroyDiscardedCard) accumulator.destroyDiscardedCard = true; // 修复：标记摧毁弃牌
 
     // 处理特殊效果
     if (result.copiedConsumableId) accumulator.copiedConsumableIds.push(result.copiedConsumableId);
@@ -609,6 +614,7 @@ export class JokerSystem {
     if (result.discardReset) accumulator.discardReset = true;
     if (result.heldCardRetrigger) accumulator.heldCardRetrigger += 1; // 修复：累加触发次数
     if (result.copyScoredCardToDeck) accumulator.copyScoredCardToDeck += 1; // 修复：累加复制次数
+    if (result.destroyDiscardedCard) accumulator.destroyDiscardedCard = true; // 修复：标记摧毁弃牌
 
     // 处理特殊效果
     if (result.copiedConsumableId) accumulator.copiedConsumableIds.push(result.copiedConsumableId);
@@ -1192,6 +1198,7 @@ export class JokerSystem {
     multBonus: number;
     multMultiplier: number;
     moneyBonus: number;
+    destroyDiscardedCard: boolean; // 修复：添加摧毁弃牌标记
     effects: JokerEffectDetail[];
   } {
     const accumulator = this.createEffectAccumulator();
@@ -1227,6 +1234,7 @@ export class JokerSystem {
       chipBonus: accumulator.chipBonus,
       multBonus: accumulator.multBonus,
       multMultiplier: accumulator.multMultiplier,
+      destroyDiscardedCard: accumulator.destroyDiscardedCard, // 修复：返回摧毁弃牌标记
       moneyBonus: accumulator.moneyBonus,
       effects: accumulator.effects
     };
