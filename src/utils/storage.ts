@@ -85,9 +85,10 @@ export interface SaveData {
     // 修复7: 牌型历史统计（用于Supernova小丑牌）
     handTypeHistory: Record<string, number>;
     // 修复8: 当前正在开的卡包
+    // 修复: 使用联合类型支持Card、Joker、Consumable
     currentPack: {
       packId: string;
-      revealedCards: SerializedCard[];
+      revealedCards: (SerializedCard | SerializedJoker | SerializedConsumable | { _type: 'card' | 'joker' | 'consumable'; [key: string]: any })[];
     } | null;
     config: {
       maxHandSize: number;
@@ -170,6 +171,9 @@ export interface SerializedShopItem {
   basePrice: number;
   currentPrice: number;
   sold: boolean;
+  // 修复: 保存小丑牌的附加属性
+  edition?: string;
+  sticker?: string;
 }
 
 export class Storage {
@@ -490,23 +494,69 @@ export class Storage {
     }
 
     // 修复8: 恢复当前正在开的卡包
+    // 修复: 正确处理Card、Joker、Consumable三种类型
     if (data.currentPack && data.currentPack.packId) {
       // 需要重新获取卡包数据
       const pack = BOOSTER_PACKS.find(p => p.id === data.currentPack?.packId);
       if (pack) {
         (gameState as any).currentPack = {
           pack: pack,
-          revealedCards: data.currentPack.revealedCards.map(cardData =>
-              new Card(
-                cardData.suit,
-                cardData.rank,
-                cardData.enhancement,
-                cardData.seal,
-                (cardData as any).edition || 'none',      // 修复存档: 恢复卡牌版本
-                (cardData as any).faceDown ?? false,      // 修复存档: 恢复卡牌翻面状态
-                (cardData as any).permanentBonus ?? 0     // 修复存档: 恢复永久筹码加成
-              )
-            )
+          revealedCards: data.currentPack.revealedCards.map((itemData: any) => {
+            const type = itemData._type;
+            if (type === 'card') {
+              // 恢复卡牌
+              return new Card(
+                itemData.suit,
+                itemData.rank,
+                itemData.enhancement,
+                itemData.seal,
+                itemData.edition || 'none',
+                itemData.faceDown ?? false,
+                itemData.permanentBonus ?? 0
+              );
+            } else if (type === 'joker') {
+              // 恢复小丑牌
+              const joker = getJokerById(itemData.id);
+              if (!joker) return null;
+              const clonedJoker = joker.clone();
+              // 恢复附加属性
+              if (itemData.edition) {
+                clonedJoker.setEdition(itemData.edition);
+              }
+              if (itemData.sticker) {
+                clonedJoker.setSticker(itemData.sticker);
+              }
+              if (itemData.perishableRounds !== undefined) {
+                (clonedJoker as any).perishableRounds = itemData.perishableRounds;
+              }
+              if (itemData.state) {
+                clonedJoker.updateState(itemData.state);
+              }
+              if (itemData.disabled !== undefined) {
+                clonedJoker.disabled = itemData.disabled;
+              }
+              if (itemData.faceDown !== undefined) {
+                clonedJoker.faceDown = itemData.faceDown;
+              }
+              if (itemData.sellValueBonus !== undefined) {
+                clonedJoker.sellValueBonus = itemData.sellValueBonus;
+              }
+              return clonedJoker;
+            } else if (type === 'consumable') {
+              // 恢复消耗牌
+              const consumable = getConsumableById(itemData.id);
+              if (!consumable) return null;
+              const clonedConsumable = consumable.clone();
+              if (itemData.isNegative !== undefined) {
+                (clonedConsumable as any).isNegative = itemData.isNegative;
+              }
+              if (itemData.sellValueBonus !== undefined) {
+                clonedConsumable.sellValueBonus = itemData.sellValueBonus;
+              }
+              return clonedConsumable;
+            }
+            return null;
+          }).filter((item: any) => item !== null)
         };
       }
     }
@@ -634,9 +684,19 @@ export class Storage {
       // 修复7: 保存牌型历史统计
       handTypeHistory: Object.fromEntries((gameState as any).handTypeHistory || new Map()),
       // 修复8: 保存当前正在开的卡包
+      // 修复: 正确处理Card、Joker、Consumable三种类型
       currentPack: (gameState as any).currentPack ? {
         packId: (gameState as any).currentPack.pack?.id || '',
-        revealedCards: (gameState as any).currentPack.revealedCards?.map((card: Card) => this.serializeCard(card)) || []
+        revealedCards: (gameState as any).currentPack.revealedCards?.map((item: Card | Joker | Consumable) => {
+          if (item instanceof Card) {
+            return { ...this.serializeCard(item), _type: 'card' };
+          } else if (item instanceof Joker) {
+            return { ...this.serializeJoker(item), _type: 'joker' };
+          } else if (item instanceof Consumable) {
+            return { ...this.serializeConsumable(item), _type: 'consumable' };
+          }
+          return null;
+        }).filter((item: any) => item !== null) || []
       } : null,
       config: {
         maxHandSize: (gameState as any).config?.maxHandSize ?? 8,
@@ -701,14 +761,28 @@ export class Storage {
   static serializeShop(shop: Shop): SerializedShop {
     logger.info('[Storage.serializeShop] 开始序列化商店');
     const serialized = {
-      items: shop.items.map(item => ({
-        id: item.id,
-        type: item.type,
-        itemId: this.getShopItemId(item),
-        basePrice: item.basePrice,
-        currentPrice: item.currentPrice,
-        sold: item.sold
-      })),
+      items: shop.items.map(item => {
+        const baseItem = {
+          id: item.id,
+          type: item.type,
+          itemId: this.getShopItemId(item),
+          basePrice: item.basePrice,
+          currentPrice: item.currentPrice,
+          sold: item.sold
+        };
+
+        // 修复: 保存小丑牌的附加属性
+        if (item.type === 'joker') {
+          const joker = item.item as Joker;
+          return {
+            ...baseItem,
+            edition: joker.edition,
+            sticker: joker.sticker
+          };
+        }
+
+        return baseItem;
+      }),
       rerollCost: shop.rerollCost,
       baseRerollCost: (shop as any).baseRerollCost ?? 5,
       rerollCount: (shop as any).rerollCount || 0,
@@ -723,7 +797,7 @@ export class Storage {
       rerollCount: serialized.rerollCount,
       isFirstShopVisit: serialized.isFirstShopVisit,
       itemIdCounter: serialized.itemIdCounter,
-      items: serialized.items.map(i => ({ id: i.id, type: i.type, itemId: i.itemId, sold: i.sold }))
+      items: serialized.items.map(i => ({ id: i.id, type: i.type, itemId: i.itemId, sold: i.sold, edition: (i as any).edition, sticker: (i as any).sticker }))
     });
     return serialized;
   }
@@ -778,7 +852,7 @@ export class Storage {
     // 恢复商品
     logger.info('[Storage.deserializeShop] 开始恢复商品，存档中商品数:', data.items.length);
     shop.items = data.items.map(item => {
-      const resolvedItem = this.resolveShopItem(item.type, item.itemId);
+      const resolvedItem = this.resolveShopItem(item.type, item.itemId, item);
       if (!resolvedItem) {
         logger.warn(`[Storage.deserializeShop] 无法解析商品: type=${item.type}, itemId=${item.itemId}`);
       }
@@ -797,18 +871,32 @@ export class Storage {
       id: i.id,
       type: i.type,
       itemId: (i.item as any).id,
-      sold: i.sold
+      sold: i.sold,
+      edition: (i.item as any).edition,
+      sticker: (i.item as any).sticker
     })));
 
     return shop;
   }
 
   // 修复1: 解析商店商品
-  private static resolveShopItem(type: 'joker' | 'consumable' | 'pack' | 'voucher', itemId: string): any {
+  // 修复: 添加itemData参数用于恢复附加属性
+  private static resolveShopItem(type: 'joker' | 'consumable' | 'pack' | 'voucher', itemId: string, itemData?: SerializedShopItem): any {
     switch (type) {
       case 'joker':
         const joker = getJokerById(itemId);
-        return joker ? joker.clone() : null;
+        if (!joker) return null;
+        const clonedJoker = joker.clone();
+        // 修复: 恢复小丑牌的附加属性
+        if (itemData) {
+          if (itemData.edition) {
+            clonedJoker.setEdition(itemData.edition as any);
+          }
+          if (itemData.sticker) {
+            clonedJoker.setSticker(itemData.sticker as any);
+          }
+        }
+        return clonedJoker;
       case 'consumable':
         const consumable = getConsumableById(itemId);
         return consumable ? consumable.clone() : null;
