@@ -90,6 +90,8 @@ export interface SaveData {
       packId: string;
       revealedCards: (SerializedCard | SerializedJoker | SerializedConsumable | { _type: 'card' | 'joker' | 'consumable'; [key: string]: any })[];
     } | null;
+    // 修复: 无尽模式标志
+    isEndlessMode: boolean;
     config: {
       maxHandSize: number;
       maxHandsPerRound: number;
@@ -288,6 +290,8 @@ export class Storage {
     // 注意：handsRemaining 和 discardsRemaining 在下面重新计算
     gameState.currentScore = data.currentScore;
     gameState.roundScore = data.roundScore;
+    // 修复: 恢复无尽模式标志
+    gameState.isEndlessMode = data.isEndlessMode ?? false;
 
     // 恢复当前盲注位置
     console.log(`[Storage.restoreGameState] 恢复盲注位置: ${data.currentBlindPosition}`);
@@ -710,6 +714,8 @@ export class Storage {
           return null;
         }).filter((item: any) => item !== null) || []
       } : null,
+      // 修复: 保存无尽模式标志
+      isEndlessMode: gameState.isEndlessMode ?? false,
       config: {
         maxHandSize: (gameState as any).config?.maxHandSize ?? 8,
         maxHandsPerRound: (gameState as any).config?.maxHandsPerRound ?? 4,

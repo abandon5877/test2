@@ -32,6 +32,28 @@ class Game {
   }
 
   /**
+   * 格式化大数字显示
+   * K = 千, M = 百万, B = 十亿, T = 万亿
+   * 超过 1e15 使用科学计数法
+   */
+  private formatNumber(num: number): string {
+    if (num < 1000) {
+      return num.toString();
+    } else if (num < 1_000_000) {
+      return (num / 1000).toFixed(1) + 'K';
+    } else if (num < 1_000_000_000) {
+      return (num / 1_000_000).toFixed(1) + 'M';
+    } else if (num < 1_000_000_000_000) {
+      return (num / 1_000_000_000).toFixed(1) + 'B';
+    } else if (num < 1_000_000_000_000_000) {
+      return (num / 1_000_000_000_000).toFixed(1) + 'T';
+    } else {
+      // 科学计数法
+      return num.toExponential(2);
+    }
+  }
+
+  /**
    * 显示主菜单 - 使用 vmin 实现真正的自适应布局
    * 大屏幕元素大，小屏幕元素小，标题始终比按钮大一圈
    */
@@ -752,6 +774,69 @@ class Game {
   }
 
   /**
+   * 显示游戏通关界面 - 底注8完成
+   */
+  private showGameComplete(): void {
+    this.container.innerHTML = '';
+    this.container.className = 'casino-bg min-h-screen w-full flex flex-col items-center justify-center p-[2vw]';
+
+    // 标题
+    const title = document.createElement('h1');
+    title.style.fontSize = 'clamp(2.5rem, 8vw, 4rem)';
+    title.className = 'font-bold text-yellow-400 mb-[2vh]';
+    title.textContent = '🎉 恭喜通关！';
+    this.container.appendChild(title);
+
+    // 通关信息
+    const message = document.createElement('p');
+    message.style.fontSize = 'clamp(1.25rem, 4vw, 1.5rem)';
+    message.className = 'text-gray-300 mb-[1vh] text-center';
+    message.textContent = '你已完成底注8，击败了所有Boss盲注！';
+    this.container.appendChild(message);
+
+    // 最终得分
+    const score = document.createElement('p');
+    score.style.fontSize = 'clamp(1.5rem, 5vw, 2rem)';
+    score.className = 'text-yellow-400 mb-[1vh]';
+    score.textContent = `最终得分: ${this.formatNumber(this.gameState.currentScore)}`;
+    this.container.appendChild(score);
+
+    // 按钮容器
+    const buttonContainer = document.createElement('div');
+    buttonContainer.style.gap = 'clamp(8px, 2vw, 16px)';
+    buttonContainer.className = 'flex flex-col items-center';
+
+    // 继续无尽模式按钮
+    const endlessBtn = document.createElement('button');
+    endlessBtn.style.fontSize = 'clamp(1rem, 2.5vw, 1.125rem)';
+    endlessBtn.style.padding = 'clamp(10px, 2vh, 16px) clamp(20px, 4vw, 32px)';
+    endlessBtn.className = 'game-btn game-btn-primary mb-4';
+    endlessBtn.textContent = '🔥 进入无尽模式';
+    endlessBtn.addEventListener('click', () => this.enterEndlessMode());
+    buttonContainer.appendChild(endlessBtn);
+
+    // 新游戏按钮
+    const newGameBtn = document.createElement('button');
+    newGameBtn.style.fontSize = 'clamp(1rem, 2.5vw, 1.125rem)';
+    newGameBtn.style.padding = 'clamp(10px, 2vh, 16px) clamp(20px, 4vw, 32px)';
+    newGameBtn.className = 'game-btn game-btn-secondary';
+    newGameBtn.textContent = '再来一局';
+    newGameBtn.addEventListener('click', () => this.startNewGame());
+    buttonContainer.appendChild(newGameBtn);
+
+    this.container.appendChild(buttonContainer);
+  }
+
+  /**
+   * 进入无尽模式
+   */
+  private enterEndlessMode(): void {
+    this.gameState.isEndlessMode = true;
+    // 进入底注9（无尽模式开始）
+    this.showBlindSelect();
+  }
+
+  /**
    * 处理关卡选择
    */
   private handleBlindSelect(blindType: BlindType): void {
@@ -902,7 +987,14 @@ class Game {
   private handleNextRound(): void {
     this.gameState.exitShop();
     Storage.autoSave(this.gameState); // 修复: 退出商店后立即存档
-    this.showBlindSelect();
+    
+    // 检查是否完成底注8（通关）
+    if (this.gameState.ante > 8 && !this.gameState.isEndlessMode) {
+      // 显示通关界面
+      this.showGameComplete();
+    } else {
+      this.showBlindSelect();
+    }
   }
 
   /**

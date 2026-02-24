@@ -75,6 +75,7 @@ export class GameState implements GameStateInterface {
   private extraHandsFromVouchers: number = 0;
   private extraDiscardsFromVouchers: number = 0;
   lastUsedConsumable: { id: string; type: ConsumableType } | null = null;
+  isEndlessMode: boolean = false; // 无尽模式标志
 
   constructor(config: Partial<GameConfig> = {}) {
     this.config = { ...DEFAULT_GAME_CONFIG, ...config };
