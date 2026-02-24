@@ -147,6 +147,10 @@ export class Hand {
     };
 
     this.cards.sort((a, b) => {
+      // 翻面牌固定放在右边，不参与排序
+      if (a.faceDown && !b.faceDown) return 1;
+      if (!a.faceDown && b.faceDown) return -1;
+      // 都翻面或都不翻面时正常排序
       const suitDiff = suitOrder[a.suit] - suitOrder[b.suit];
       if (suitDiff !== 0) {
         return suitDiff;
@@ -159,6 +163,10 @@ export class Hand {
 
   sortByRank(): void {
     this.cards.sort((a, b) => {
+      // 翻面牌固定放在右边，不参与排序
+      if (a.faceDown && !b.faceDown) return 1;
+      if (!a.faceDown && b.faceDown) return -1;
+      // 都翻面或都不翻面时正常排序
       const rankDiff = this.getRankValue(a.rank) - this.getRankValue(b.rank);
       if (rankDiff !== 0) {
         return rankDiff;
