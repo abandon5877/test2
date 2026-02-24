@@ -497,6 +497,25 @@ export class JokerSystem {
       return;
     }
 
+    // 修复：如果目标小丑是蓝图或头脑风暴，递归触发它们的复制逻辑
+    if (targetJoker.id === 'blueprint') {
+      const targetIndex = jokers.indexOf(targetJoker);
+      if (targetIndex !== -1) {
+        // 递归调用蓝图的复制逻辑
+        this.processCopyEffect(targetJoker, 'blueprint', callbackName, context, accumulator, targetIndex, jokers, consumableSlots, isPreview);
+      }
+      return;
+    }
+
+    if (targetJoker.id === 'brainstorm') {
+      const targetIndex = jokers.indexOf(targetJoker);
+      if (targetIndex !== -1) {
+        // 递归调用头脑风暴的复制逻辑
+        this.processCopyEffect(targetJoker, 'brainstorm', callbackName, context, accumulator, targetIndex, jokers, consumableSlots, isPreview);
+      }
+      return;
+    }
+
     // 获取目标小丑的回调函数
     const callback = targetJoker[callbackName] as ((context: JokerEffectContext) => JokerEffectResult) | undefined;
     if (!callback) return;
@@ -587,6 +606,25 @@ export class JokerSystem {
 
     // 预览模式下跳过概率触发类小丑牌的效果
     if (isPreview && targetJoker.isProbability) {
+      return undefined;
+    }
+
+    // 修复：如果目标小丑是蓝图或头脑风暴，递归触发它们的复制逻辑
+    if (targetJoker.id === 'blueprint') {
+      const targetIndex = jokers.indexOf(targetJoker);
+      if (targetIndex !== -1) {
+        // 递归调用蓝图的复制逻辑
+        return this.processCopyEffectWithResult(targetJoker, 'blueprint', callbackName, context, accumulator, targetIndex, jokers, consumableSlots, isPreview);
+      }
+      return undefined;
+    }
+
+    if (targetJoker.id === 'brainstorm') {
+      const targetIndex = jokers.indexOf(targetJoker);
+      if (targetIndex !== -1) {
+        // 递归调用头脑风暴的复制逻辑
+        return this.processCopyEffectWithResult(targetJoker, 'brainstorm', callbackName, context, accumulator, targetIndex, jokers, consumableSlots, isPreview);
+      }
       return undefined;
     }
 
