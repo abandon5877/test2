@@ -295,7 +295,7 @@ export class GameState implements GameStateInterface {
     } else if (this.currentBlindPosition === BlindType.BOSS_BLIND) {
       this.ante++;
       this.currentBlindPosition = BlindType.SMALL_BLIND;
-      if (this.ante > 8) {
+      if (this.ante > 8 && !this.isEndlessMode) {
         this.phase = GamePhase.GAME_OVER;
       } else {
         this.phase = GamePhase.SHOP;
@@ -719,7 +719,7 @@ export class GameState implements GameStateInterface {
       // 重置Boss重掷次数
       this.bossSelectionState.resetBossRerollCount();
       logger.info('New ante started, boss reroll count reset', { ante: this.ante });
-      if (this.ante > 8) {
+      if (this.ante > 8 && !this.isEndlessMode) {
         this.phase = GamePhase.GAME_OVER;
       }
     }
