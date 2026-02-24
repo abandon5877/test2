@@ -219,8 +219,8 @@ describe('Spectral Cards Check and Test', () => {
       const result = immolate!.use({ handCards });
       expect(result.success).toBe(true);
       expect(result.moneyChange).toBe(20);
-      expect(result.affectedCards).toBeDefined();
-      expect(result.affectedCards!.length).toBe(5);
+      expect(result.destroyedCards).toBeDefined();
+      expect(result.destroyedCards!.length).toBe(5);
     });
 
     it('Ghost should add Glass enhancement', () => {

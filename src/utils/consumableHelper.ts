@@ -139,11 +139,11 @@ export class ConsumableHelper {
       this.gameState.handLevelState.upgradeAll();
     }
 
-    // 处理受影响的卡牌（如火祭/使魔/冷酷摧毁的卡牌）
-    if (result.affectedCards && result.affectedCards.length > 0) {
+    // 处理被摧毁的卡牌（如火祭/使魔/冷酷/咒语/倒吊人摧毁的卡牌）
+    if (result.destroyedCards && result.destroyedCards.length > 0) {
       const handCards = this.gameState.cardPile.hand.getCards();
       const indicesToRemove: number[] = [];
-      for (const card of result.affectedCards) {
+      for (const card of result.destroyedCards) {
         const index = handCards.findIndex(c => c === card);
         if (index !== -1) {
           indicesToRemove.push(index);

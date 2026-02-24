@@ -28,7 +28,7 @@ export const SPECTRAL_CONSUMABLES: Consumable[] = [
       return {
         success: true,
         message: `火祭: 摧毁5张随机手牌，获得$20`,
-        affectedCards: destroyedCards,
+        destroyedCards: destroyedCards,
         moneyChange: 20
       };
     },
@@ -126,7 +126,7 @@ export const SPECTRAL_CONSUMABLES: Consumable[] = [
       return {
         success: true,
         message: `使魔: 摧毁 ${destroyedCard.toString()}，添加3张增强人头牌`,
-        affectedCards: [destroyedCard],
+        destroyedCards: [destroyedCard],
         newCards: newCards
       };
     },
@@ -163,7 +163,7 @@ export const SPECTRAL_CONSUMABLES: Consumable[] = [
       return {
         success: true,
         message: `冷酷: 摧毁 ${destroyedCard.toString()}，添加2张增强A`,
-        affectedCards: [destroyedCard],
+        destroyedCards: [destroyedCard],
         newCards: newCards
       };
     },
@@ -202,7 +202,7 @@ export const SPECTRAL_CONSUMABLES: Consumable[] = [
       return {
         success: true,
         message: `咒语: 摧毁 ${destroyedCard.toString()}，添加4张增强数字牌`,
-        affectedCards: [destroyedCard],
+        destroyedCards: [destroyedCard],
         newCards: newCards
       };
     },

@@ -64,21 +64,21 @@ describe('火祭(Immolate)测试', () => {
     
     expect(result.success).toBe(true);
     expect(result.moneyChange).toBe(20);
-    expect(result.affectedCards).toBeDefined();
-    expect(result.affectedCards?.length).toBe(5);
+    expect(result.destroyedCards).toBeDefined();
+    expect(result.destroyedCards?.length).toBe(5);
     expect(result.message).toBe('火祭: 摧毁5张随机手牌，获得$20');
   });
 
   it('摧毁的卡牌应该来自手牌', () => {
     const immolate = getConsumableById('spectral_immolate')!;
-    
+
     const result = immolate.use(context);
-    
-    // 验证所有受影响的卡牌都在原始手牌中
-    const affectedCards = result.affectedCards || [];
+
+    // 验证所有被摧毁的卡牌都在原始手牌中
+    const destroyedCards = result.destroyedCards || [];
     const handCardStrings = context.handCards!.map(c => c.toString());
-    
-    for (const card of affectedCards) {
+
+    for (const card of destroyedCards) {
       expect(handCardStrings).toContain(card.toString());
     }
   });
@@ -126,7 +126,7 @@ describe('火祭(Immolate)测试', () => {
       };
       
       const result = immolate.use(testContext);
-      const destroyedCardStrings = (result.affectedCards || []).map(c => c.toString()).sort();
+      const destroyedCardStrings = (result.destroyedCards || []).map(c => c.toString()).sort();
       destroyedSets.push(destroyedCardStrings);
     }
     

@@ -377,7 +377,7 @@ export const TAROT_CARDS: TarotData[] = [
       return {
         success: true,
         message: `倒吊人: 摧毁${context.selectedCards.length}张牌`,
-        affectedCards: context.selectedCards
+        destroyedCards: context.selectedCards
       };
     },
     canUse: (context: ConsumableEffectContext): boolean => {

@@ -33,7 +33,8 @@ export interface ConsumableEffectContext {
 export interface ConsumableEffectResult {
   readonly success: boolean;
   readonly message: string;
-  readonly affectedCards?: readonly Card[];
+  readonly affectedCards?: readonly Card[]; // 被影响的卡牌（仅用于记录/展示，不会被移除）
+  readonly destroyedCards?: readonly Card[]; // 需要被摧毁的卡牌（会从手牌中移除）
   readonly newCards?: readonly Card[];
   readonly moneyChange?: number;
   readonly setMoney?: number; // 直接设置金钱数值（优先级高于 moneyChange）

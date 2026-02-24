@@ -289,12 +289,12 @@ describe('Tarot Cards', () => {
     it('Hanged Man should destroy cards', () => {
       const hanged = CONSUMABLES.find(c => c.id === 'tarot_hanged_man');
       const card1 = new Card(Suit.Spades, Rank.Ace);
-      
+
       const result = hanged!.use({ selectedCards: [card1] });
-      
+
       expect(result.success).toBe(true);
       expect(result.message).toContain('摧毁');
-      expect(result.affectedCards).toContain(card1);
+      expect(result.destroyedCards).toContain(card1);
     });
 
     it('Temperance should give money based on jokers', () => {

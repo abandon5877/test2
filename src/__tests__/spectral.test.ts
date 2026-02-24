@@ -209,8 +209,8 @@ describe('Spectral Cards', () => {
       const result = immolate!.use({ handCards });
       expect(result.success).toBe(true);
       expect(result.moneyChange).toBe(20);
-      expect(result.affectedCards).toBeDefined();
-      expect(result.affectedCards!.length).toBe(5);
+      expect(result.destroyedCards).toBeDefined();
+      expect(result.destroyedCards!.length).toBe(5);
     });
 
     it('Immolate canUse should require at least 5 hand cards', () => {
