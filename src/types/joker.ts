@@ -131,7 +131,7 @@ export interface JokerEffectResult {
   readonly spectralBonus?: number; // 幻灵牌奖励
   readonly planetBonus?: number; // 行星牌奖励
   readonly copiedConsumableId?: string; // 复制的消耗牌ID（用于佩尔科）
-  readonly copyScoredCardToDeck?: boolean; // 复制计分牌到卡组（DNA效果）
+  readonly copyScoredCardToDeck?: boolean; // 复制计分牌到卡组（DNA效果，小丑牌返回此字段）
   readonly modifyScoredCards?: { card: Card; permanentBonusDelta: number }[]; // 修改计分牌的永久加成（远足者效果）
 }
 

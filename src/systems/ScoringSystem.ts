@@ -35,7 +35,7 @@ export interface ScoreResult {
   moneyBonus?: number; // 金币奖励（Gold/Lucky）
   destroyedCards?: readonly Card[]; // 被摧毁的卡牌（Glass效果）
   heldMultMultiplier?: number; // 手持卡牌倍率乘数（Steel效果）
-  copyScoredCardToDeck?: boolean; // DNA效果：复制计分牌到卡组
+  copyScoredCardToDeck?: number; // DNA效果：复制计分牌到卡组（修复：改为数字，记录复制次数）
   // 修复牛Boss: 标记是否触发了牛Boss效果（打出最常用牌型）
   isOxMostPlayedHand?: boolean;
 }
@@ -511,7 +511,7 @@ export class ScoringSystem {
     let allCardsScore = false;
     // 水花飞溅生效后的所有计分牌（包含原始计分牌和踢牌）
     let allScoringCards: readonly Card[] = handResult.scoringCards;
-    let copyScoredCardToDeck = false;
+    let copyScoredCardToDeck: number | undefined = undefined; // 修复：改为数字类型
 
     if (jokerSlots) {
       // 检查是否有水花飞溅效果（所有牌计分）
@@ -629,7 +629,10 @@ export class ScoringSystem {
       totalChips = jokerResult.totalChips;
       totalMultiplier = jokerResult.totalMultiplier * heldMultMultiplier;
       jokerEffects = [...jokerEffects, ...jokerResult.jokerEffects];
-      copyScoredCardToDeck = jokerResult.copyScoredCardToDeck || false;
+      // 修复：累加复制次数（支持蓝图+DNA组合）
+      if (jokerResult.copyScoredCardToDeck) {
+        copyScoredCardToDeck = (copyScoredCardToDeck || 0) + jokerResult.copyScoredCardToDeck;
+      }
       // 累加小丑牌给的钱
       totalLuckyMoney += jokerResult.totalMoneyEarned || 0;
     }

@@ -391,11 +391,14 @@ export class GameState implements GameStateInterface {
     }
 
     // 处理DNA效果：复制计分牌到卡组
-    if (scoreResult.copyScoredCardToDeck && scoreResult.scoringCards.length > 0) {
+    // 修复：支持多次复制（蓝图+DNA组合）
+    if (scoreResult.copyScoredCardToDeck && scoreResult.copyScoredCardToDeck > 0 && scoreResult.scoringCards.length > 0) {
       const cardToCopy = scoreResult.scoringCards[0];
-      const copiedCard = cardToCopy.clone();
-      this.addCardToDeck(copiedCard, 'bottom');
-      logger.info('DNA effect: Card copied to deck', { card: cardToCopy.toString() });
+      for (let i = 0; i < scoreResult.copyScoredCardToDeck; i++) {
+        const copiedCard = cardToCopy.clone();
+        this.addCardToDeck(copiedCard, 'bottom');
+      }
+      logger.info('DNA effect: Cards copied to deck', { card: cardToCopy.toString(), count: scoreResult.copyScoredCardToDeck });
     }
 
     // 将打出的牌移到弃牌堆

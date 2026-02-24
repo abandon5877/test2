@@ -26,7 +26,7 @@ interface EffectAccumulator {
   freeReroll: boolean;
   discardReset: boolean;
   heldCardRetrigger: boolean;
-  copyScoredCardToDeck: boolean;
+  copyScoredCardToDeck: number; // 修复：改为数字，记录复制次数
   effects: JokerEffectDetail[];
   copiedConsumableIds: string[];
 }
@@ -39,7 +39,7 @@ type CopyType = 'blueprint' | 'brainstorm';
 export interface ProcessedScoreResult extends ScoreResult {
   jokerEffects: JokerEffectDetail[];
   totalMoneyEarned: number;
-  copyScoredCardToDeck?: boolean;
+  copyScoredCardToDeck?: number; // 修复：改为数字，记录复制次数
 }
 
 export interface JokerEffectDetail {
@@ -303,7 +303,7 @@ export class JokerSystem {
       freeReroll: false,
       discardReset: false,
       heldCardRetrigger: false,
-      copyScoredCardToDeck: false,
+      copyScoredCardToDeck: 0, // 修复：初始化为0
       effects: [],
       copiedConsumableIds: []
     };
@@ -353,7 +353,7 @@ export class JokerSystem {
     if (result.freeReroll) accumulator.freeReroll = true;
     if (result.discardReset) accumulator.discardReset = true;
     if (result.heldCardRetrigger) accumulator.heldCardRetrigger = true;
-    if (result.copyScoredCardToDeck) accumulator.copyScoredCardToDeck = true;
+    if (result.copyScoredCardToDeck) accumulator.copyScoredCardToDeck += 1; // 修复：累加复制次数
 
     // 处理特殊效果
     if (result.copiedConsumableId) accumulator.copiedConsumableIds.push(result.copiedConsumableId);
@@ -425,7 +425,7 @@ export class JokerSystem {
     if (result.freeReroll) accumulator.freeReroll = true;
     if (result.discardReset) accumulator.discardReset = true;
     if (result.heldCardRetrigger) accumulator.heldCardRetrigger = true;
-    if (result.copyScoredCardToDeck) accumulator.copyScoredCardToDeck = true;
+    if (result.copyScoredCardToDeck) accumulator.copyScoredCardToDeck += 1; // 修复：累加复制次数
 
     // 处理特殊效果
     if (result.copiedConsumableId) accumulator.copiedConsumableIds.push(result.copiedConsumableId);
@@ -517,7 +517,7 @@ export class JokerSystem {
     if (result.freeReroll) accumulator.freeReroll = true;
     if (result.discardReset) accumulator.discardReset = true;
     if (result.heldCardRetrigger) accumulator.heldCardRetrigger = true;
-    if (result.copyScoredCardToDeck) accumulator.copyScoredCardToDeck = true;
+    if (result.copyScoredCardToDeck) accumulator.copyScoredCardToDeck += 1; // 修复：累加复制次数
 
     // 处理特殊效果
     if (result.copiedConsumableId) accumulator.copiedConsumableIds.push(result.copiedConsumableId);
@@ -608,7 +608,7 @@ export class JokerSystem {
     if (result.freeReroll) accumulator.freeReroll = true;
     if (result.discardReset) accumulator.discardReset = true;
     if (result.heldCardRetrigger) accumulator.heldCardRetrigger = true;
-    if (result.copyScoredCardToDeck) accumulator.copyScoredCardToDeck = true;
+    if (result.copyScoredCardToDeck) accumulator.copyScoredCardToDeck += 1; // 修复：累加复制次数
 
     // 处理特殊效果
     if (result.copiedConsumableId) accumulator.copiedConsumableIds.push(result.copiedConsumableId);
@@ -653,7 +653,7 @@ export class JokerSystem {
     multBonus: number;
     multMultiplier: number;
     moneyBonus: number;
-    copyScoredCardToDeck: boolean;
+    copyScoredCardToDeck: number; // 修复：改为数字
     effects: JokerEffectDetail[];
     modifyScoredCards?: { card: Card; permanentBonusDelta: number }[];
   } {
@@ -735,7 +735,7 @@ export class JokerSystem {
     multBonus: number;
     multMultiplier: number;
     moneyBonus: number;
-    copyScoredCardToDeck?: boolean;
+    copyScoredCardToDeck?: number; // 修复：改为数字
     effects: JokerEffectDetail[];
   } {
     const accumulator = this.createEffectAccumulator();
