@@ -254,6 +254,16 @@ export class BossState {
   }
 
   /**
+   * 禁用当前Boss的能力（摔跤手Luchador效果）
+   */
+  disableBossAbility(): void {
+    if (this.currentBoss) {
+      logger.info('Boss ability disabled by Luchador', { bossType: this.currentBoss });
+      this.currentBoss = null;
+    }
+  }
+
+  /**
    * 获取状态（用于存档）
    */
   getState(): BossStateInterface {

@@ -312,8 +312,8 @@ describe('幻想性错觉(Pareidolia)测试', () => {
       const card1 = new Card(Suit.Hearts, Rank.Two);
       const heldCards = [card1];
 
-      // 模拟手牌处理过程（ON_INDEPENDENT触发器在processHeld中处理）
-      const result = JokerSystem.processHeld(
+      // 模拟独立触发器处理过程（ON_INDEPENDENT触发器在processIndependent中处理）
+      const result = JokerSystem.processIndependent(
         jokerSlots,
         heldCards
       );

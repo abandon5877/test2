@@ -576,16 +576,23 @@ export class ScoringSystem {
         allScoringCards = [...handResult.scoringCards, ...handResult.kickers];
       }
 
-      // 修复: 处理手牌中的小丑牌效果（ON_HELD触发器）
-      let heldChipBonus = 0;
-      let heldMultBonus = 0;
-      let heldMultMultiplier = 1;
+      // 修复: 处理独立触发器的小丑牌效果（ON_INDEPENDENT，如特技演员、哑剧演员）
+      // 这些效果不依赖于手牌，应该始终触发
+      const independentResult = JokerSystem.processIndependent(jokerSlots, heldCards);
+      let heldChipBonus = independentResult.chipBonus;
+      let heldMultBonus = independentResult.multBonus;
+      let heldMultMultiplier = independentResult.multMultiplier;
+      heldCardRetrigger = independentResult.heldCardRetrigger;
+      jokerEffects.push(...independentResult.effects);
+
+      // 修复: 处理手牌中的小丑牌效果（ON_HELD触发器，如高举拳头）
+      // 只有在有手牌时才处理
       if (heldCards && heldCards.length > 0) {
         const heldResult = JokerSystem.processHeld(jokerSlots, heldCards);
-        heldChipBonus = heldResult.chipBonus;
-        heldMultBonus = heldResult.multBonus;
-        heldMultMultiplier = heldResult.multMultiplier;
-        heldCardRetrigger = heldResult.heldCardRetrigger;
+        heldChipBonus += heldResult.chipBonus;
+        heldMultBonus += heldResult.multBonus;
+        heldMultMultiplier *= heldResult.multMultiplier;
+        heldCardRetrigger = heldCardRetrigger || heldResult.heldCardRetrigger;
         jokerEffects.push(...heldResult.effects);
       }
 

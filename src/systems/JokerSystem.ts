@@ -1223,7 +1223,71 @@ export class JokerSystem {
   }
 
   /**
-   * 处理手牌中效果
+   * 处理独立触发器效果（ON_INDEPENDENT）
+   * 这些效果不依赖于手牌，应该始终触发（如特技演员、哑剧演员）
+   */
+  static processIndependent(jokerSlots: JokerSlots, heldCards?: readonly Card[]): {
+    chipBonus: number;
+    multBonus: number;
+    multMultiplier: number;
+    effects: JokerEffectDetail[];
+    heldCardRetrigger: boolean; // 哑剧演员效果：手牌能力触发2次
+  } {
+    const accumulator = this.createEffectAccumulator();
+    const jokers = jokerSlots.getActiveJokers();
+
+    for (let i = 0; i < jokers.length; i++) {
+      const joker = jokers[i];
+
+      // 只处理 ON_INDEPENDENT 触发器的小丑
+      if (joker.trigger !== JokerTrigger.ON_INDEPENDENT || !joker.effect) {
+        continue;
+      }
+
+      const context: JokerEffectContext = {
+        heldCards: heldCards ?? [],
+        ...this.createPositionContext(jokerSlots, i)
+      };
+
+      // 添加jokerState到context
+      (context as unknown as { jokerState: typeof joker.state }).jokerState = joker.state;
+
+      const result = joker.effect(context);
+
+      // 检查是否有heldCardRetrigger效果（哑剧演员）
+      if (result.heldCardRetrigger) {
+        accumulator.heldCardRetrigger = true;
+      }
+
+      // 累加筹码和倍率加成
+      if (result.chipBonus) accumulator.chipBonus += result.chipBonus;
+      if (result.multBonus) accumulator.multBonus += result.multBonus;
+      if (result.multMultiplier) accumulator.multMultiplier *= result.multMultiplier;
+
+      if (result.message || result.chipBonus || result.multBonus || result.multMultiplier) {
+        accumulator.effects.push({
+          jokerName: joker.name,
+          effect: result.message || '触发效果',
+          chipBonus: result.chipBonus,
+          multBonus: result.multBonus,
+          multMultiplier: result.multMultiplier
+        });
+      }
+
+      this.applyEffectResult(joker, result);
+    }
+
+    return {
+      chipBonus: accumulator.chipBonus,
+      multBonus: accumulator.multBonus,
+      multMultiplier: accumulator.multMultiplier,
+      effects: accumulator.effects,
+      heldCardRetrigger: accumulator.heldCardRetrigger
+    };
+  }
+
+  /**
+   * 处理手牌中效果（ON_HELD触发器）
    */
   static processHeld(jokerSlots: JokerSlots, heldCards: readonly Card[]): {
     chipBonus: number;
@@ -1245,33 +1309,6 @@ export class JokerSystem {
 
       // 添加jokerState到context
       (context as unknown as { jokerState: typeof joker.state }).jokerState = joker.state;
-
-      // 0. 处理独立触发器的小丑（如哑剧演员、特技演员）
-      if (joker.trigger === JokerTrigger.ON_INDEPENDENT && joker.effect) {
-        const result = joker.effect(context);
-
-        // 检查是否有heldCardRetrigger效果（哑剧演员）
-        if (result.heldCardRetrigger) {
-          accumulator.heldCardRetrigger = true;
-        }
-
-        // 累加筹码和倍率加成
-        if (result.chipBonus) accumulator.chipBonus += result.chipBonus;
-        if (result.multBonus) accumulator.multBonus += result.multBonus;
-        if (result.multMultiplier) accumulator.multMultiplier *= result.multMultiplier;
-
-        if (result.message || result.chipBonus || result.multBonus || result.multMultiplier) {
-          accumulator.effects.push({
-            jokerName: joker.name,
-            effect: result.message || '触发效果',
-            chipBonus: result.chipBonus,
-            multBonus: result.multBonus,
-            multMultiplier: result.multMultiplier
-          });
-        }
-
-        this.applyEffectResult(joker, result);
-      }
 
       // 1. 处理小丑自身的 onHeld 效果
       this.processJokerEffect(joker, joker.onHeld, context, accumulator);

@@ -1,5 +1,6 @@
 import { Blind } from './Blind';
 import type { Card } from './Card';
+import { Card as CardClass } from './Card';
 import { Hand } from './Hand';
 import { Shop } from './Shop';
 import { GamePhase, BlindType, BossType, type GameStateInterface, type GameConfig, DEFAULT_GAME_CONFIG, type RoundStats } from '../types/game';
@@ -22,7 +23,7 @@ import { getConsumableById } from '../data/consumables';
 import type { JokerInterface } from '../types/joker';
 import type { ConsumableInterface } from '../types/consumable';
 import { getJokerById, resetGrosMichelDestroyed } from '../data/jokers';
-import { CardEnhancement } from '../types/card';
+import { CardEnhancement, SealType, Suit, Rank, CardEdition } from '../types/card';
 import { ConsumableType } from '../types/consumable';
 import { PokerHandType } from '../types/pokerHands';
 import { createModuleLogger } from '../utils/logger';
@@ -193,6 +194,9 @@ export class GameState implements GameStateInterface {
     this.playedHandTypes.clear();
 
     this.dealInitialHand();
+
+    // 处理证书 (Certificate) 效果：回合开始时添加一张带印章的随机牌到手牌
+    this.handleCertificateEffect();
 
     // 处理Boss回合开始效果（深红之心、天青铃铛等）
     const handCards = this.cardPile.hand.getCards();
@@ -448,8 +452,17 @@ export class GameState implements GameStateInterface {
     });
 
     if (this.handsRemaining === 0 && !this.isRoundWon()) {
-      logger.warn('Out of hands, game over');
-      this.phase = GamePhase.GAME_OVER;
+      // 检查骨头先生 (Mr. Bones) 效果：防止在25%以下死亡
+      if (this.canPreventDeath()) {
+        const targetScore = this.currentBlind?.targetScore ?? 0;
+        const percentage = (this.roundScore / targetScore) * 100;
+        logger.info('Mr. Bones prevented death', { roundScore: this.roundScore, targetScore, percentage: percentage.toFixed(1) + '%' });
+        // 骨头先生效果触发，进入商店但不推进盲注
+        this.enterShopAfterBonesSave();
+      } else {
+        logger.warn('Out of hands, game over');
+        this.phase = GamePhase.GAME_OVER;
+      }
     }
 
     return scoreResult;
@@ -674,14 +687,15 @@ export class GameState implements GameStateInterface {
     // 在进入商店前刷新商店商品（新轮次）
     // 获取玩家已有的小丑牌ID，避免商店生成重复的小丑牌
     const playerJokerIds = this.jokerSlots.getJokers().map(j => j.id);
+    const allowDuplicates = this.hasShowman();
     if (this.shop) {
       logger.info('[GameState.completeBlind] 进入新商店轮次，刷新商店商品');
-      this.shop.enterNewShop(playerJokerIds);
+      this.shop.enterNewShop(playerJokerIds, allowDuplicates);
     } else {
       logger.info('[GameState.completeBlind] 创建新商店');
       this.shop = new Shop();
       // 新创建的商店需要刷新以应用玩家小丑牌过滤
-      this.shop.refresh(playerJokerIds);
+      this.shop.refresh(playerJokerIds, allowDuplicates);
     }
 
     this.phase = GamePhase.SHOP;
@@ -720,11 +734,12 @@ export class GameState implements GameStateInterface {
       this.phase = GamePhase.SHOP;
       // 获取玩家已有的小丑牌ID，避免商店生成重复的小丑牌
       const playerJokerIds = this.jokerSlots.getJokers().map(j => j.id);
+      const allowDuplicates = this.hasShowman();
       if (!this.shop) {
         logger.info('[GameState.enterShop] 创建新商店');
         this.shop = new Shop();
         // 新创建的商店需要刷新以应用玩家小丑牌过滤
-        this.shop.refresh(playerJokerIds);
+        this.shop.refresh(playerJokerIds, allowDuplicates);
       } else {
         logger.info('[GameState.enterShop] 使用已有商店');
       }
@@ -735,6 +750,48 @@ export class GameState implements GameStateInterface {
         isRoundWon: this.isRoundWon()
       });
     }
+  }
+
+  /**
+   * 骨头先生 (Mr. Bones) 救场后进入商店
+   * 被救场算作胜利，推进盲注，但骨头先生自毁
+   */
+  private enterShopAfterBonesSave(): void {
+    logger.info('[GameState.enterShopAfterBonesSave] 骨头先生救场，进入商店', {
+      currentBlind: this.currentBlind?.name,
+      roundScore: this.roundScore,
+      targetScore: this.currentBlind?.targetScore
+    });
+
+    // 销毁骨头先生（自毁）
+    this.destroyBoneBoy();
+
+    // 清理当前回合状态
+    this.cardPile.returnToDeckAndShuffle();
+    this.jokerSlots.clearAllDisabled();
+
+    // 获取玩家已有的小丑牌ID，避免商店生成重复的小丑牌
+    const playerJokerIds = this.jokerSlots.getJokers().map(j => j.id);
+    const allowDuplicates = this.hasShowman();
+
+    // 创建或刷新商店
+    if (this.shop) {
+      this.shop.enterNewShop(playerJokerIds, allowDuplicates);
+    } else {
+      this.shop = new Shop();
+      this.shop.refresh(playerJokerIds, allowDuplicates);
+    }
+
+    this.phase = GamePhase.SHOP;
+
+    // 推进盲注（被救场算作胜利）
+    this.advanceBlindPositionAfterComplete();
+
+    logger.info('[GameState.enterShopAfterBonesSave] 已进入商店，盲注已推进', {
+      currentBlind: this.currentBlind?.name,
+      ante: this.ante,
+      blindPosition: this.currentBlindPosition
+    });
   }
 
   exitShop(): { success: boolean; copiedConsumableIds?: string[]; message?: string } {
@@ -812,7 +869,8 @@ export class GameState implements GameStateInterface {
 
     // 执行刷新，传入玩家已有的小丑牌ID避免生成重复
     const playerJokerIds = this.jokerSlots.getJokers().map(j => j.id);
-    this.shop.rerollShop(playerJokerIds);
+    const allowDuplicates = this.hasShowman();
+    this.shop.rerollShop(playerJokerIds, allowDuplicates);
 
     logger.info('Shop rerolled', {
       freeReroll: isFreeReroll,
@@ -945,11 +1003,32 @@ export class GameState implements GameStateInterface {
   }
 
   spendMoney(amount: number): boolean {
-    if (this.money >= amount) {
+    // 计算债务上限（信用卡效果）
+    const debtLimit = this.getDebtLimitFromJokers();
+    const minMoney = debtLimit; // 可以欠债到debtLimit（负数）
+
+    if (this.money - amount >= minMoney) {
       this.money -= amount;
       return true;
     }
     return false;
+  }
+
+  /**
+   * 从ON_INDEPENDENT小丑牌获取债务上限
+   * 信用卡 (credit_card) 允许欠债-$20
+   */
+  private getDebtLimitFromJokers(): number {
+    let debtLimit = 0; // 默认不能欠债
+    for (const joker of this.jokers) {
+      if (joker.effect) {
+        const result = joker.effect({});
+        if (result.debtLimit !== undefined) {
+          debtLimit = Math.min(debtLimit, result.debtLimit); // 取最小的债务上限（最宽松的）
+        }
+      }
+    }
+    return debtLimit;
   }
 
   setMoney(amount: number): void {
@@ -958,6 +1037,11 @@ export class GameState implements GameStateInterface {
 
   sellJoker(index: number): { success: boolean; sellPrice?: number; error?: string; copiedJokerId?: string } {
     console.log(`[GameState.sellJoker] 开始卖小丑, index=${index}, 当前金钱=$${this.money}`);
+
+    // 检查是否是摔跤手 (Luchador) - 出售时禁用当前Boss能力
+    const jokers = this.jokerSlots.getJokers();
+    const isLuchador = index >= 0 && index < jokers.length && jokers[index].id === 'luchador';
+
     const result = JokerSystem.sellJoker(this.jokerSlots, index);
     console.log(`[GameState.sellJoker] JokerSystem返回:`, result);
     if (result.success && result.sellPrice) {
@@ -975,6 +1059,12 @@ export class GameState implements GameStateInterface {
             jokerName: jokerToCopy.name
           });
         }
+      }
+
+      // 摔跤手 (Luchador) 效果: 出售时禁用当前Boss盲注的能力
+      if (isLuchador) {
+        this.bossState.disableBossAbility();
+        logger.info('Luchador sold: Boss ability disabled');
       }
 
       // 翠绿叶子Boss: 卖出小丑牌后解除卡牌失效
@@ -1078,6 +1168,83 @@ export class GameState implements GameStateInterface {
 
   getInterestCap(): number {
     return 20 + this.jokerSlots.getInterestCapBonus();
+  }
+
+  /**
+   * 检查是否有马戏团演员 (Showman) 效果
+   * 允许小丑牌、塔罗牌、行星牌和幻灵牌重复出现
+   */
+  hasShowman(): boolean {
+    for (const joker of this.jokers) {
+      if (joker.effect) {
+        const result = joker.effect({});
+        if (result.allowDuplicates) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  /**
+   * 检查是否有骨头先生 (Mr. Bones) 效果
+   * 防止死亡如果得分至少达到所需分数的25%
+   * 使用后自毁
+   */
+  private canPreventDeath(): boolean {
+    const hasBoneBoy = this.jokers.some(joker => joker.id === 'bone_boy');
+    if (!hasBoneBoy) return false;
+
+    const targetScore = this.currentBlind?.targetScore ?? 0;
+    if (targetScore <= 0) return false;
+
+    const percentage = (this.roundScore / targetScore) * 100;
+
+    // 如果得分至少达到所需分数的25%，骨头先生可以防止死亡
+    return percentage >= 25 && percentage < 100;
+  }
+
+  /**
+   * 销毁骨头先生 (Mr. Bones)
+   * 使用后自毁
+   */
+  private destroyBoneBoy(): void {
+    const boneBoyIndex = this.jokers.findIndex(joker => joker.id === 'bone_boy');
+    if (boneBoyIndex >= 0) {
+      this.jokerSlots.removeJoker(boneBoyIndex);
+      logger.info('Mr. Bones self-destructed after saving the player');
+    }
+  }
+
+  /**
+   * 处理证书 (Certificate) 效果
+   * 回合开始时添加一张带印章的随机牌到手牌
+   */
+  private handleCertificateEffect(): void {
+    const hasCertificate = this.jokers.some(joker => joker.id === 'certificate');
+    if (!hasCertificate) return;
+
+    // 生成带印章的随机牌
+    const suits = [Suit.Spades, Suit.Hearts, Suit.Diamonds, Suit.Clubs];
+    const ranks = [Rank.Two, Rank.Three, Rank.Four, Rank.Five, Rank.Six, Rank.Seven, Rank.Eight, Rank.Nine, Rank.Ten, Rank.Jack, Rank.Queen, Rank.King, Rank.Ace];
+    const seals = [SealType.Gold, SealType.Red, SealType.Blue, SealType.Purple];
+
+    const randomSuit = suits[Math.floor(Math.random() * suits.length)];
+    const randomRank = ranks[Math.floor(Math.random() * ranks.length)];
+    const randomSeal = seals[Math.floor(Math.random() * seals.length)];
+
+    const card = new CardClass(randomSuit, randomRank, CardEnhancement.None, randomSeal, CardEdition.None);
+
+    // 添加到手牌
+    const currentHand = this.cardPile.hand.getCards();
+    if (currentHand.length < this.getMaxHandSize()) {
+      this.cardPile.hand.addCard(card);
+      logger.info('证书效果: 添加带印章的牌到手牌', { card: card.toString(), seal: randomSeal });
+    } else {
+      // 手牌已满，添加到牌库底部
+      this.cardPile.deck.addToBottom(card);
+      logger.info('证书效果: 手牌已满，添加带印章的牌到牌库', { card: card.toString(), seal: randomSeal });
+    }
   }
 
   getHandLevelState(): HandLevelState {

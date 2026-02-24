@@ -73,12 +73,13 @@ export class Shop {
     logger.info('[Shop] 构造函数完成，商品数量:', this.items.length);
   }
 
-  refresh(playerJokerIds: string[] = []): void {
+  refresh(playerJokerIds: string[] = [], allowDuplicates: boolean = false): void {
     logger.info('[Shop.refresh] 开始刷新商店', {
       isFirstShopVisit: this.isFirstShopVisit,
       baseRerollCost: this.baseRerollCost,
       rerollCount: this.rerollCount,
-      playerJokerCount: playerJokerIds.length
+      playerJokerCount: playerJokerIds.length,
+      allowDuplicates
     });
 
     this.items = [];
@@ -87,7 +88,7 @@ export class Shop {
 
     // 2张随机卡片
     logger.info('[Shop.refresh] 生成2张随机卡片');
-    this.generateRandomCards(2, playerJokerIds);
+    this.generateRandomCards(2, playerJokerIds, allowDuplicates);
 
     // 2个补充包
     if (this.isFirstShopVisit) {
@@ -118,20 +119,21 @@ export class Shop {
     });
   }
 
-  enterNewShop(playerJokerIds: string[] = []): void {
-    logger.info('[Shop.enterNewShop] 进入新商店', { playerJokerCount: playerJokerIds.length });
+  enterNewShop(playerJokerIds: string[] = [], allowDuplicates: boolean = false): void {
+    logger.info('[Shop.enterNewShop] 进入新商店', { playerJokerCount: playerJokerIds.length, allowDuplicates });
     this.rerollCount = 0;
     this.rerollCost = this.baseRerollCost;
-    this.refresh(playerJokerIds);
+    this.refresh(playerJokerIds, allowDuplicates);
     this.isFirstShopVisit = true;
     logger.info('[Shop.enterNewShop] 完成');
   }
 
-  rerollShop(playerJokerIds: string[] = []): void {
+  rerollShop(playerJokerIds: string[] = [], allowDuplicates: boolean = false): void {
     logger.info('[Shop.rerollShop] 开始刷新商店', {
       currentRerollCount: this.rerollCount,
       baseRerollCost: this.baseRerollCost,
-      playerJokerCount: playerJokerIds.length
+      playerJokerCount: playerJokerIds.length,
+      allowDuplicates
     });
 
     const packsAndVouchers = this.items.filter(item =>
@@ -148,7 +150,7 @@ export class Shop {
     this.itemIdCounter = 0;
     logger.info('[Shop.rerollShop] 清空商品，itemIdCounter重置为0');
 
-    this.generateRandomCards(2, playerJokerIds);
+    this.generateRandomCards(2, playerJokerIds, allowDuplicates);
 
     for (const item of packsAndVouchers) {
       if (!item.sold) {
@@ -166,14 +168,15 @@ export class Shop {
     });
   }
 
-  private generateRandomCards(count: number, playerJokerIds: string[] = []): void {
+  private generateRandomCards(count: number, playerJokerIds: string[] = [], allowDuplicates: boolean = false): void {
     const weights = this.calculateItemWeights();
     const totalWeight = weights.joker + weights.tarot + weights.planet + weights.playingCard;
-    logger.info('[Shop.generateRandomCards] 生成随机卡片', { count, weights, totalWeight, playerJokerCount: playerJokerIds.length });
+    logger.info('[Shop.generateRandomCards] 生成随机卡片', { count, weights, totalWeight, playerJokerCount: playerJokerIds.length, allowDuplicates });
 
     // 获取当前商店中已有的小丑牌ID，并合并玩家已有的小丑牌ID
+    // 如果有马戏团演员效果，则允许重复
     const shopJokerIds = this.getJokers().map(item => (item.item as Joker).id);
-    const existingJokerIds = [...new Set([...shopJokerIds, ...playerJokerIds])];
+    const existingJokerIds = allowDuplicates ? [] : [...new Set([...shopJokerIds, ...playerJokerIds])];
 
     for (let i = 0; i < count; i++) {
       const rand = Math.random() * totalWeight;
@@ -184,8 +187,10 @@ export class Shop {
         if (jokers.length > 0) {
           const price = this.calculatePrice(jokers[0].cost);
           this.addItem('joker', jokers[0], price);
-          // 更新已有小丑牌ID列表
-          existingJokerIds.push(jokers[0].id);
+          // 更新已有小丑牌ID列表（仅在不允许重复时）
+          if (!allowDuplicates) {
+            existingJokerIds.push(jokers[0].id);
+          }
           logger.info('[Shop.generateRandomCards] 生成小丑牌:', jokers[0].id, '价格:', price);
         }
       } else if (rand < weights.joker + weights.tarot) {
@@ -428,7 +433,7 @@ export class Shop {
     };
   }
 
-  applyVoucher(voucherId: string, playerJokerIds: string[] = []): void {
+  applyVoucher(voucherId: string, playerJokerIds: string[] = [], allowDuplicates: boolean = false): void {
     logger.info(`[Shop.applyVoucher] 应用优惠券:`, voucherId);
     if (!this.vouchersUsed.includes(voucherId)) {
       this.vouchersUsed.push(voucherId);
@@ -438,11 +443,11 @@ export class Shop {
     const oldBaseRerollCost = this.baseRerollCost;
     switch (voucherId) {
       case 'voucher_overstock':
-        this.addExtraSlot(playerJokerIds);
+        this.addExtraSlot(playerJokerIds, allowDuplicates);
         break;
       case 'voucher_overstock_plus':
-        this.addExtraSlot(playerJokerIds);
-        this.addExtraSlot(playerJokerIds);
+        this.addExtraSlot(playerJokerIds, allowDuplicates);
+        this.addExtraSlot(playerJokerIds, allowDuplicates);
         this.refreshItemPrices();
         break;
       case 'voucher_clearance':
@@ -485,14 +490,17 @@ export class Shop {
     return [...this.vouchersUsed];
   }
 
-  private addExtraSlot(playerJokerIds: string[] = []): void {
+  private addExtraSlot(playerJokerIds: string[] = [], allowDuplicates: boolean = false): void {
     // 获取当前商店中已有的小丑牌ID，并合并玩家已有的小丑牌ID
+    // 如果有马戏团演员效果，则允许重复
     const shopJokerIds = this.getJokers().map(item => (item.item as Joker).id);
-    const existingJokerIds = [...new Set([...shopJokerIds, ...playerJokerIds])];
+    const existingJokerIds = allowDuplicates ? [] : [...new Set([...shopJokerIds, ...playerJokerIds])];
 
     if (Math.random() < 0.5) {
-      const joker = getRandomJokers(1, this.vouchersUsed, existingJokerIds)[0];
-      this.addItem('joker', joker, joker.cost);
+      const jokers = getRandomJokers(1, this.vouchersUsed, existingJokerIds);
+      if (jokers.length > 0) {
+        this.addItem('joker', jokers[0], jokers[0].cost);
+      }
     } else {
       const consumable = getRandomConsumables(1)[0];
       this.addItem('consumable', consumable, consumable.cost);
