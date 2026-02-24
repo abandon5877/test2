@@ -2,6 +2,7 @@ import { ConsumableType, type ConsumableEffectContext, type ConsumableEffectResu
 import { Suit, Rank, CardEnhancement, SealType } from '../../types/card';
 import { Card } from '../../models/Card';
 import type { TarotData } from './types';
+import { getConsumableById as getConsumableByIdFromAll } from './index';
 
 /**
  * 塔罗牌数据（22张）
@@ -46,6 +47,17 @@ export const TAROT_CARDS: TarotData[] = [
       if (context.lastUsedConsumable.type !== ConsumableType.TAROT &&
           context.lastUsedConsumable.type !== ConsumableType.PLANET) return false;
       if (context.lastUsedConsumable.id === 'tarot_fool') return false;
+      
+      // 检查被复制的牌是否需要选中牌
+      const lastConsumable = getConsumableByIdFromAll(context.lastUsedConsumable.id);
+      if (lastConsumable && lastConsumable.canUse) {
+        // 如果被复制的牌需要选中牌，则当前也必须有选中牌
+        const canLastUse = lastConsumable.canUse(context);
+        if (!canLastUse) {
+          return false;
+        }
+      }
+      
       return true;
     }
   },

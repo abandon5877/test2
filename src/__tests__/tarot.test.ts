@@ -237,6 +237,33 @@ describe('Tarot Cards', () => {
       expect(result.message).toContain('复制');
     });
 
+    it('Fool canUse should check selectedCards when copying card that requires them', () => {
+      const fool = CONSUMABLES.find(c => c.id === 'tarot_fool');
+      
+      // 复制需要选中牌的魔术师（需要2张）
+      // 没有选中牌时应该返回false
+      const canUseWithoutCards = fool!.canUse!({
+        lastUsedConsumable: { id: 'tarot_magician', type: ConsumableType.TAROT }
+      });
+      expect(canUseWithoutCards).toBe(false);
+      
+      // 有2张选中牌时应该返回true
+      const card1 = new Card(Suit.Hearts, Rank.Ace);
+      const card2 = new Card(Suit.Spades, Rank.King);
+      const canUseWithCards = fool!.canUse!({
+        lastUsedConsumable: { id: 'tarot_magician', type: ConsumableType.TAROT },
+        selectedCards: [card1, card2]
+      });
+      expect(canUseWithCards).toBe(true);
+      
+      // 复制不需要选中牌的女祭司
+      // 没有选中牌时也应该返回true
+      const canUsePriestess = fool!.canUse!({
+        lastUsedConsumable: { id: 'tarot_high_priestess', type: ConsumableType.TAROT }
+      });
+      expect(canUsePriestess).toBe(true);
+    });
+
     it('High Priestess should generate planet cards', () => {
       const priestess = CONSUMABLES.find(c => c.id === 'tarot_high_priestess');
       const result = priestess!.use({});
