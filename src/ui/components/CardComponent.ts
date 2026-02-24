@@ -904,10 +904,10 @@ export class CardComponent {
   private static getSealName(seal: SealType): string {
     const names: Record<SealType, string> = {
       [SealType.None]: '无',
-      [SealType.Gold]: '金蜡封 (打出时获得$3)',
-      [SealType.Red]: '红蜡封 (重新触发一次)',
-      [SealType.Blue]: '蓝蜡封 (生成一张星球牌)',
-      [SealType.Purple]: '紫蜡封 (生成一张塔罗牌)'
+      [SealType.Gold]: '金蜡封 (打出并计分时获得$3)',
+      [SealType.Red]: '红蜡封 (计分时触发两次)',
+      [SealType.Blue]: '蓝蜡封 (回合结束在手牌中生成星球牌)',
+      [SealType.Purple]: '紫蜡封 (弃牌时生成塔罗牌)'
     };
     return names[seal];
   }
