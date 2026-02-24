@@ -229,11 +229,35 @@ export class ConsumableHelper {
         }
       }
 
+      // 修复: 处理愚者塔罗牌复制效果
+      if (result.copiedConsumableId) {
+        const copiedConsumable = getConsumableById(result.copiedConsumableId);
+        if (copiedConsumable) {
+          // 递归调用复制的效果
+          const copyResult = copiedConsumable.use(context);
+          if (copyResult.success) {
+            this.handleResult(copyResult, copiedConsumable.id, copiedConsumable.type);
+            // 处理复制效果中的新生成消耗牌
+            if (copyResult.newConsumableIds && copyResult.newConsumableIds.length > 0) {
+              const { addedCount, skippedCount } = this.handleNewConsumables(copyResult.newConsumableIds);
+              if (skippedCount > 0) {
+                this.callbacks?.onToast?.(
+                  `复制效果生成${copyResult.newConsumableIds.length}张消耗牌，成功添加${addedCount}张，${skippedCount}张因槽位已满被跳过`,
+                  'warning'
+                );
+              } else {
+                this.callbacks?.onToast?.(`复制效果成功生成${addedCount}张消耗牌`, 'success');
+              }
+            }
+          }
+        }
+      }
+
       // 从消耗牌槽中移除
       this.gameState.removeConsumable(index);
 
       // 显示成功消息
-      if (result.message && (!result.newConsumableIds || result.newConsumableIds.length === 0)) {
+      if (result.message && (!result.newConsumableIds || result.newConsumableIds.length === 0) && !result.copiedConsumableId) {
         this.callbacks?.onToast?.(result.message, 'success');
       }
 
