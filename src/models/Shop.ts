@@ -464,8 +464,10 @@ export class Shop {
         this.baseRerollCost = Math.max(1, this.baseRerollCost - 1);
         break;
     }
+    // 修复: 如果baseRerollCost发生变化，立即更新rerollCost
     if (this.baseRerollCost !== oldBaseRerollCost) {
-      logger.info(`[Shop.applyVoucher] baseRerollCost 变化:`, { old: oldBaseRerollCost, new: this.baseRerollCost });
+      this.rerollCost = this.baseRerollCost + this.rerollCount;
+      logger.info(`[Shop.applyVoucher] baseRerollCost 变化:`, { old: oldBaseRerollCost, new: this.baseRerollCost, newRerollCost: this.rerollCost });
     }
     logger.info(`[Shop.applyVoucher] 完成，当前已使用优惠券:`, this.vouchersUsed);
   }
