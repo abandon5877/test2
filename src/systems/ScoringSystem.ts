@@ -630,6 +630,8 @@ export class ScoringSystem {
       totalMultiplier = jokerResult.totalMultiplier * heldMultMultiplier;
       jokerEffects = [...jokerEffects, ...jokerResult.jokerEffects];
       copyScoredCardToDeck = jokerResult.copyScoredCardToDeck || false;
+      // 累加小丑牌给的钱
+      totalLuckyMoney += jokerResult.totalMoneyEarned || 0;
     }
 
     // 修复3: 应用手持卡牌倍率乘数（Steel效果）
