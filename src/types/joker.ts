@@ -170,6 +170,7 @@ export interface JokerState {
   destroyedFaceCards?: number; // 摧毁的人头牌数量（卡尼奥）
   totalDiscarded?: number; // 弃牌总数（约里克）
   multMultiplier?: number; // 倍率乘数（部分小丑牌）
+  chipBonus?: number; // 筹码加成（城堡）
 }
 
 export interface JokerInterface {

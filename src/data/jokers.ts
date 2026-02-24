@@ -2811,7 +2811,7 @@ export const JOKERS: Joker[] = [
     cost: 6,
     trigger: JokerTrigger.ON_DISCARD,
     effect: (context: JokerEffectContext): JokerEffectResult => {
-      const jokerState = (context as unknown as { jokerState?: { targetSuit?: Suit } }).jokerState || {};
+      const jokerState = (context as unknown as { jokerState?: { targetSuit?: Suit; chipBonus?: number } }).jokerState || {};
       const targetSuit = jokerState.targetSuit || Suit.Hearts;
       const discardedCards = (context as unknown as { discardedCards?: Card[] }).discardedCards;
       const hasSmearedJoker = context.smearedJoker ?? false;
@@ -2821,12 +2821,14 @@ export const JOKERS: Joker[] = [
         );
         if (matchingCards.length > 0) {
           const bonus = matchingCards.length * 3;
+          const currentBonus = (jokerState.chipBonus || 0) + bonus;
           const suitDesc = hasSmearedJoker
             ? (targetSuit === Suit.Hearts || targetSuit === Suit.Diamonds ? '红色牌' : '黑色牌')
             : targetSuit;
           return {
-            chipBonus: bonus,
-            message: `城堡: 弃掉${matchingCards.length}张${suitDesc} +${bonus}筹码`
+            chipBonus: currentBonus,
+            message: `城堡: 弃掉${matchingCards.length}张${suitDesc} +${bonus}筹码，当前+${currentBonus}筹码`,
+            stateUpdate: { chipBonus: currentBonus }
           };
         }
       }

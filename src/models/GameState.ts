@@ -528,6 +528,17 @@ export class GameState implements GameStateInterface {
       logger.info('交易卡效果：摧毁弃牌', { count: discardedCards.length });
     }
 
+    // 修复烧焦的小丑：处理升级牌型效果
+    if (discardResult.upgradeHandType) {
+      // 获取当前手牌类型并升级
+      const playedCards = this.cardPile.hand.getCards();
+      if (playedCards.length > 0) {
+        const handType = PokerHandDetector.detect(playedCards).handType;
+        this.handLevelState.upgradeHand(handType);
+        logger.info('烧焦的小丑效果：升级牌型', { handType });
+      }
+    }
+
     // 抽牌 - 考虑蛇Boss限制
     const currentBoss = this.bossState.getCurrentBoss();
     if (currentBoss === BossType.SERPENT) {
