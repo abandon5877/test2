@@ -508,10 +508,12 @@ export class GameState implements GameStateInterface {
     const discardedCards = this.cardPile.discardSelected();
 
     // 处理弃牌时的小丑牌效果（ON_DISCARD触发器）
+    // 修复：传入handsPlayed（已出牌次数）而不是discardsRemaining（剩余弃牌次数）
+    const handsPlayed = this.roundStats.handsPlayed;
     const discardResult = JokerSystem.processDiscard(
       this.jokerSlots,
       discardedCards,
-      this.discardsRemaining
+      handsPlayed
     );
 
     // 应用弃牌效果（如额外金钱等）
