@@ -22,6 +22,7 @@ export class LongPressHandler {
     let startX = 0;
     let startY = 0;
     let isPressed = false;
+    let clickPrevented = false;
 
     const startHandler = (e: MouseEvent | TouchEvent) => {
       // 只处理左键点击
@@ -31,12 +32,14 @@ export class LongPressHandler {
 
       isPressed = true;
       isLongPress = false;
+      clickPrevented = false;
       const touch = 'touches' in e ? e.touches[0] : e;
       startX = touch.clientX;
       startY = touch.clientY;
 
       pressTimer = window.setTimeout(() => {
         isLongPress = true;
+        clickPrevented = true;
         onLongPress();
       }, this.LONG_PRESS_DURATION);
     };
@@ -49,9 +52,20 @@ export class LongPressHandler {
         clearTimeout(pressTimer);
         pressTimer = null;
       }
+    };
 
-      // 如果是长按，不触发单击
-      if (!isLongPress && onClick) {
+    const clickHandler = (e: MouseEvent) => {
+      // 如果长按已触发，阻止单击
+      if (clickPrevented || isLongPress) {
+        e.stopPropagation();
+        e.preventDefault();
+        clickPrevented = false;
+        isLongPress = false;
+        return;
+      }
+
+      // 正常单击
+      if (onClick) {
         onClick();
       }
     };
@@ -81,11 +95,13 @@ export class LongPressHandler {
       isPressed = false;
     };
 
-    // 绑定事件
+    // 绑定事件 - 使用 click 事件处理单击，避免与 mousedown/mouseup 冲突
     element.addEventListener('mousedown', startHandler);
     element.addEventListener('touchstart', startHandler, { passive: true });
     element.addEventListener('mouseup', endHandler);
     element.addEventListener('touchend', endHandler);
+    // 使用 capture 阶段监听 click，确保我们能先处理
+    element.addEventListener('click', clickHandler, true);
     element.addEventListener('mousemove', moveHandler);
     element.addEventListener('touchmove', moveHandler, { passive: true });
     element.addEventListener('mouseleave', cancelHandler);
@@ -97,6 +113,7 @@ export class LongPressHandler {
       element.removeEventListener('touchstart', startHandler);
       element.removeEventListener('mouseup', endHandler);
       element.removeEventListener('touchend', endHandler);
+      element.removeEventListener('click', clickHandler, true);
       element.removeEventListener('mousemove', moveHandler);
       element.removeEventListener('touchmove', moveHandler);
       element.removeEventListener('mouseleave', cancelHandler);
