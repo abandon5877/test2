@@ -117,8 +117,9 @@ export class CopyEffectHelper {
 
     const leftmostJoker = jokers[0];
 
-    // 不能复制另一个蓝图或头脑风暴
-    if (leftmostJoker.id === 'blueprint' || leftmostJoker.id === 'brainstorm') {
+    // 修复：允许头脑风暴复制蓝图，这样头脑风暴+蓝图可以形成复制链
+    // 但不能复制另一个头脑风暴（避免无限递归）
+    if (leftmostJoker.id === 'brainstorm') {
       return null;
     }
 
