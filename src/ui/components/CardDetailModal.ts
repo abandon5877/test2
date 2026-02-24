@@ -1,5 +1,6 @@
 import { Card } from '../../models/Card';
 import { CardEnhancement, SealType, CardEdition } from '../../types/card';
+import { SealSystem } from '../../systems/SealSystem';
 
 export interface CardDetailOptions {
   card: Card;
@@ -280,14 +281,9 @@ export class CardDetailModal {
   }
 
   private getSealDescription(seal: SealType): string {
-    const descriptions: Record<SealType, string> = {
-      [SealType.None]: '无特殊效果',
-      [SealType.Gold]: '打出并计分时获得$3',
-      [SealType.Red]: '计分时触发两次',
-      [SealType.Blue]: '回合结束时若在手牌中，生成一张对应最后出牌牌型的星球牌',
-      [SealType.Purple]: '弃牌时生成一张随机塔罗牌'
-    };
-    return descriptions[seal];
+    // 复用 SealSystem 中的描述，去掉前缀（如"黄金蜡封: "）
+    const fullDescription = SealSystem.getSealDescription(seal);
+    return fullDescription.replace(/^[^:]+: /, '');
   }
 
   private getEditionName(edition: CardEdition): string {
