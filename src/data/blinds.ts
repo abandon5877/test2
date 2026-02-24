@@ -171,7 +171,7 @@ export function getMaxAnte(): number {
 /**
  * 计算无尽模式底注的目标分数
  * 参考官方文档的Endless Mode分数增长曲线
- * Ante 9+: 使用指数增长公式
+ * 官方增长曲线: x^(x^2) 级别（超指数增长）
  */
 export function calculateEndlessTargetScore(ante: number): number {
   if (ante <= 8) {
@@ -180,21 +180,31 @@ export function calculateEndlessTargetScore(ante: number): number {
   }
   
   // 无尽模式分数增长（参考官方文档）
-  // Ante 9: 110,000
-  // Ante 10: 560,000
-  // 使用近似指数增长
-  const baseScore = 100000;
-  const ante8Score = 100000;
+  // 使用官方文档的精确数值（Ante 9-16）
+  const officialScores: Record<number, number> = {
+    9: 110000,
+    10: 560000,
+    11: 7200000,
+    12: 300000000,
+    13: 47000000000,           // 4.7e10
+    14: 29000000000000,        // 2.9e13
+    15: 77000000000000000,     // 7.7e16
+    16: 860000000000000000000, // 8.6e20 (Finisher Blind)
+  };
   
-  if (ante === 9) return 110000;
-  if (ante === 10) return 560000;
-  if (ante === 11) return 7200000;
-  if (ante === 12) return 300000000;
+  if (officialScores[ante]) {
+    return officialScores[ante];
+  }
   
-  // Ante 13+: 使用指数增长
-  // 公式近似: base * (multiplier ^ (ante - 8))
-  const multiplier = 10; // 每底注增长约10倍
-  return Math.min(ante8Score * Math.pow(multiplier, ante - 8), Number.MAX_SAFE_INTEGER);
+  // Ante 17+: 使用超指数增长公式近似
+  // 官方曲线近似于 x^(x^2)，这里使用更保守的估计
+  // 基于 Ante 16 的 8.6e20，每底注增长约 1000-10000 倍
+  const ante16Score = 8.6e20;
+  const growthFactor = Math.pow(ante - 15, ante - 15); // (n-15)^(n-15) 增长
+  const score = ante16Score * growthFactor;
+  
+  // 限制在 Number.MAX_SAFE_INTEGER 范围内
+  return Math.min(score, Number.MAX_SAFE_INTEGER);
 }
 
 /**
