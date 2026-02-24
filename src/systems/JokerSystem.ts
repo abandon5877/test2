@@ -650,6 +650,7 @@ export class JokerSystem {
     chipBonus: number;
     multBonus: number;
     multMultiplier: number;
+    moneyBonus: number;
     copyScoredCardToDeck: boolean;
     effects: JokerEffectDetail[];
     modifyScoredCards?: { card: Card; permanentBonusDelta: number }[];
@@ -699,6 +700,7 @@ export class JokerSystem {
       chipBonus: accumulator.chipBonus,
       multBonus: accumulator.multBonus,
       multMultiplier: accumulator.multMultiplier,
+      moneyBonus: accumulator.moneyBonus,
       copyScoredCardToDeck: accumulator.copyScoredCardToDeck,
       effects: accumulator.effects,
       modifyScoredCards: allModifyScoredCards.length > 0 ? allModifyScoredCards : undefined
@@ -1408,10 +1410,11 @@ export class JokerSystem {
       undefined,
       isPreview
     );
-    console.log('[JokerSystem] processScoredCards结果:', { chipBonus: scoredResult.chipBonus, multBonus: scoredResult.multBonus, multMultiplier: scoredResult.multMultiplier });
+    console.log('[JokerSystem] processScoredCards结果:', { chipBonus: scoredResult.chipBonus, multBonus: scoredResult.multBonus, multMultiplier: scoredResult.multMultiplier, moneyBonus: scoredResult.moneyBonus });
     totalChipBonus += scoredResult.chipBonus;
     totalMultBonus += scoredResult.multBonus;
     totalMultMultiplier *= scoredResult.multMultiplier;
+    totalMoneyEarned += scoredResult.moneyBonus || 0;
     jokerEffects.push(...scoredResult.effects);
 
     // 处理 modifyScoredCards（远足者效果）- 预览模式下不修改卡牌
