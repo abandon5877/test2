@@ -695,8 +695,7 @@ export class GameState implements GameStateInterface {
     } else {
       logger.info('[GameState.completeBlind] 创建新商店');
       this.shop = new Shop();
-      // 新创建的商店需要刷新以应用玩家小丑牌过滤
-      this.shop.refresh(playerJokerIds, allowDuplicates);
+      // Shop 构造函数已调用 refresh，无需重复刷新
     }
 
     this.phase = GamePhase.SHOP;
@@ -739,8 +738,7 @@ export class GameState implements GameStateInterface {
       if (!this.shop) {
         logger.info('[GameState.enterShop] 创建新商店');
         this.shop = new Shop();
-        // 新创建的商店需要刷新以应用玩家小丑牌过滤
-        this.shop.refresh(playerJokerIds, allowDuplicates);
+        // Shop 构造函数已调用 refresh，无需重复刷新
       } else {
         logger.info('[GameState.enterShop] 使用已有商店');
       }
@@ -780,7 +778,7 @@ export class GameState implements GameStateInterface {
       this.shop.enterNewShop(playerJokerIds, allowDuplicates);
     } else {
       this.shop = new Shop();
-      this.shop.refresh(playerJokerIds, allowDuplicates);
+      // Shop 构造函数已调用 refresh，无需重复刷新
     }
 
     this.phase = GamePhase.SHOP;
