@@ -180,7 +180,7 @@ export function calculateEndlessTargetScore(ante: number): number {
   }
   
   // 无尽模式分数增长（参考官方文档）
-  // 使用官方文档的精确数值（Ante 9-32）
+  // 使用官方文档的精确数值（Ante 9-39）
   const officialScores: Record<number, number> = {
     9: 110000,
     10: 560000,
@@ -206,21 +206,28 @@ export function calculateEndlessTargetScore(ante: number): number {
     30: 2.1e149,
     31: 9.9e163,
     32: 2.7e179, // Finisher Blind
+    33: 4.4e195,
+    34: 4.4e212,
+    35: 2.8e230,
+    36: 1.1e249,
+    37: 2.7e268,
+    38: 4.5e288,
+    39: 4.8e309, // 超过 JavaScript 数字上限，会显示为 naneinf
   };
   
   if (officialScores[ante]) {
     return officialScores[ante];
   }
   
-  // Ante 33+: 使用超指数增长公式近似
+  // Ante 40+: 使用超指数增长公式近似
   // 官方曲线近似于 x^(x^2)
-  // 基于 Ante 32 的 2.7e179，每底注增长约 1000-10000 倍
-  const ante32Score = 2.7e179;
-  const growthFactor = Math.pow(ante - 31, ante - 31); // (n-31)^(n-31) 增长
-  const score = ante32Score * growthFactor;
+  // 基于 Ante 39 的 4.8e309，但注意这会超过 JS 数字上限
+  const ante39Score = 4.8e309;
+  const growthFactor = Math.pow(ante - 38, ante - 38); // (n-38)^(n-38) 增长
+  const score = ante39Score * growthFactor;
   
   // 限制在 Number.MAX_SAFE_INTEGER 范围内（约 9e15）
-  // 注意：Ante 39 会超过 JavaScript 数字上限，显示为 naneinf
+  // 注意：Ante 39 已经超过 JavaScript 数字上限（1.8e308），显示为 Infinity
   return Math.min(score, Number.MAX_SAFE_INTEGER);
 }
 
