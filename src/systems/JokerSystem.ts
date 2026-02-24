@@ -483,8 +483,12 @@ export class JokerSystem {
     jokerIndex: number,
     jokers: readonly JokerInterface[],
     consumableSlots?: ConsumableSlots,
-    isPreview = false
+    isPreview = false,
+    recursionDepth = 0
   ): void {
+    // 限制递归深度，防止蓝图↔头脑风暴死循环
+    if (recursionDepth > 2) return;
+
     // 获取目标小丑
     const targetJoker = copyType === 'blueprint'
       ? CopyEffectHelper.getBlueprintTarget(jokerIndex, jokers)
@@ -502,7 +506,7 @@ export class JokerSystem {
       const targetIndex = jokers.indexOf(targetJoker);
       if (targetIndex !== -1) {
         // 递归调用蓝图的复制逻辑
-        this.processCopyEffect(targetJoker, 'blueprint', callbackName, context, accumulator, targetIndex, jokers, consumableSlots, isPreview);
+        this.processCopyEffect(targetJoker, 'blueprint', callbackName, context, accumulator, targetIndex, jokers, consumableSlots, isPreview, recursionDepth + 1);
       }
       return;
     }
@@ -511,7 +515,7 @@ export class JokerSystem {
       const targetIndex = jokers.indexOf(targetJoker);
       if (targetIndex !== -1) {
         // 递归调用头脑风暴的复制逻辑
-        this.processCopyEffect(targetJoker, 'brainstorm', callbackName, context, accumulator, targetIndex, jokers, consumableSlots, isPreview);
+        this.processCopyEffect(targetJoker, 'brainstorm', callbackName, context, accumulator, targetIndex, jokers, consumableSlots, isPreview, recursionDepth + 1);
       }
       return;
     }
@@ -595,8 +599,12 @@ export class JokerSystem {
     jokerIndex: number,
     jokers: readonly JokerInterface[],
     consumableSlots?: ConsumableSlots,
-    isPreview = false
+    isPreview = false,
+    recursionDepth = 0
   ): JokerEffectResult | undefined {
+    // 限制递归深度，防止蓝图↔头脑风暴死循环
+    if (recursionDepth > 2) return undefined;
+
     // 获取目标小丑
     const targetJoker = copyType === 'blueprint'
       ? CopyEffectHelper.getBlueprintTarget(jokerIndex, jokers)
@@ -614,7 +622,7 @@ export class JokerSystem {
       const targetIndex = jokers.indexOf(targetJoker);
       if (targetIndex !== -1) {
         // 递归调用蓝图的复制逻辑
-        return this.processCopyEffectWithResult(targetJoker, 'blueprint', callbackName, context, accumulator, targetIndex, jokers, consumableSlots, isPreview);
+        return this.processCopyEffectWithResult(targetJoker, 'blueprint', callbackName, context, accumulator, targetIndex, jokers, consumableSlots, isPreview, recursionDepth + 1);
       }
       return undefined;
     }
@@ -623,7 +631,7 @@ export class JokerSystem {
       const targetIndex = jokers.indexOf(targetJoker);
       if (targetIndex !== -1) {
         // 递归调用头脑风暴的复制逻辑
-        return this.processCopyEffectWithResult(targetJoker, 'brainstorm', callbackName, context, accumulator, targetIndex, jokers, consumableSlots, isPreview);
+        return this.processCopyEffectWithResult(targetJoker, 'brainstorm', callbackName, context, accumulator, targetIndex, jokers, consumableSlots, isPreview, recursionDepth + 1);
       }
       return undefined;
     }
