@@ -1981,12 +1981,16 @@ export class GameBoard {
    * 处理弃牌
    */
   private handleDiscard(): void {
-    const discarded = this.gameState.discardCards();
+    const result = this.gameState.discardCards();
 
-    if (discarded) {
+    if (result) {
       this.callbacks.onDiscard?.();
       // 只刷新手牌和UI，不重新渲染小丑牌和消耗牌
       this.refreshHandAndUI();
+      // 只有生成了塔罗牌时才刷新消耗品栏位（紫色蜡封效果）
+      if (result.tarotGenerated > 0) {
+        this.updateConsumables();
+      }
     }
   }
 

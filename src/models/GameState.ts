@@ -525,7 +525,7 @@ export class GameState implements GameStateInterface {
     return scoreResult;
   }
 
-  discardCards(): Card[] | null {
+  discardCards(): { discardedCards: Card[]; tarotGenerated: number } | null {
     if (!this.canDiscard()) {
       logger.warn('Cannot discard: conditions not met', { 
         phase: this.phase, 
@@ -592,11 +592,13 @@ export class GameState implements GameStateInterface {
     }
 
     // 处理紫色蜡封：弃牌时生成塔罗牌（每张紫色蜡封生成一张）
+    let tarotGenerated = 0;
     const sealEffects = SealSystem.calculateSealsForCards(discardedCards, false, true);
     for (let i = 0; i < sealEffects.tarotCount; i++) {
       const tarotCard = ConsumableDataManager.getRandomByType(ConsumableType.TAROT);
       if (this.consumableSlots.hasAvailableSlot()) {
         this.consumableSlots.addConsumable(tarotCard);
+        tarotGenerated++;
         logger.info('紫色蜡封效果：生成塔罗牌', { tarotCard: tarotCard.name, index: i + 1, total: sealEffects.tarotCount });
       } else {
         logger.info('紫色蜡封效果：消耗品槽位已满，无法生成塔罗牌', { index: i + 1, total: sealEffects.tarotCount });
@@ -617,10 +619,11 @@ export class GameState implements GameStateInterface {
       count: discardedCards.length,
       discardsRemaining: this.discardsRemaining,
       jokerEffects: discardResult.effects.length,
-      moneyBonus: discardResult.moneyBonus
+      moneyBonus: discardResult.moneyBonus,
+      tarotGenerated
     });
 
-    return discardedCards;
+    return { discardedCards, tarotGenerated };
   }
 
   canPlayHand(): boolean {

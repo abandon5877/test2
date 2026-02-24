@@ -379,9 +379,9 @@ describe('Hand Play Discard System', () => {
         gameState.cardPile.hand.selectCard(0);
         gameState.cardPile.hand.selectCard(1);
 
-        const discarded = gameState.discardCards();
-        expect(discarded).not.toBeNull();
-        expect(discarded).toHaveLength(2);
+        const result = gameState.discardCards();
+        expect(result).not.toBeNull();
+        expect(result!.discardedCards).toHaveLength(2);
       });
 
       it('should decrease discards remaining', () => {
