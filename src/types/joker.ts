@@ -1,5 +1,6 @@
 import type { Card } from '../models/Card';
 import type { PokerHandType } from './pokerHands';
+import { Suit } from './card';
 
 export enum JokerRarity {
   COMMON = 'common',
@@ -171,6 +172,9 @@ export interface JokerState {
   totalDiscarded?: number; // 弃牌总数（约里克）
   multMultiplier?: number; // 倍率乘数（部分小丑牌）
   chipBonus?: number; // 筹码加成（城堡）
+  targetRank?: string; // 目标点数（邮寄返利、偶像）
+  targetSuit?: Suit; // 目标花色（城堡、偶像）
+  targetHandType?: string; // 目标牌型（待办清单）
 }
 
 export interface JokerInterface {
@@ -210,6 +214,11 @@ export interface JokerInterface {
   decrementPerishable(): boolean; // 减少易腐回合，返回是否摧毁
   getRentalCost(): number; // 获取租赁成本
   clone(): JokerInterface;
+  /**
+   * 获取动态描述，根据当前状态生成描述
+   * 如果小丑牌支持动态描述，则返回动态生成的描述；否则返回静态描述
+   */
+  getDynamicDescription(): string;
 }
 
 // 不兼容蓝图/头脑风暴的小丑牌ID列表（根据官方Wiki）
@@ -278,6 +287,11 @@ export interface JokerConfig {
    * 默认为false
    */
   readonly isProbability?: boolean;
+  /**
+   * 动态描述函数，用于根据当前状态生成描述
+   * 如果提供，将优先使用此函数生成的描述
+   */
+  readonly getDynamicDescription?: (state: JokerState) => string;
 }
 
 export const JOKER_RARITY_COLORS: Readonly<Record<JokerRarity, string>> = {

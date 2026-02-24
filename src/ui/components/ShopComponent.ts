@@ -762,7 +762,7 @@ export class ShopComponent {
         const jokerCard = CardComponent.renderJokerCard({
           id: joker.id,
           name: joker.name,
-          description: joker.description,
+          description: joker.getDynamicDescription(),
           rarity: joker.rarity,
           cost: joker.cost,
           edition: joker.edition,

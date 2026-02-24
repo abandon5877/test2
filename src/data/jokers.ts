@@ -1,5 +1,5 @@
 import { Joker } from '../models/Joker';
-import { JokerRarity, JokerTrigger, JokerEdition, type JokerEffectContext, type JokerEffectResult } from '../types/joker';
+import { JokerRarity, JokerTrigger, JokerEdition, type JokerEffectContext, type JokerEffectResult, type JokerState } from '../types/joker';
 import { Suit, CardEnhancement } from '../types/card';
 import { PokerHandType } from '../types/pokerHands';
 import type { Card } from '../models/Card';
@@ -1353,6 +1353,11 @@ export const JOKERS: Joker[] = [
         chipBonus: permanentBonus,
         message: `跑者: +${permanentBonus}筹码 (已打出${straightCount}次顺子)`
       };
+    },
+    getDynamicDescription: (state: JokerState): string => {
+      const straightCount = state.straightCount || 0;
+      const permanentBonus = straightCount * 15;
+      return `顺子+${permanentBonus}筹码(永久)（已打出${straightCount}次顺子）`;
     }
   }),
 
@@ -1616,6 +1621,11 @@ export const JOKERS: Joker[] = [
         message: `约里克: 已弃${totalDiscarded}张牌 x${multiplier}倍率`,
         stateUpdate: { totalDiscarded }
       };
+    },
+    getDynamicDescription: (state: JokerState): string => {
+      const totalDiscarded = state.totalDiscarded || 0;
+      const multiplier = 1 + Math.floor(totalDiscarded / 23);
+      return `每弃掉23张牌，本回合x1倍率（已弃${totalDiscarded}张牌，当前x${multiplier}倍率）`;
     }
   }),
 
@@ -1773,6 +1783,10 @@ export const JOKERS: Joker[] = [
           stateUpdate: { ...jokerState, noFaceStreak: 0 }
         };
       }
+    },
+    getDynamicDescription: (state: JokerState): string => {
+      const noFaceStreak = state.noFaceStreak || 0;
+      return `连续不出脸牌，每手+1倍率（当前连续${noFaceStreak}手，+${noFaceStreak}倍率）`;
     }
   }),
 
@@ -1809,6 +1823,10 @@ export const JOKERS: Joker[] = [
         message: `冰淇淋: +${remainingBonus}筹码`,
         stateUpdate: { remainingBonus: newBonus }
       };
+    },
+    getDynamicDescription: (state: JokerState): string => {
+      const remainingBonus = state.remainingBonus ?? 100;
+      return `+${remainingBonus}筹码，每出牌一次-5筹码`;
     }
   }),
 
@@ -1877,6 +1895,10 @@ export const JOKERS: Joker[] = [
         message: `绿色小丑: 弃牌-1，当前+${currentBonus}倍率`,
         stateUpdate: { multBonus: currentBonus }
       };
+    },
+    getDynamicDescription: (state: JokerState): string => {
+      const currentBonus = state.multBonus || 0;
+      return `每出牌一次+1倍率，每弃牌一次-1倍率（当前+${currentBonus}倍率）`;
     }
   }),
 
@@ -1921,6 +1943,10 @@ export const JOKERS: Joker[] = [
         };
       }
       return {};
+    },
+    getDynamicDescription: (state: JokerState): string => {
+      const targetHandType = state.targetHandType || PokerHandType.OnePair;
+      return `打出${targetHandType}+$4，每回合更换目标牌型`;
     }
   }),
 
@@ -1944,6 +1970,10 @@ export const JOKERS: Joker[] = [
         };
       }
       return {};
+    },
+    getDynamicDescription: (state: JokerState): string => {
+      const currentBonus = state.multBonus || 0;
+      return `跳过卡包时+3倍率（当前+${currentBonus}倍率）`;
     }
   }),
 
@@ -2037,6 +2067,10 @@ export const JOKERS: Joker[] = [
         }
       }
       return {};
+    },
+    getDynamicDescription: (state: JokerState): string => {
+      const targetRank = state.targetRank || '2';
+      return `弃掉${targetRank}时+$5（每回合更换）`;
     }
   }),
 
@@ -2085,6 +2119,10 @@ export const JOKERS: Joker[] = [
         message: `爆米花: 剩余+${currentMult}倍率`,
         stateUpdate: { remainingMult: currentMult }
       };
+    },
+    getDynamicDescription: (state: JokerState): string => {
+      const remainingMult = state.remainingMult ?? 20;
+      return `+${remainingMult}倍率，每回合-4倍率`;
     }
   }),
 
@@ -2337,6 +2375,13 @@ export const JOKERS: Joker[] = [
       return {
         stateUpdate: { lastHandType: context.handType }
       };
+    },
+    getDynamicDescription: (state: JokerState): string => {
+      const lastHandType = state.lastHandType;
+      if (lastHandType) {
+        return `重复打出相同牌型时x3倍率（上次：${lastHandType}）`;
+      }
+      return '重复打出相同牌型时x3倍率';
     }
   }),
 
@@ -2372,6 +2417,10 @@ export const JOKERS: Joker[] = [
         };
       }
       return {};
+    },
+    getDynamicDescription: (state: JokerState): string => {
+      const currentMult = state.multMultiplier || 1;
+      return `选小盲注或大盲注时+X0.5倍率并摧毁随机小丑（当前x${currentMult.toFixed(1)}倍率）`;
     }
   }),
 
@@ -2442,6 +2491,10 @@ export const JOKERS: Joker[] = [
         multMultiplier: currentMult,
         message: `吸血鬼: x${currentMult.toFixed(1)}倍率`
       };
+    },
+    getDynamicDescription: (state: JokerState): string => {
+      const currentMult = state.multMultiplier || 1;
+      return `每张强化的计分牌永久x0.1倍率并移除强化（当前x${currentMult.toFixed(1)}倍率）`;
     }
   }),
 
@@ -2461,6 +2514,11 @@ export const JOKERS: Joker[] = [
         multMultiplier: multiplier,
         message: `全息影像: ${cardsAdded}张牌加入牌库 x${multiplier.toFixed(2)}倍率`
       };
+    },
+    getDynamicDescription: (state: JokerState): string => {
+      const cardsAdded = state.cardsAdded || 0;
+      const multiplier = 1 + (cardsAdded * 0.25);
+      return `每添加一张牌到牌库x0.25倍率（已添加${cardsAdded}张牌，当前x${multiplier.toFixed(2)}倍率）`;
     }
   }),
 
@@ -2551,6 +2609,11 @@ export const JOKERS: Joker[] = [
         };
       }
       return {};
+    },
+    getDynamicDescription: (state: JokerState): string => {
+      const currentStreak = state.streak || 0;
+      const multiplier = 1 + (currentStreak * 0.2);
+      return `连续不打最常出的牌型，每手x0.2倍率（当前连续${currentStreak}手，x${multiplier.toFixed(1)}倍率）`;
     }
   }),
 
@@ -2621,6 +2684,10 @@ export const JOKERS: Joker[] = [
         message: `龟豆: 剩余+${currentBonus}手牌上限`,
         stateUpdate: { handSizeBonus: currentBonus }
       };
+    },
+    getDynamicDescription: (state: JokerState): string => {
+      const currentBonus = state.handSizeBonus ?? 5;
+      return `+${currentBonus}手牌上限，每回合-1`;
     }
   }),
 
@@ -2710,6 +2777,11 @@ export const JOKERS: Joker[] = [
         };
       }
       return {};
+    },
+    getDynamicDescription: (state: JokerState): string => {
+      const triggeredCount = state.triggeredCount || 0;
+      const multiplier = 1 + (triggeredCount * 0.25);
+      return `幸运牌触发效果时x0.25倍率（已触发${triggeredCount}次，当前x${multiplier.toFixed(2)}倍率）`;
     }
   }),
 
@@ -2729,6 +2801,10 @@ export const JOKERS: Joker[] = [
         message: `闪卡: 刷新商店 +2倍率 (共+${currentBonus})`,
         stateUpdate: { multBonus: currentBonus }
       };
+    },
+    getDynamicDescription: (state: JokerState): string => {
+      const currentBonus = state.multBonus || 0;
+      return `每次刷新商店+2倍率（当前+${currentBonus}倍率）`;
     }
   }),
 
@@ -2751,6 +2827,10 @@ export const JOKERS: Joker[] = [
         };
       }
       return {};
+    },
+    getDynamicDescription: (state: JokerState): string => {
+      const currentBonus = state.multBonus || 0;
+      return `打出两对时+2倍率（当前+${currentBonus}倍率）`;
     }
   }),
 
@@ -2777,6 +2857,10 @@ export const JOKERS: Joker[] = [
         message: `拉面: 弃牌后 x${currentMult.toFixed(2)}倍率`,
         stateUpdate: { multiplier: currentMult }
       };
+    },
+    getDynamicDescription: (state: JokerState): string => {
+      const currentMult = state.multiplier ?? 2;
+      return `x${currentMult.toFixed(2)}倍率，每次弃牌-0.01倍率`;
     }
   }),
 
@@ -2799,6 +2883,10 @@ export const JOKERS: Joker[] = [
         };
       }
       return {};
+    },
+    getDynamicDescription: (state: JokerState): string => {
+      const handsRemaining = state.handsRemaining ?? 10;
+      return `接下来${handsRemaining}手牌触发所有打出牌2次`;
     }
   }),
 
@@ -2833,6 +2921,11 @@ export const JOKERS: Joker[] = [
         }
       }
       return {};
+    },
+    getDynamicDescription: (state: JokerState): string => {
+      const targetSuit = state.targetSuit || Suit.Hearts;
+      const chipBonus = state.chipBonus || 0;
+      return `弃掉${targetSuit}的牌+3筹码（当前+${chipBonus}筹码，每回合更换目标花色）`;
     }
   }),
 
@@ -2994,6 +3087,11 @@ export const JOKERS: Joker[] = [
         }
       }
       return {};
+    },
+    getDynamicDescription: (state: JokerState): string => {
+      const currentBonus = state.multiplierBonus || 0;
+      const multiplier = 1 + currentBonus;
+      return `每弃掉一张J，本回合x0.5倍率（当前x${multiplier.toFixed(1)}倍率）`;
     }
   }),
 
@@ -3086,6 +3184,11 @@ export const JOKERS: Joker[] = [
         };
       }
       return {};
+    },
+    getDynamicDescription: (state: JokerState): string => {
+      const cardsSold = state.cardsSold || 0;
+      const multiplier = 1 + (cardsSold * 0.25);
+      return `每卖出一张牌x0.25倍率（已卖出${cardsSold}张牌，当前x${multiplier.toFixed(2)}倍率，击败Boss后重置）`;
     }
   }),
 
@@ -3134,6 +3237,11 @@ export const JOKERS: Joker[] = [
         };
       }
       return {};
+    },
+    getDynamicDescription: (state: JokerState): string => {
+      const targetRank = state.targetRank || 'A';
+      const targetSuit = state.targetSuit || Suit.Spades;
+      return `${targetRank}${targetSuit} x2倍率（每回合更换目标牌）`;
     }
   }),
 
@@ -3187,6 +3295,14 @@ export const JOKERS: Joker[] = [
           ? `隐形小丑: 需要再持有${2 - roundsHeld}回合才能复制`
           : '隐形小丑: 没有其他小丑可复制'
       };
+    },
+    getDynamicDescription: (state: JokerState): string => {
+      const roundsHeld = state.roundsHeld || 0;
+      const remaining = Math.max(0, 2 - roundsHeld);
+      if (remaining > 0) {
+        return `2回合后出售时复制一张随机小丑（还需${remaining}回合）`;
+      }
+      return '2回合后出售时复制一张随机小丑（已就绪）';
     }
   }),
 
@@ -3211,6 +3327,11 @@ export const JOKERS: Joker[] = [
         };
       }
       return {};
+    },
+    getDynamicDescription: (state: JokerState): string => {
+      const destroyedFaceCards = state.destroyedFaceCards || 0;
+      const multiplier = 1 + destroyedFaceCards;
+      return `摧毁一张人头牌时永久x1倍率（已摧毁${destroyedFaceCards}张脸牌，当前x${multiplier}倍率）`;
     }
   }),
 

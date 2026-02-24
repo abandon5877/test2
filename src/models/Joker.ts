@@ -28,6 +28,8 @@ export class Joker implements JokerInterface {
   onEndOfRoundCallback?: (context: JokerEffectContext) => JokerEffectResult;
   onCardAddedCallback?: (context: JokerEffectContext) => JokerEffectResult;
   onSellCallback?: (context: JokerEffectContext) => JokerEffectResult; // 出售时触发（隐形小丑）
+  // 动态描述函数
+  private getDynamicDescriptionFn?: (state: JokerState) => string;
 
   constructor(config: JokerConfig) {
     this.id = config.id;
@@ -57,6 +59,8 @@ export class Joker implements JokerInterface {
     this.onEndOfRoundCallback = config.onEndOfRound;
     this.onCardAddedCallback = config.onCardAdded;
     this.onSellCallback = config.onSell;
+    // 设置动态描述函数
+    this.getDynamicDescriptionFn = config.getDynamicDescription;
   }
 
   /**
@@ -260,7 +264,8 @@ export class Joker implements JokerInterface {
       onEndOfRound: this.onEndOfRoundCallback,
       onCardAdded: this.onCardAddedCallback,
       onSell: this.onSellCallback,
-      isCopyable: this.isCopyable
+      isCopyable: this.isCopyable,
+      getDynamicDescription: this.getDynamicDescriptionFn
     });
     // 手动复制 perishableRounds，因为构造函数会根据 sticker 重置
     cloned.perishableRounds = this.perishableRounds;
@@ -296,10 +301,21 @@ export class Joker implements JokerInterface {
 
   getDisplayInfo(): string {
     const disabledTag = this.disabled ? '[已禁用] ' : '';
-    return `${disabledTag}${this.name} (${this.rarity}) - ${this.cost}$\n${this.description}`;
+    return `${disabledTag}${this.name} (${this.rarity}) - ${this.cost}$\n${this.getDynamicDescription()}`;
   }
 
   toString(): string {
     return this.name;
+  }
+
+  /**
+   * 获取动态描述
+   * 如果配置了动态描述函数，则使用它生成描述；否则返回静态描述
+   */
+  getDynamicDescription(): string {
+    if (this.getDynamicDescriptionFn) {
+      return this.getDynamicDescriptionFn(this.state);
+    }
+    return this.description;
   }
 }

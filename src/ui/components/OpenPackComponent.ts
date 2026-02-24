@@ -376,7 +376,7 @@ export class OpenPackComponent {
       cardElement = CardComponent.renderJokerCard({
         id: card.id,
         name: card.name,
-        description: card.description,
+        description: card.getDynamicDescription(),
         rarity: card.rarity,
         cost: card.cost,
         edition: card.edition,

@@ -135,7 +135,7 @@ export class JokerDetailModal {
       line-height: 1.6;
       flex: 1;
     `;
-    desc.textContent = joker.description;
+    desc.textContent = joker.getDynamicDescription();
     modal.appendChild(desc);
 
     // 价格信息

@@ -205,6 +205,9 @@ export class GameState implements GameStateInterface {
     this.jokerSlots.clearAllDisabled();
     const roundStartResult = BossSystem.onRoundStart(this.bossState, this.jokerSlots, handCards);
 
+    // 处理邮寄返利 (Mail-In Rebate) 效果：每回合从牌组随机选择目标点数
+    this.updateMailInRebateTargetRank();
+
     // 处理选择盲注时的小丑牌效果（ON_BLIND_SELECT触发器）
     const blindSelectResult = JokerSystem.processBlindSelect(this.jokerSlots, blindType);
 
@@ -283,6 +286,39 @@ export class GameState implements GameStateInterface {
         const currentBlindsSkipped = (joker.state?.blindsSkipped as number) || 0;
         joker.updateState({ blindsSkipped: currentBlindsSkipped + 1 });
         logger.info('Throwback updated', { blindsSkipped: currentBlindsSkipped + 1 });
+      }
+    }
+  }
+
+  /**
+   * 更新邮寄返利 (Mail-In Rebate) 的目标点数
+   * 每回合从牌组中随机选择一个点数
+   */
+  private updateMailInRebateTargetRank(): void {
+    // 获取牌组中的所有牌
+    const deckCards = this.cardPile.deck.getCards();
+    const handCards = this.cardPile.hand.getCards();
+    const discardCards = this.cardPile.discard.getCards();
+
+    // 合并所有牌（牌组+手牌+弃牌堆）
+    const allCards = [...deckCards, ...handCards, ...discardCards];
+
+    if (allCards.length === 0) {
+      return;
+    }
+
+    // 获取所有可用的点数
+    const availableRanks = allCards.map(card => card.rank);
+
+    // 随机选择一个点数
+    const randomRank = availableRanks[Math.floor(Math.random() * availableRanks.length)];
+
+    // 更新所有邮寄返利小丑牌的目标点数
+    const jokers = this.jokerSlots.getJokers();
+    for (const joker of jokers) {
+      if (joker.id === 'mail_in_rebate') {
+        joker.updateState({ targetRank: randomRank });
+        logger.info('Mail-In Rebate target rank updated', { targetRank: randomRank });
       }
     }
   }
