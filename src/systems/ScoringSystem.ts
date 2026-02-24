@@ -622,7 +622,8 @@ export class ScoringSystem {
         handsRemaining,
         mostPlayedHand,
         handTypeHistoryCount,
-        isPreview
+        isPreview,
+        cards // 传递打出的所有牌（用于重影等效果）
       );
 
       totalChips = jokerResult.totalChips;

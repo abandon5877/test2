@@ -724,7 +724,8 @@ export class JokerSystem {
     mostPlayedHand?: PokerHandType | null,
     consumableSlots?: ConsumableSlots,
     handTypeHistoryCount?: number,
-    isPreview = false
+    isPreview = false,
+    playedCards?: readonly Card[] // 打出的所有牌（用于重影等效果）
   ): {
     chipBonus: number;
     multBonus: number;
@@ -736,11 +737,13 @@ export class JokerSystem {
     const jokers = jokerSlots.getActiveJokers();
 
     console.log('[JokerSystem] processHandPlayed循环开始, 小丑数量:', jokers.length, '预览模式:', isPreview);
+    // 使用 playedCards（打出的所有牌）如果提供，否则使用 scoredCards（计分牌）
+    const allPlayedCards = playedCards && playedCards.length > 0 ? playedCards : scoredCards;
     for (let i = 0; i < jokers.length; i++) {
       const joker = jokers[i];
 
       const context: JokerEffectContext = {
-        scoredCards,
+        scoredCards: allPlayedCards, // 使用所有打出的牌，不只是计分牌
         handType,
         currentChips,
         currentMult,
@@ -1350,7 +1353,8 @@ export class JokerSystem {
     handsRemaining?: number,
     mostPlayedHand?: PokerHandType | null,
     handTypeHistoryCount?: number,
-    isPreview = false
+    isPreview = false,
+    playedCards?: readonly Card[] // 打出的所有牌（用于重影等效果）
   ): ProcessedScoreResult {
     const jokerEffects: JokerEffectDetail[] = [];
     let totalChipBonus = 0;
@@ -1434,7 +1438,8 @@ export class JokerSystem {
       mostPlayedHand,
       undefined, // consumableSlots
       handTypeHistoryCount,
-      isPreview
+      isPreview,
+      playedCards
     );
     console.log('[JokerSystem] processHandPlayed结果:', { chipBonus: handPlayedResult.chipBonus, multBonus: handPlayedResult.multBonus, multMultiplier: handPlayedResult.multMultiplier, effects: handPlayedResult.effects });
     totalChipBonus += handPlayedResult.chipBonus;
