@@ -497,7 +497,8 @@ export class GameState implements GameStateInterface {
       // 修复蛇Boss: 总是抽3张牌，忽略手牌上限
       this.drawCards(3, { ignoreHandSize: true });
     } else {
-      this.drawCards(selectedCards.length);
+      // 修复火祭: 抽牌时补充到手牌满，处理火祭摧毁手牌后的情况
+      this.cardPile.drawToMaxHandSize();
     }
 
     logger.info('Hand played', { 
@@ -612,7 +613,8 @@ export class GameState implements GameStateInterface {
       // 修复蛇Boss: 总是抽3张牌，忽略手牌上限
       this.drawCards(3, { ignoreHandSize: true });
     } else {
-      this.drawCards(discardedCards.length);
+      // 修复火祭: 抽牌时补充到手牌满，处理火祭摧毁手牌后的情况
+      this.cardPile.drawToMaxHandSize();
     }
 
     logger.info('Cards discarded', {
