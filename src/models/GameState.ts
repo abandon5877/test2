@@ -194,10 +194,11 @@ export class GameState implements GameStateInterface {
     this.roundStats = this.createEmptyRoundStats();
     this.playedHandTypes.clear();
 
-    this.dealInitialHand();
-
-    // 处理证书 (Certificate) 效果：回合开始时添加一张带印章的随机牌到手牌
+    // 处理证书 (Certificate) 效果：回合开始前将带印章的牌放入牌库顶部
+    // 这样发牌时就能抽到手牌中
     this.handleCertificateEffect();
+
+    this.dealInitialHand();
 
     // 处理Boss回合开始效果（深红之心、天青铃铛等）
     const handCards = this.cardPile.hand.getCards();
@@ -1289,7 +1290,7 @@ export class GameState implements GameStateInterface {
 
   /**
    * 处理证书 (Certificate) 效果
-   * 回合开始时添加一张带印章的随机牌到手牌
+   * 回合开始前将带印章的随机牌放入牌库顶部，这样发牌时会抽到手牌中
    */
   private handleCertificateEffect(): void {
     const hasCertificate = this.jokers.some(joker => joker.id === 'certificate');
@@ -1306,16 +1307,9 @@ export class GameState implements GameStateInterface {
 
     const card = new CardClass(randomSuit, randomRank, CardEnhancement.None, randomSeal, CardEdition.None);
 
-    // 添加到手牌
-    const currentHand = this.cardPile.hand.getCards();
-    if (currentHand.length < this.getMaxHandSize()) {
-      this.cardPile.hand.addCard(card);
-      logger.info('证书效果: 添加带印章的牌到手牌', { card: card.toString(), seal: randomSeal });
-    } else {
-      // 手牌已满，添加到牌库底部
-      this.cardPile.deck.addToBottom(card);
-      logger.info('证书效果: 手牌已满，添加带印章的牌到牌库', { card: card.toString(), seal: randomSeal });
-    }
+    // 将牌放入牌库顶部，这样发牌时会优先抽到
+    this.cardPile.deck.addToTop(card);
+    logger.info('证书效果: 添加带印章的牌到牌库顶部', { card: card.toString(), seal: randomSeal });
   }
 
   getHandLevelState(): HandLevelState {
