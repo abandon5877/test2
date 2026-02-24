@@ -10,7 +10,7 @@ import { Joker } from './models/Joker';
 import { Consumable } from './models/Consumable';
 import { Card } from './models/Card';
 import { Shop } from './models/Shop';
-import { Storage, hasSave, load, restoreGameState, deleteSave, isEndlessModeUnlocked, unlockEndlessMode } from './utils/storage';
+import { Storage, hasSave, load, restoreGameState, deleteSave, isEndlessModeUnlocked, unlockEndlessMode, deleteGlobalUnlockData } from './utils/storage';
 import { showAlert, showConfirm } from './ui/components/Modal';
 import { ScaleContainer } from './ui/components/ScaleContainer';
 import { Toast } from './ui/components/Toast';

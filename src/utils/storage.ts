@@ -26,11 +26,14 @@ import { setBossAssignments, getBossAssignments } from '../data/blinds';
 
 const logger = createModuleLogger('Storage');
 
-const SAVE_KEY = 'balatro_game_save';
-const UNLOCK_KEY = 'balatro_unlocks'; // 解锁数据持久化
+// 游戏存档（单局进度）
+const GAME_SAVE_KEY = 'balatro_game_save';
 
-// 解锁数据接口
-export interface UnlockData {
+// 全局解锁数据（跨局持久化）
+const GLOBAL_UNLOCK_KEY = 'balatro_global_unlocks';
+
+// 全局解锁数据接口
+export interface GlobalUnlockData {
   version: string;
   endlessModeUnlocked: boolean; // 无尽模式是否解锁
 }
@@ -216,7 +219,7 @@ export class Storage {
         } : undefined
       };
 
-      localStorage.setItem(SAVE_KEY, JSON.stringify(saveData));
+      localStorage.setItem(GAME_SAVE_KEY, JSON.stringify(saveData));
       console.log('[Storage.save] 游戏存档保存成功');
       return true;
     } catch (error) {
@@ -251,7 +254,7 @@ export class Storage {
 
   static load(): SaveData | null {
     try {
-      const saveString = localStorage.getItem(SAVE_KEY);
+      const saveString = localStorage.getItem(GAME_SAVE_KEY);
       if (!saveString) {
         return null;
       }
@@ -616,12 +619,12 @@ export class Storage {
   }
 
   static hasSave(): boolean {
-    return localStorage.getItem(SAVE_KEY) !== null;
+    return localStorage.getItem(GAME_SAVE_KEY) !== null;
   }
 
   static deleteSave(): boolean {
     try {
-      localStorage.removeItem(SAVE_KEY);
+      localStorage.removeItem(GAME_SAVE_KEY);
       return true;
     } catch (error) {
       console.error('删除存档失败:', error);
@@ -630,7 +633,7 @@ export class Storage {
   }
 
   static getSaveInfo(): { exists: boolean; timestamp?: number; version?: string } {
-    const saveString = localStorage.getItem(SAVE_KEY);
+    const saveString = localStorage.getItem(GAME_SAVE_KEY);
     if (!saveString) {
       return { exists: false };
     }
@@ -948,12 +951,12 @@ export const restoreGameState = (saveData: SaveData): GameState =>
 /**
  * 保存解锁数据（独立于游戏存档）
  */
-export function saveUnlockData(data: UnlockData): boolean {
+export function saveGlobalUnlockData(data: GlobalUnlockData): boolean {
   try {
-    localStorage.setItem(UNLOCK_KEY, JSON.stringify(data));
+    localStorage.setItem(GLOBAL_UNLOCK_KEY, JSON.stringify(data));
     return true;
   } catch (e) {
-    logger.error('[saveUnlockData] 保存解锁数据失败:', e);
+    logger.error('[saveGlobalUnlockData] 保存解锁数据失败:', e);
     return false;
   }
 }
@@ -961,14 +964,14 @@ export function saveUnlockData(data: UnlockData): boolean {
 /**
  * 加载解锁数据
  */
-export function loadUnlockData(): UnlockData {
+export function loadGlobalUnlockData(): GlobalUnlockData {
   try {
-    const data = localStorage.getItem(UNLOCK_KEY);
+    const data = localStorage.getItem(GLOBAL_UNLOCK_KEY);
     if (data) {
       return JSON.parse(data);
     }
   } catch (e) {
-    logger.error('[loadUnlockData] 加载解锁数据失败:', e);
+    logger.error('[loadGlobalUnlockData] 加载解锁数据失败:', e);
   }
   // 默认返回未解锁状态
   return {
@@ -981,27 +984,27 @@ export function loadUnlockData(): UnlockData {
  * 解锁无尽模式
  */
 export function unlockEndlessMode(): boolean {
-  const data = loadUnlockData();
+  const data = loadGlobalUnlockData();
   data.endlessModeUnlocked = true;
-  return saveUnlockData(data);
+  return saveGlobalUnlockData(data);
 }
 
 /**
  * 检查无尽模式是否已解锁
  */
 export function isEndlessModeUnlocked(): boolean {
-  return loadUnlockData().endlessModeUnlocked;
+  return loadGlobalUnlockData().endlessModeUnlocked;
 }
 
 /**
  * 删除解锁数据（完全重置）
  */
-export function deleteUnlockData(): boolean {
+export function deleteGlobalUnlockData(): boolean {
   try {
-    localStorage.removeItem(UNLOCK_KEY);
+    localStorage.removeItem(GLOBAL_UNLOCK_KEY);
     return true;
   } catch (e) {
-    logger.error('[deleteUnlockData] 删除解锁数据失败:', e);
+    logger.error('[deleteGlobalUnlockData] 删除解锁数据失败:', e);
     return false;
   }
 }
