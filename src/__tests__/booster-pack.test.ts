@@ -747,7 +747,8 @@ describe('卡包系统测试', () => {
 
   describe('15. 数据生成函数测试', () => {
     it('getRandomJokers应该返回指定数量的小丑牌', () => {
-      const jokers = getRandomJokers(3);
+      // 在没有已有小丑牌的情况下生成
+      const jokers = getRandomJokers(3, [], []);
       expect(jokers.length).toBe(3);
       for (const joker of jokers) {
         expect(joker).toBeInstanceOf(Joker);

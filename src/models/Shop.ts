@@ -169,15 +169,20 @@ export class Shop {
     const totalWeight = weights.joker + weights.tarot + weights.planet + weights.playingCard;
     logger.info('[Shop.generateRandomCards] 生成随机卡片', { count, weights, totalWeight });
 
+    // 获取当前商店中已有的小丑牌ID
+    const existingJokerIds = this.getJokers().map(item => (item.item as Joker).id);
+
     for (let i = 0; i < count; i++) {
       const rand = Math.random() * totalWeight;
       logger.info(`[Shop.generateRandomCards] 第${i + 1}张卡片，随机数:`, rand);
 
       if (rand < weights.joker) {
-        const jokers = getRandomJokers(1, this.vouchersUsed);
+        const jokers = getRandomJokers(1, this.vouchersUsed, existingJokerIds);
         if (jokers.length > 0) {
           const price = this.calculatePrice(jokers[0].cost);
           this.addItem('joker', jokers[0], price);
+          // 更新已有小丑牌ID列表
+          existingJokerIds.push(jokers[0].id);
           logger.info('[Shop.generateRandomCards] 生成小丑牌:', jokers[0].id, '价格:', price);
         }
       } else if (rand < weights.joker + weights.tarot) {
@@ -478,8 +483,11 @@ export class Shop {
   }
 
   private addExtraSlot(): void {
+    // 获取当前商店中已有的小丑牌ID
+    const existingJokerIds = this.getJokers().map(item => (item.item as Joker).id);
+
     if (Math.random() < 0.5) {
-      const joker = getRandomJokers(1)[0];
+      const joker = getRandomJokers(1, this.vouchersUsed, existingJokerIds)[0];
       this.addItem('joker', joker, joker.cost);
     } else {
       const consumable = getRandomConsumables(1)[0];

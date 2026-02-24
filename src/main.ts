@@ -456,7 +456,9 @@ class Game {
         break;
 
       case 'buffoon':
-        contents.push(...getRandomJokers(pack.choices));
+        // 获取玩家已有的小丑牌ID，避免卡包开出重复的小丑牌
+        const existingJokerIds = this.gameState.jokerSlots.getJokers().map(j => j.id);
+        contents.push(...getRandomJokers(pack.choices, [], existingJokerIds));
         break;
 
       case 'spectral':

@@ -9,6 +9,7 @@ import {
   getJokerById
 } from '../data/jokers';
 import { JokerRarity } from '../types/joker';
+import { Joker } from '../models/Joker';
 
 describe('小丑牌稀有度生成测试', () => {
   beforeEach(() => {
@@ -40,8 +41,16 @@ describe('小丑牌稀有度生成测试', () => {
   describe('getRandomJokers 稀有度分布', () => {
     it('应该按照稀有度权重生成小丑牌', () => {
       // 生成大量小丑牌来验证分布
+      // 通过多次调用 getRandomJokers(1) 来模拟独立生成场景
       const sampleSize = 1000;
-      const jokers = getRandomJokers(sampleSize);
+      const jokers: Joker[] = [];
+
+      for (let i = 0; i < sampleSize; i++) {
+        const result = getRandomJokers(1, [], []);
+        if (result.length > 0) {
+          jokers.push(result[0]);
+        }
+      }
 
       expect(jokers.length).toBe(sampleSize);
 
@@ -80,7 +89,7 @@ describe('小丑牌稀有度生成测试', () => {
     });
 
     it('生成的小丑牌应该有有效的稀有度', () => {
-      const jokers = getRandomJokers(10);
+      const jokers = getRandomJokers(10, [], []);
 
       for (const joker of jokers) {
         expect(Object.values(JokerRarity)).toContain(joker.rarity);
@@ -89,8 +98,16 @@ describe('小丑牌稀有度生成测试', () => {
 
     it('不应该生成传说小丑牌', () => {
       // 生成大量小丑牌
+      // 通过多次调用 getRandomJokers(1) 来模拟独立生成场景
       const sampleSize = 500;
-      const jokers = getRandomJokers(sampleSize);
+      const jokers: Joker[] = [];
+
+      for (let i = 0; i < sampleSize; i++) {
+        const result = getRandomJokers(1, [], []);
+        if (result.length > 0) {
+          jokers.push(result[0]);
+        }
+      }
 
       // 检查是否有传说小丑牌
       const hasLegendary = jokers.some(j => j.rarity === JokerRarity.LEGENDARY);
@@ -107,7 +124,7 @@ describe('小丑牌稀有度生成测试', () => {
 
       // 生成大量小丑牌
       const sampleSize = 500;
-      const jokers = getRandomJokers(sampleSize);
+      const jokers = getRandomJokers(sampleSize, [], []);
 
       // 检查是否包含卡文迪什
       const hasCavendish = jokers.some(j => j.id === 'cavendish');
@@ -123,7 +140,7 @@ describe('小丑牌稀有度生成测试', () => {
 
       // 生成大量小丑牌
       const sampleSize = 500;
-      const jokers = getRandomJokers(sampleSize);
+      const jokers = getRandomJokers(sampleSize, [], []);
 
       // 检查卡文迪什的稀有度
       const cavendish = getJokerById('cavendish');
@@ -182,13 +199,13 @@ describe('小丑牌稀有度生成测试', () => {
       const counts = [1, 2, 5, 10];
 
       for (const count of counts) {
-        const jokers = getRandomJokers(count);
+        const jokers = getRandomJokers(count, [], []);
         expect(jokers.length).toBe(count);
       }
     });
 
     it('生成的小丑牌应该是独立的克隆', () => {
-      const jokers = getRandomJokers(5);
+      const jokers = getRandomJokers(5, [], []);
 
       // 修改第一个小丑牌，不应该影响其他
       if (jokers.length > 1) {

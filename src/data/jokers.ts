@@ -3316,13 +3316,22 @@ function getRandomJokerFromPoolByRarity(pool: Joker[], rarity: JokerRarity): Jok
   return jokersOfRarity[randomIndex];
 }
 
-export function getRandomJokers(count: number, vouchersUsed: string[] = []): Joker[] {
-  const pool = getAvailableJokersForSpawn();
+export function getRandomJokers(count: number, vouchersUsed: string[] = [], existingJokerIds: string[] = []): Joker[] {
+  // 获取可用池，排除场面上已有的小丑牌
+  const basePool = getAvailableJokersForSpawn().filter(j => !existingJokerIds.includes(j.id));
+  // 创建可修改的池，用于同一批次内去重
+  const pool = [...basePool];
   const jokers: Joker[] = [];
 
-  logger.debug('生成随机小丑牌', { count, poolSize: pool.length, grosMichelDestroyed });
+  logger.debug('生成随机小丑牌', { count, poolSize: pool.length, grosMichelDestroyed, excludedCount: existingJokerIds.length });
 
   for (let i = 0; i < count; i++) {
+    // 如果可用池为空，则跳出循环
+    if (pool.length === 0) {
+      logger.warn('没有更多可用的小丑牌', { requested: count, generated: jokers.length });
+      break;
+    }
+
     // 根据稀有度权重选择稀有度
     const targetRarity = selectRandomRarity();
 
@@ -3334,7 +3343,7 @@ export function getRandomJokers(count: number, vouchersUsed: string[] = []): Jok
       selectedJoker = getRandomJokerFromPoolByRarity(pool, JokerRarity.COMMON);
     }
 
-    // 如果仍然没有，从整个池中随机选择（兜底方案）
+    // 如果仍然没有，从整个可用池中随机选择（兜底方案）
     if (!selectedJoker && pool.length > 0) {
       const randomIndex = Math.floor(Math.random() * pool.length);
       selectedJoker = pool[randomIndex];
@@ -3350,6 +3359,11 @@ export function getRandomJokers(count: number, vouchersUsed: string[] = []): Jok
       }
 
       jokers.push(clonedJoker);
+      // 从池中移除已选中的小丑牌，避免同一批次重复
+      const index = pool.findIndex(j => j.id === selectedJoker!.id);
+      if (index !== -1) {
+        pool.splice(index, 1);
+      }
       logger.debug('生成小丑牌', { name: clonedJoker.name, rarity: clonedJoker.rarity, edition });
     }
   }
