@@ -865,6 +865,27 @@ export class GameState implements GameStateInterface {
 
   private dealInitialHand(): void {
     this.cardPile.dealInitialHand(this.getMaxHandSize());
+
+    // 修复房子Boss: 第一手牌强制面朝下
+    const currentBoss = this.bossState.getCurrentBoss();
+    if (currentBoss === BossType.HOUSE && !this.bossState.isFirstHandPlayed()) {
+      const handCards = this.cardPile.hand.getCards();
+      for (const card of handCards) {
+        card.setFaceDown(true);
+      }
+      logger.info('房子Boss: 第一手牌面朝下');
+    }
+
+    // 修复标记Boss: 所有人头牌面朝下
+    if (currentBoss === BossType.MARK) {
+      const handCards = this.cardPile.hand.getCards();
+      for (const card of handCards) {
+        if (card.rank === Rank.Jack || card.rank === Rank.Queen || card.rank === Rank.King) {
+          card.setFaceDown(true);
+        }
+      }
+      logger.info('标记Boss: 人头牌面朝下');
+    }
   }
 
   private drawCards(count: number, options?: { ignoreHandSize?: boolean; faceDown?: boolean }): void {
@@ -890,6 +911,10 @@ export class GameState implements GameStateInterface {
           if (currentBoss === BossType.WHEEL && Math.random() < 1/7) {
             card.setFaceDown(true);
           }
+          // 修复标记Boss: 人头牌翻面
+          if (currentBoss === BossType.MARK && (card.rank === Rank.Jack || card.rank === Rank.Queen || card.rank === Rank.King)) {
+            card.setFaceDown(true);
+          }
           this.cardPile.hand.addCard(card);
         }
       }
@@ -905,6 +930,10 @@ export class GameState implements GameStateInterface {
           }
           // 修复轮子Boss: 抽牌时有1/7概率翻面
           if (currentBoss === BossType.WHEEL && Math.random() < 1/7) {
+            card.setFaceDown(true);
+          }
+          // 修复标记Boss: 人头牌翻面
+          if (currentBoss === BossType.MARK && (card.rank === Rank.Jack || card.rank === Rank.Queen || card.rank === Rank.King)) {
             card.setFaceDown(true);
           }
           this.cardPile.hand.addCard(card);

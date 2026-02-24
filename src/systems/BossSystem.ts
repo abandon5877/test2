@@ -247,28 +247,6 @@ export class BossSystem {
   }
 
   /**
-   * 检查卡牌是否面朝下
-   */
-  static isCardFaceDown(bossState: BossState, card: Card, isFirstHand: boolean): boolean {
-    const currentBoss = bossState.getCurrentBoss();
-
-    // 房子Boss: 第一手牌面朝下
-    if (currentBoss === BossType.HOUSE && isFirstHand && !bossState.isFirstHandPlayed()) {
-      return true;
-    }
-
-    // 修复轮子Boss: 不再在这里随机，而是在抽牌时确定翻面状态并保存到卡牌中
-    // 轮子的翻面状态已经通过 card.faceDown 保存
-
-    // 标记Boss: 人头牌面朝下
-    if (currentBoss === BossType.MARK) {
-      return card.rank === Rank.Jack || card.rank === Rank.Queen || card.rank === Rank.King;
-    }
-
-    return false;
-  }
-
-  /**
    * 回合开始效果
    */
   static onRoundStart(bossState: BossState, jokerSlots: { disableRandomJoker: () => number | null; getJokers: () => readonly JokerInterface[]; flipAllJokers: () => void; shuffleJokers: () => void }, handCards: Card[] = []): BossEffectResult {
