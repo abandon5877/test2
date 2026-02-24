@@ -180,7 +180,7 @@ export function calculateEndlessTargetScore(ante: number): number {
   }
   
   // 无尽模式分数增长（参考官方文档）
-  // 使用官方文档的精确数值（Ante 9-16）
+  // 使用官方文档的精确数值（Ante 9-32）
   const officialScores: Record<number, number> = {
     9: 110000,
     10: 560000,
@@ -190,20 +190,37 @@ export function calculateEndlessTargetScore(ante: number): number {
     14: 29000000000000,        // 2.9e13
     15: 77000000000000000,     // 7.7e16
     16: 860000000000000000000, // 8.6e20 (Finisher Blind)
+    17: 4.2e25,
+    18: 9.2e30,
+    19: 9.2e36,
+    20: 4.3e43,
+    21: 9.7e50,
+    22: 1.0e59,
+    23: 5.8e67,
+    24: 1.6e77,  // Finisher Blind
+    25: 2.4e87,
+    26: 1.9e98,
+    27: 8.4e109,
+    28: 2.0e122,
+    29: 2.7e135,
+    30: 2.1e149,
+    31: 9.9e163,
+    32: 2.7e179, // Finisher Blind
   };
   
   if (officialScores[ante]) {
     return officialScores[ante];
   }
   
-  // Ante 17+: 使用超指数增长公式近似
-  // 官方曲线近似于 x^(x^2)，这里使用更保守的估计
-  // 基于 Ante 16 的 8.6e20，每底注增长约 1000-10000 倍
-  const ante16Score = 8.6e20;
-  const growthFactor = Math.pow(ante - 15, ante - 15); // (n-15)^(n-15) 增长
-  const score = ante16Score * growthFactor;
+  // Ante 33+: 使用超指数增长公式近似
+  // 官方曲线近似于 x^(x^2)
+  // 基于 Ante 32 的 2.7e179，每底注增长约 1000-10000 倍
+  const ante32Score = 2.7e179;
+  const growthFactor = Math.pow(ante - 31, ante - 31); // (n-31)^(n-31) 增长
+  const score = ante32Score * growthFactor;
   
-  // 限制在 Number.MAX_SAFE_INTEGER 范围内
+  // 限制在 Number.MAX_SAFE_INTEGER 范围内（约 9e15）
+  // 注意：Ante 39 会超过 JavaScript 数字上限，显示为 naneinf
   return Math.min(score, Number.MAX_SAFE_INTEGER);
 }
 
