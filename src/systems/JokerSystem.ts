@@ -732,6 +732,7 @@ export class JokerSystem {
     chipBonus: number;
     multBonus: number;
     multMultiplier: number;
+    moneyBonus: number;
     copyScoredCardToDeck?: boolean;
     effects: JokerEffectDetail[];
   } {
@@ -784,6 +785,7 @@ export class JokerSystem {
       chipBonus: accumulator.chipBonus,
       multBonus: accumulator.multBonus,
       multMultiplier: accumulator.multMultiplier,
+      moneyBonus: accumulator.moneyBonus,
       effects: accumulator.effects
     };
   }
@@ -1444,10 +1446,11 @@ export class JokerSystem {
       isPreview,
       playedCards
     );
-    console.log('[JokerSystem] processHandPlayed结果:', { chipBonus: handPlayedResult.chipBonus, multBonus: handPlayedResult.multBonus, multMultiplier: handPlayedResult.multMultiplier, effects: handPlayedResult.effects });
+    console.log('[JokerSystem] processHandPlayed结果:', { chipBonus: handPlayedResult.chipBonus, multBonus: handPlayedResult.multBonus, multMultiplier: handPlayedResult.multMultiplier, moneyBonus: handPlayedResult.moneyBonus, effects: handPlayedResult.effects });
     totalChipBonus += handPlayedResult.chipBonus;
     totalMultBonus += handPlayedResult.multBonus;
     totalMultMultiplier *= handPlayedResult.multMultiplier;
+    totalMoneyEarned += handPlayedResult.moneyBonus || 0;
     jokerEffects.push(...handPlayedResult.effects);
 
     // 修复: 正确的Balatro算分逻辑
