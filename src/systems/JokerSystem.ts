@@ -1198,7 +1198,8 @@ export class JokerSystem {
   static processDiscard(
     jokerSlots: JokerSlots,
     discardedCards: readonly Card[],
-    handsPlayed: number
+    handsPlayed: number,
+    discardsUsed: number // 修复：添加已弃牌次数参数
   ): {
     chipBonus: number;
     multBonus: number;
@@ -1217,6 +1218,7 @@ export class JokerSystem {
       const context: JokerEffectContext = {
         discardedCards,
         handsPlayed,
+        discardsUsed, // 修复：传入已弃牌次数
         ...this.createPositionContext(jokerSlots, i)
       };
 

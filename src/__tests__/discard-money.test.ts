@@ -104,5 +104,62 @@ describe('弃牌金币奖励测试', () => {
       // 验证金币增加了$3
       expect(gameState.money).toBe(initialMoney + 3);
     });
+
+    it('出过牌后第一次弃牌也应该获得$3', () => {
+      // 添加交易卡
+      const joker = getJokerById('trading_card')!;
+      gameState.jokerSlots.addJoker(joker);
+
+      // 先出一次牌
+      gameState.cardPile.hand.selectCard(0);
+      gameState.playHand();
+
+      // 准备弃牌 - 1张牌
+      gameState.cardPile.hand.clear();
+      gameState.cardPile.hand.addCard(new Card(Suit.Spades, Rank.Ace));
+      // 添加更多牌以满足手牌上限
+      for (let i = 0; i < 7; i++) {
+        gameState.cardPile.hand.addCard(new Card(Suit.Clubs, Rank.Two));
+      }
+
+      // 选择要弃的牌
+      gameState.cardPile.hand.selectCard(0);
+
+      // 记录初始金币
+      const initialMoney = gameState.money;
+
+      // 弃牌（这是第一次弃牌，虽然出过牌了）
+      gameState.discardCards();
+
+      // 验证金币增加了$3
+      expect(gameState.money).toBe(initialMoney + 3);
+    });
+
+    it('第二次弃牌不应该获得$3', () => {
+      // 添加交易卡
+      const joker = getJokerById('trading_card')!;
+      gameState.jokerSlots.addJoker(joker);
+
+      // 第一次弃牌
+      gameState.cardPile.hand.selectCard(0);
+      gameState.discardCards();
+
+      // 准备第二次弃牌
+      gameState.cardPile.hand.clear();
+      gameState.cardPile.hand.addCard(new Card(Suit.Spades, Rank.Ace));
+      for (let i = 0; i < 7; i++) {
+        gameState.cardPile.hand.addCard(new Card(Suit.Clubs, Rank.Two));
+      }
+      gameState.cardPile.hand.selectCard(0);
+
+      // 记录初始金币
+      const initialMoney = gameState.money;
+
+      // 第二次弃牌
+      gameState.discardCards();
+
+      // 验证金币没有增加
+      expect(gameState.money).toBe(initialMoney);
+    });
   });
 });

@@ -178,6 +178,7 @@ describe('幻想性错觉(Pareidolia)测试', () => {
       const result = JokerSystem.processDiscard(
         jokerSlots,
         discardedCards,
+        0,
         0
       );
 

@@ -3026,10 +3026,10 @@ export const JOKERS: Joker[] = [
     cost: 6,
     trigger: JokerTrigger.ON_DISCARD,
     effect: (context: JokerEffectContext): JokerEffectResult => {
-      const handsPlayed = (context as unknown as { handsPlayed?: number }).handsPlayed || 0;
+      const discardsUsed = (context as unknown as { discardsUsed?: number }).discardsUsed || 0;
       const discardedCards = (context as unknown as { discardedCards?: Card[] }).discardedCards || [];
-      // 第一手且只弃1张牌
-      if (handsPlayed === 0 && discardedCards.length === 1) {
+      // 第一手弃牌且只弃1张牌
+      if (discardsUsed === 0 && discardedCards.length === 1) {
         return {
           moneyBonus: 3,
           destroyDiscardedCard: true,

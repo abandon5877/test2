@@ -23,7 +23,7 @@ describe('ON_DISCARD 触发器类小丑牌测试', () => {
         new Card(Suit.Diamonds, Rank.Jack)
       ];
 
-      const result = JokerSystem.processDiscard(jokerSlots, discardedCards, 1);
+      const result = JokerSystem.processDiscard(jokerSlots, discardedCards, 1, 0);
 
       expect(result.moneyBonus).toBe(5);
       expect(result.effects).toHaveLength(1);
@@ -39,7 +39,7 @@ describe('ON_DISCARD 触发器类小丑牌测试', () => {
         new Card(Suit.Hearts, Rank.Queen)
       ];
 
-      const result = JokerSystem.processDiscard(jokerSlots, discardedCards, 1);
+      const result = JokerSystem.processDiscard(jokerSlots, discardedCards, 1, 0);
 
       expect(result.moneyBonus).toBe(0);
     });
@@ -54,7 +54,7 @@ describe('ON_DISCARD 触发器类小丑牌测试', () => {
         new Card(Suit.Diamonds, Rank.Eight)
       ];
 
-      const result = JokerSystem.processDiscard(jokerSlots, discardedCards, 1);
+      const result = JokerSystem.processDiscard(jokerSlots, discardedCards, 1, 0);
 
       expect(result.moneyBonus).toBe(0);
     });
@@ -73,7 +73,7 @@ describe('ON_DISCARD 触发器类小丑牌测试', () => {
         new Card(Suit.Hearts, Rank.Ace)
       ];
 
-      const result = JokerSystem.processDiscard(jokerSlots, discardedCards, 1);
+      const result = JokerSystem.processDiscard(jokerSlots, discardedCards, 1, 0);
 
       expect(result.moneyBonus).toBe(10); // 2张A * $5
       expect(result.effects).toHaveLength(1);
@@ -91,7 +91,7 @@ describe('ON_DISCARD 触发器类小丑牌测试', () => {
         new Card(Suit.Hearts, Rank.Queen)
       ];
 
-      const result = JokerSystem.processDiscard(jokerSlots, discardedCards, 1);
+      const result = JokerSystem.processDiscard(jokerSlots, discardedCards, 1, 0);
 
       expect(result.moneyBonus).toBe(0);
     });
@@ -110,7 +110,7 @@ describe('ON_DISCARD 触发器类小丑牌测试', () => {
         new Card(Suit.Hearts, Rank.King)
       ];
 
-      const result = JokerSystem.processDiscard(jokerSlots, discardedCards, 1);
+      const result = JokerSystem.processDiscard(jokerSlots, discardedCards, 1, 0);
 
       expect(result.chipBonus).toBe(6); // 2张红桃 * 3筹码
       expect(result.effects).toHaveLength(1);
@@ -128,7 +128,7 @@ describe('ON_DISCARD 触发器类小丑牌测试', () => {
         new Card(Suit.Clubs, Rank.King)
       ];
 
-      const result = JokerSystem.processDiscard(jokerSlots, discardedCards, 1);
+      const result = JokerSystem.processDiscard(jokerSlots, discardedCards, 1, 0);
 
       expect(result.chipBonus).toBe(0);
     });
@@ -144,8 +144,8 @@ describe('ON_DISCARD 触发器类小丑牌测试', () => {
         new Card(Suit.Hearts, Rank.King)
       ];
 
-      // 第一手弃牌 (handsPlayed = 0)
-      const result = JokerSystem.processDiscard(jokerSlots, discardedCards, 0);
+      // 第一手弃牌 (handsPlayed = 0, discardsUsed = 0)
+      const result = JokerSystem.processDiscard(jokerSlots, discardedCards, 0, 0);
 
       expect(result.effects).toHaveLength(1);
       expect(result.effects[0].jokerName).toBe('烧焦的小丑');
@@ -160,8 +160,8 @@ describe('ON_DISCARD 触发器类小丑牌测试', () => {
         new Card(Suit.Hearts, Rank.King)
       ];
 
-      // 非第一手弃牌 (handsPlayed = 1)
-      const result = JokerSystem.processDiscard(jokerSlots, discardedCards, 1);
+      // 非第一手弃牌 (handsPlayed = 1, discardsUsed = 1)
+      const result = JokerSystem.processDiscard(jokerSlots, discardedCards, 1, 1);
 
       expect(result.effects).toHaveLength(0);
     });
@@ -176,8 +176,8 @@ describe('ON_DISCARD 触发器类小丑牌测试', () => {
         new Card(Suit.Spades, Rank.Ace)
       ];
 
-      // 第一手弃牌 (handsPlayed = 0)
-      const result = JokerSystem.processDiscard(jokerSlots, discardedCards, 0);
+      // 第一次弃牌 (handsPlayed = 0, discardsUsed = 0)
+      const result = JokerSystem.processDiscard(jokerSlots, discardedCards, 0, 0);
 
       expect(result.moneyBonus).toBe(3);
       expect(result.effects).toHaveLength(1);
@@ -192,8 +192,8 @@ describe('ON_DISCARD 触发器类小丑牌测试', () => {
         new Card(Suit.Hearts, Rank.King)
       ];
 
-      // 第一手弃牌 (handsPlayed = 0)
-      const result = JokerSystem.processDiscard(jokerSlots, discardedCards, 0);
+      // 第一次弃牌但弃了多张牌 (handsPlayed = 0, discardsUsed = 0)
+      const result = JokerSystem.processDiscard(jokerSlots, discardedCards, 0, 0);
 
       expect(result.moneyBonus).toBe(0);
     });
@@ -206,8 +206,8 @@ describe('ON_DISCARD 触发器类小丑牌测试', () => {
         new Card(Suit.Spades, Rank.Ace)
       ];
 
-      // 非第一手弃牌 (handsPlayed = 1)
-      const result = JokerSystem.processDiscard(jokerSlots, discardedCards, 1);
+      // 第二次弃牌 (handsPlayed = 1, discardsUsed = 1)
+      const result = JokerSystem.processDiscard(jokerSlots, discardedCards, 1, 1);
 
       expect(result.moneyBonus).toBe(0);
     });
@@ -229,7 +229,7 @@ describe('ON_DISCARD 触发器类小丑牌测试', () => {
         new Card(Suit.Hearts, Rank.Jack)
       ];
 
-      const result = JokerSystem.processDiscard(jokerSlots, discardedCards, 1);
+      const result = JokerSystem.processDiscard(jokerSlots, discardedCards, 1, 0);
 
       expect(result.moneyBonus).toBe(5); // 无面小丑
       expect(result.chipBonus).toBe(9); // 城堡: 3张红桃 * 3
