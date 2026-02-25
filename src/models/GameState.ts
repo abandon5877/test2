@@ -229,6 +229,16 @@ export class GameState implements GameStateInterface {
       // 生成小丑牌逻辑（如果有）
     }
 
+    // 修复窃贼效果：应用handBonus和discardReset
+    if (blindSelectResult.handBonus > 0) {
+      this.handsRemaining += blindSelectResult.handBonus;
+      logger.debug('窃贼效果: +3出牌次数', { handsRemaining: this.handsRemaining });
+    }
+    if (blindSelectResult.discardReset) {
+      this.discardsRemaining = 0;
+      logger.debug('窃贼效果: 弃牌次数归零', { discardsRemaining: this.discardsRemaining });
+    }
+
     logger.info('Blind selected', {
       blindType,
       targetScore: blind.targetScore,
