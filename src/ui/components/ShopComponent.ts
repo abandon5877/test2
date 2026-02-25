@@ -220,9 +220,10 @@ export class ShopComponent {
         } else {
           console.error('[ShopComponent.buyItem] 错误：onBuyPack 回调未定义！');
         }
-        // 卡包购买后不重新渲染商店，因为开包界面会替换整个视图
+        // 卡包购买后只刷新金钱显示（不重新渲染整个商店，避免覆盖开包界面）
         this.callbacks.onBuyItem?.(shopItem);
         this.selectedItemId = null;
+        this.refreshLeftPanelMoney();
         return true;
       } else if (shopItem.type === 'voucher') {
         // 折扣券购买 - 立即应用效果

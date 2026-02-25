@@ -239,6 +239,9 @@ export class ConsumableHelper {
           // 递归调用复制的效果
           const copyResult = copiedConsumable.use(context);
           if (copyResult.success) {
+            // 更新最后使用的消耗牌为被复制的卡牌（用于连续使用愚者）
+            this.gameState.lastUsedConsumable = { id: copiedConsumable.id, type: copiedConsumable.type };
+
             this.handleResult(copyResult, copiedConsumable.id, copiedConsumable.type);
             // 处理复制效果中的新生成消耗牌
             if (copyResult.newConsumableIds && copyResult.newConsumableIds.length > 0) {

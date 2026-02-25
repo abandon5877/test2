@@ -479,11 +479,16 @@ class Game {
         });
         // 处理选中的卡牌
         this.handlePackCardSelected(card, action);
-        // 清除当前卡包状态
-        this.gameState.currentPack = null;
-        // 选择后刷新商店（不移除整个商店）
-        if (this.currentComponent instanceof ShopComponent) {
-          this.currentComponent.render();
+
+        // 只有在选择（keep）而非使用（use）消耗牌时，才清除卡包状态并刷新商店
+        // 使用消耗牌时，开包组件会自己处理重新渲染
+        if (action === 'keep') {
+          // 清除当前卡包状态
+          this.gameState.currentPack = null;
+          // 选择后刷新商店（不移除整个商店）
+          if (this.currentComponent instanceof ShopComponent) {
+            this.currentComponent.render();
+          }
         }
       },
       onSkip: () => {
@@ -566,6 +571,10 @@ class Game {
           deck: this.gameState.cardPile.deck,
           jokers: this.gameState.jokers,
           lastUsedConsumable: this.gameState.lastUsedConsumable ?? undefined,
+          money: this.gameState.money,
+          setMoney: (amount: number): void => {
+            this.gameState.setMoney(amount);
+          },
           addJoker: (rarity?: 'rare' | 'legendary'): boolean => {
             console.log('[Game] addJoker 被调用, rarity:', rarity);
             let joker: Joker;
@@ -1052,8 +1061,12 @@ class Game {
     context: import('./types/consumable').ConsumableEffectContext,
     isFromPack: boolean = false
   ): void {
+    // 处理金钱设置（优先级高于 moneyChange，用于隐士等直接设置金钱的牌）
+    if (result.setMoney !== undefined) {
+      this.gameState.setMoney(result.setMoney);
+    }
     // 处理金钱变化
-    if (result.moneyChange !== undefined && result.moneyChange !== 0) {
+    else if (result.moneyChange !== undefined && result.moneyChange !== 0) {
       if (result.moneyChange > 0) {
         this.gameState.addMoney(result.moneyChange);
       } else {
@@ -1105,6 +1118,10 @@ class Game {
         Toast.success(`愚者触发了 ${copiedConsumable.name} 的效果`);
         const copiedResult = copiedConsumable.use(context);
         if (copiedResult.success) {
+          // 更新最后使用的消耗牌为被复制的卡牌（用于连续使用愚者）
+          this.gameState.lastUsedConsumable = { id: copiedConsumable.id, type: copiedConsumable.type };
+          console.log('[Game] 愚者复制后更新 lastUsedConsumable:', this.gameState.lastUsedConsumable);
+
           // 递归处理被触发消耗牌的结果
           this.handleConsumableResult(copiedResult, context, isFromPack);
         }

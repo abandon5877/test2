@@ -272,15 +272,11 @@ export const TAROT_CARDS: TarotData[] = [
       const increase = Math.min(currentMoney, 20);
       const newMoney = currentMoney + increase;
       
-      if (context.setMoney) {
-        context.setMoney(newMoney);
-      }
-      
       return {
         success: true,
         message: `隐士: 资金翻倍 +$${increase}`,
         affectedCards: [],
-        moneyChange: increase
+        setMoney: newMoney
       };
     }
   },
