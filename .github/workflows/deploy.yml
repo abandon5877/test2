@@ -29,11 +29,15 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
+          registry-url: 'https://registry.npmjs.org'
 
       - name: Clean install dependencies
         run: |
           rm -rf node_modules package-lock.json
-          npm install
+          npm config set registry https://registry.npmjs.org/
+          npm install --legacy-peer-deps
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Build
         run: npm run build
