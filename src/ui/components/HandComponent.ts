@@ -33,6 +33,33 @@ export class HandComponent {
   private cardDetailModal: CardDetailModal;
   private longPressCleanups: (() => void)[] = [];
 
+  // 拖动相关属性
+  private dragState: {
+    isDragging: boolean;
+    draggedIndex: number;
+    startX: number;
+    startY: number;
+    currentX: number;
+    currentY: number;
+    placeholderIndex: number;
+    dragElement: HTMLElement | null;
+    originalElement: HTMLElement | null;
+    dragStartTime: number;
+    isTouch: boolean;
+  } = {
+    isDragging: false,
+    draggedIndex: -1,
+    startX: 0,
+    startY: 0,
+    currentX: 0,
+    currentY: 0,
+    placeholderIndex: -1,
+    dragElement: null,
+    originalElement: null,
+    dragStartTime: 0,
+    isTouch: false
+  };
+
   constructor(container: HTMLElement, hand: Hand, callbacks: HandComponentCallbacks = {}) {
     this.container = container;
     this.hand = hand;
@@ -573,23 +600,301 @@ export class HandComponent {
 
   /**
    * 绑定卡牌交互事件
-   * 长按显示详情，单击选择/取消选择
+   * 长按显示详情，单击选择/取消选择，拖动调整位置
    */
   private bindCardInteraction(
     cardElement: HTMLElement,
     card: Card,
     index: number
   ): () => void {
-    return LongPressHandler.bind(
+    // 绑定长按和点击
+    const longPressCleanup = LongPressHandler.bind(
       cardElement,
       () => {
-        // 长按显示详情
-        this.cardDetailModal.show({ card });
+        // 长按显示详情（仅在非拖动状态下）
+        if (!this.dragState.isDragging) {
+          this.cardDetailModal.show({ card });
+        }
       },
       () => {
-        // 单击切换选择
-        this.handleCardClick(index);
+        // 单击切换选择（仅在非拖动状态下）
+        if (!this.dragState.isDragging) {
+          this.handleCardClick(index);
+        }
       }
     );
+
+    // 绑定拖动事件
+    this.bindDragEvents(cardElement, index);
+
+    return longPressCleanup;
+  }
+
+  /**
+   * 绑定拖动事件（鼠标和触摸）
+   */
+  private bindDragEvents(cardElement: HTMLElement, index: number): void {
+    // 鼠标事件
+    cardElement.addEventListener('mousedown', (e) => this.handleDragStart(e, index, false));
+    
+    // 触摸事件
+    cardElement.addEventListener('touchstart', (e) => this.handleDragStart(e, index, true), { passive: false });
+  }
+
+  /**
+   * 处理拖动开始
+   */
+  private handleDragStart(e: MouseEvent | TouchEvent, index: number, isTouch: boolean): void {
+    // 防止默认行为（特别是触摸时的页面滚动）
+    if (isTouch) {
+      e.preventDefault();
+    }
+
+    const clientX = isTouch ? (e as TouchEvent).touches[0].clientX : (e as MouseEvent).clientX;
+    const clientY = isTouch ? (e as TouchEvent).touches[0].clientY : (e as MouseEvent).clientY;
+
+    this.dragState = {
+      isDragging: true,
+      draggedIndex: index,
+      startX: clientX,
+      startY: clientY,
+      currentX: clientX,
+      currentY: clientY,
+      placeholderIndex: index,
+      dragElement: null,
+      originalElement: this.cardElements[index],
+      dragStartTime: Date.now(),
+      isTouch
+    };
+
+    // 创建拖动元素
+    this.createDragElement();
+
+    // 添加全局事件监听
+    if (isTouch) {
+      document.addEventListener('touchmove', this.handleDragMove, { passive: false });
+      document.addEventListener('touchend', this.handleDragEnd);
+      document.addEventListener('touchcancel', this.handleDragEnd);
+    } else {
+      document.addEventListener('mousemove', this.handleDragMove);
+      document.addEventListener('mouseup', this.handleDragEnd);
+    }
+
+    // 添加拖动样式
+    if (this.dragState.originalElement) {
+      this.dragState.originalElement.classList.add('dragging');
+      this.dragState.originalElement.style.opacity = '0.3';
+    }
+  }
+
+  /**
+   * 创建拖动元素（跟随鼠标的视觉元素）
+   */
+  private createDragElement(): void {
+    if (!this.dragState.originalElement) return;
+
+    const rect = this.dragState.originalElement.getBoundingClientRect();
+    const dragElement = this.dragState.originalElement.cloneNode(true) as HTMLElement;
+    
+    dragElement.style.position = 'fixed';
+    dragElement.style.left = `${rect.left}px`;
+    dragElement.style.top = `${rect.top}px`;
+    dragElement.style.width = `${rect.width}px`;
+    dragElement.style.height = `${rect.height}px`;
+    dragElement.style.zIndex = '1000';
+    dragElement.style.pointerEvents = 'none';
+    dragElement.style.transform = 'scale(1.05) rotate(0deg)';
+    dragElement.style.boxShadow = '0 10px 30px rgba(0,0,0,0.5)';
+    dragElement.classList.add('dragging-clone');
+
+    document.body.appendChild(dragElement);
+    this.dragState.dragElement = dragElement;
+  }
+
+  /**
+   * 处理拖动移动
+   */
+  private handleDragMove = (e: MouseEvent | TouchEvent): void => {
+    if (!this.dragState.isDragging) return;
+
+    // 防止默认行为
+    e.preventDefault();
+
+    const clientX = this.dragState.isTouch ? (e as TouchEvent).touches[0].clientX : (e as MouseEvent).clientX;
+    const clientY = this.dragState.isTouch ? (e as TouchEvent).touches[0].clientY : (e as MouseEvent).clientY;
+
+    this.dragState.currentX = clientX;
+    this.dragState.currentY = clientY;
+
+    // 更新拖动元素位置
+    if (this.dragState.dragElement) {
+      const deltaX = clientX - this.dragState.startX;
+      const deltaY = clientY - this.dragState.startY;
+      this.dragState.dragElement.style.transform = `translate(${deltaX}px, ${deltaY}px) scale(1.05) rotate(0deg)`;
+    }
+
+    // 计算当前应该插入的位置
+    this.updatePlaceholderIndex(clientX);
+  };
+
+  /**
+   * 更新占位符位置（计算应该插入的索引）
+   */
+  private updatePlaceholderIndex(clientX: number): void {
+    const handArea = this.container.querySelector('.hand-area') as HTMLElement;
+    if (!handArea) return;
+
+    const handRect = handArea.getBoundingClientRect();
+    const cards = this.hand.getCards();
+    
+    // 计算相对于手牌区域的X位置
+    const relativeX = clientX - handRect.left;
+    const cardWidth = handRect.width / cards.length;
+    
+    // 计算新的索引
+    let newIndex = Math.floor(relativeX / cardWidth);
+    newIndex = Math.max(0, Math.min(newIndex, cards.length - 1));
+
+    if (newIndex !== this.dragState.placeholderIndex) {
+      this.dragState.placeholderIndex = newIndex;
+      this.visualizePlaceholder(newIndex);
+    }
+  }
+
+  /**
+   * 可视化占位符位置
+   */
+  private visualizePlaceholder(targetIndex: number): void {
+    // 移除之前的占位符样式
+    this.cardElements.forEach((el, i) => {
+      if (i !== this.dragState.draggedIndex) {
+        el.style.transition = 'transform 0.2s ease';
+        
+        // 根据目标位置调整其他卡牌的位置
+        if (i < this.dragState.draggedIndex && i >= targetIndex) {
+          // 需要向右移动的卡牌
+          el.style.transform = `translateX(20px) ${el.style.transform.replace(/translateX\([^)]+\)\s*/, '')}`;
+        } else if (i > this.dragState.draggedIndex && i <= targetIndex) {
+          // 需要向左移动的卡牌
+          el.style.transform = `translateX(-20px) ${el.style.transform.replace(/translateX\([^)]+\)\s*/, '')}`;
+        } else {
+          // 恢复原位
+          const rotation = this.calculateCardRotation(i, this.hand.getCards().length);
+          const isSelected = this.hand.isSelected(i);
+          if (isSelected) {
+            el.style.transform = 'rotate(0deg) translateY(-20px)';
+          } else {
+            el.style.transform = `rotate(${rotation}deg)`;
+          }
+        }
+      }
+    });
+  }
+
+  /**
+   * 处理拖动结束
+   */
+  private handleDragEnd = (e: MouseEvent | TouchEvent): void => {
+    if (!this.dragState.isDragging) return;
+
+    const dragDuration = Date.now() - this.dragState.dragStartTime;
+    const fromIndex = this.dragState.draggedIndex;
+    const toIndex = this.dragState.placeholderIndex;
+
+    // 移除全局事件监听
+    if (this.dragState.isTouch) {
+      document.removeEventListener('touchmove', this.handleDragMove);
+      document.removeEventListener('touchend', this.handleDragEnd);
+      document.removeEventListener('touchcancel', this.handleDragEnd);
+    } else {
+      document.removeEventListener('mousemove', this.handleDragMove);
+      document.removeEventListener('mouseup', this.handleDragEnd);
+    }
+
+    // 移除拖动元素
+    if (this.dragState.dragElement) {
+      this.dragState.dragElement.remove();
+    }
+
+    // 恢复原始元素样式
+    if (this.dragState.originalElement) {
+      this.dragState.originalElement.classList.remove('dragging');
+      this.dragState.originalElement.style.opacity = '';
+    }
+
+    // 如果位置改变且拖动时间超过100ms（区分点击和拖动）
+    if (fromIndex !== toIndex && dragDuration > 100) {
+      this.reorderCard(fromIndex, toIndex);
+    }
+
+    // 重置所有卡牌的过渡样式
+    this.cardElements.forEach((el, i) => {
+      el.style.transition = '';
+      const rotation = this.calculateCardRotation(i, this.hand.getCards().length);
+      const isSelected = this.hand.isSelected(i);
+      if (isSelected) {
+        el.style.transform = 'rotate(0deg) translateY(-20px)';
+      } else {
+        el.style.transform = `rotate(${rotation}deg)`;
+      }
+    });
+
+    // 重置拖动状态
+    this.dragState = {
+      isDragging: false,
+      draggedIndex: -1,
+      startX: 0,
+      startY: 0,
+      currentX: 0,
+      currentY: 0,
+      placeholderIndex: -1,
+      dragElement: null,
+      originalElement: null,
+      dragStartTime: 0,
+      isTouch: false
+    };
+  };
+
+  /**
+   * 重新排序卡牌
+   */
+  private reorderCard(fromIndex: number, toIndex: number): void {
+    const cards = this.hand.getCards();
+    if (fromIndex < 0 || fromIndex >= cards.length || toIndex < 0 || toIndex >= cards.length) {
+      return;
+    }
+
+    // 获取选中的索引映射
+    const selectedIndices = this.hand.getSelectedIndices();
+    const isSelected = selectedIndices.has(fromIndex);
+
+    // 移动卡牌
+    const [movedCard] = cards.splice(fromIndex, 1);
+    cards.splice(toIndex, 0, movedCard);
+
+    // 更新选中状态映射
+    const newSelectedIndices = new Set<number>();
+    selectedIndices.forEach(index => {
+      if (index === fromIndex) {
+        newSelectedIndices.add(toIndex);
+      } else if (index < fromIndex && index >= toIndex) {
+        newSelectedIndices.add(index + 1);
+      } else if (index > fromIndex && index <= toIndex) {
+        newSelectedIndices.add(index - 1);
+      } else {
+        newSelectedIndices.add(index);
+      }
+    });
+
+    // 清空并重新设置选中状态
+    this.hand.clearSelection();
+    newSelectedIndices.forEach(index => {
+      if (index >= 0 && index < cards.length) {
+        this.hand.selectCard(index);
+      }
+    });
+
+    // 重新渲染
+    this.render();
   }
 }
