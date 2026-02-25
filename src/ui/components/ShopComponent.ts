@@ -145,7 +145,16 @@ export class ShopComponent {
 
     // 检查是否可以购买
     if (shopItem.type === 'joker') {
-      if (this.gameState.getJokerCount() >= 5) {
+      const joker = shopItem.item as Joker;
+      const jokerSlots = this.gameState.getJokerSlots();
+      const currentCount = jokerSlots.getJokerCount();
+      const effectiveMaxSlots = jokerSlots.getEffectiveMaxSlots();
+      // 如果是负片小丑牌，它自己会提供额外槽位，所以允许购买
+      const isNegative = joker.edition === 'negative';
+      const availableSlots = effectiveMaxSlots - currentCount;
+
+      // 只有当没有可用槽位且不是负片牌时才阻止购买
+      if (availableSlots <= 0 && !isNegative) {
         console.warn('[ShopComponent.buyItem] 购买失败：小丑牌槽位已满');
         Toast.warning('小丑牌槽位已满！');
         return false;

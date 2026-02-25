@@ -308,7 +308,12 @@ export class OpenPackComponent {
   private handleCardSelect(card: Card | Joker | Consumable): void {
     if (card instanceof Joker && this.pack.type === 'buffoon') {
       // 小丑包：检查小丑牌槽位
-      if (this.gameState.getJokerSlots().getAvailableSlots() <= 0) {
+      const jokerSlots = this.gameState.getJokerSlots();
+      const availableSlots = jokerSlots.getAvailableSlots();
+      const isNegative = card.edition === 'negative';
+
+      // 只有当没有可用槽位且不是负片牌时才阻止选择
+      if (availableSlots <= 0 && !isNegative) {
         Toast.warning('小丑牌槽位已满！请先出售现有的小丑牌。');
         return;
       }
