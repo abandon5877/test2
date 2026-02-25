@@ -825,6 +825,9 @@ export class GameState implements GameStateInterface {
     // 清除深红之心Boss禁用的小丑状态
     this.jokerSlots.clearAllDisabled();
 
+    // 重置所有小丑牌的翻面状态（琥珀橡果Boss效果）
+    this.jokerSlots.setAllJokersFaceDown(false);
+
     this.currentBlind = null;
 
     // 在进入商店前刷新商店商品（新轮次）

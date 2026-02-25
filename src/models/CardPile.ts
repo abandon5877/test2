@@ -125,15 +125,17 @@ export class CardPile {
    * 清空手牌和弃牌堆，将卡牌返回牌堆并洗牌
    */
   returnToDeckAndShuffle(): void {
-    // 将手牌返回牌堆
+    // 将手牌返回牌堆（重置翻面状态）
     const handCards = this.hand.clear();
     for (const card of handCards) {
+      card.setFaceDown(false);
       this.deck.addToBottom(card);
     }
 
-    // 将弃牌堆返回牌堆
+    // 将弃牌堆返回牌堆（重置翻面状态）
     const discardCards = this.discard.clear();
     for (const card of discardCards) {
+      card.setFaceDown(false);
       this.deck.addToBottom(card);
     }
 
