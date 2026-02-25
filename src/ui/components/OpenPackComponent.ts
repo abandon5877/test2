@@ -570,6 +570,12 @@ export class OpenPackComponent {
     let startY = 0;
 
     const startHandler = (e: MouseEvent | TouchEvent) => {
+      // 检查是否点击了按钮，如果是则不处理选择逻辑
+      const target = e.target as HTMLElement;
+      if (target && (target.tagName === 'BUTTON' || target.closest('button'))) {
+        return;
+      }
+
       isLongPress = false;
       const clientX = 'touches' in e ? e.touches[0].clientX : (e as MouseEvent).clientX;
       const clientY = 'touches' in e ? e.touches[0].clientY : (e as MouseEvent).clientY;
@@ -586,7 +592,7 @@ export class OpenPackComponent {
       if (this.longPressTimer) {
         const clientX = 'touches' in e ? e.touches[0].clientX : (e as MouseEvent).clientX;
         const clientY = 'touches' in e ? e.touches[0].clientY : (e as MouseEvent).clientY;
-        
+
         // 如果移动距离超过阈值，取消长按
         const moveDistance = Math.sqrt(Math.pow(clientX - startX, 2) + Math.pow(clientY - startY, 2));
         if (moveDistance > 10) {
@@ -600,6 +606,12 @@ export class OpenPackComponent {
       if (this.longPressTimer) {
         clearTimeout(this.longPressTimer);
         this.longPressTimer = null;
+      }
+
+      // 检查是否点击了按钮，如果是则不处理选择逻辑
+      const target = e.target as HTMLElement;
+      if (target && (target.tagName === 'BUTTON' || target.closest('button'))) {
+        return;
       }
 
       // 如果不是长按，则处理单击选择
