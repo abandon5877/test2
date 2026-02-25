@@ -32,6 +32,8 @@ export class HandComponent {
   private bossState: BossState | null = null;
   private cardDetailModal: CardDetailModal;
   private longPressCleanups: (() => void)[] = [];
+  // RAF 调度标志位，避免重复调度
+  private isRafScheduled = false;
 
   // 拖动相关属性
   private dragState: {
@@ -48,6 +50,8 @@ export class HandComponent {
     isTouch: boolean;
     rafId: number | null;
     lastUpdateTime: number;
+    // 缓存原始位置，避免频繁调用 getBoundingClientRect
+    originalRect: { left: number; top: number; width: number; height: number } | null;
   } = {
     isDragging: false,
     draggedIndex: -1,
@@ -61,7 +65,8 @@ export class HandComponent {
     dragStartTime: 0,
     isTouch: false,
     rafId: null,
-    lastUpdateTime: 0
+    lastUpdateTime: 0,
+    originalRect: null
   };
 
   constructor(container: HTMLElement, hand: Hand, callbacks: HandComponentCallbacks = {}) {
@@ -137,6 +142,8 @@ export class HandComponent {
     handArea.style.alignItems = 'center';
     handArea.style.width = '100%';
     handArea.style.height = '100%';
+    // 使用 CSS containment 优化渲染性能
+    handArea.style.contain = 'layout style';
 
     const cards = this.hand.getCards();
     const selectedIndices = this.hand.getSelectedIndices();
@@ -282,6 +289,8 @@ export class HandComponent {
     handArea.style.alignItems = 'center';
     handArea.style.width = '100%';
     handArea.style.height = '100%';
+    // 使用 CSS containment 优化渲染性能
+    handArea.style.contain = 'layout style';
 
     const cards = this.hand.getCards();
     const selectedIndices = this.hand.getSelectedIndices();
@@ -635,41 +644,33 @@ export class HandComponent {
   }
 
   /**
-   * 绑定拖动事件（鼠标和触摸）
+   * 绑定拖动事件（使用 Pointer Events 统一处理鼠标和触摸）
    */
   private bindDragEvents(cardElement: HTMLElement, index: number): void {
-    // 鼠标事件
-    cardElement.addEventListener('mousedown', (e) => this.handleMouseDown(e, index));
-    
-    // 触摸事件 - 使用passive: true避免阻塞滚动，在确定拖动后再阻止默认行为
-    cardElement.addEventListener('touchstart', (e) => this.handleTouchStart(e, index), { passive: true });
+    // 使用 Pointer Events API 统一处理鼠标和触摸事件
+    // 添加 touch-action: none 告诉浏览器不要处理触摸手势（如滚动）
+    cardElement.style.touchAction = 'none';
+    // 使用 passive: false 确保可以调用 preventDefault 阻止默认行为
+    cardElement.addEventListener('pointerdown', (e) => this.handlePointerDown(e, index), { passive: false });
   }
 
   /**
-   * 处理鼠标按下
+   * 处理指针按下（统一处理鼠标和触摸）
    */
-  private handleMouseDown(e: MouseEvent, index: number): void {
-    // 只响应左键
+  private handlePointerDown(e: PointerEvent, index: number): void {
+    // 只响应左键/主触摸点
     if (e.button !== 0) return;
     
-    this.initDragState(e.clientX, e.clientY, index, false);
+    // 捕获指针，确保后续事件都在此元素上
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    
+    this.initDragState(e.clientX, e.clientY, index, e.pointerType === 'touch');
     
     // 添加全局事件监听
-    document.addEventListener('mousemove', this.handleDragMove);
-    document.addEventListener('mouseup', this.handleMouseUp);
-  }
-
-  /**
-   * 处理触摸开始
-   */
-  private handleTouchStart(e: TouchEvent, index: number): void {
-    const touch = e.touches[0];
-    this.initDragState(touch.clientX, touch.clientY, index, true);
-    
-    // 添加全局事件监听
-    document.addEventListener('touchmove', this.handleTouchMove, { passive: false });
-    document.addEventListener('touchend', this.handleTouchEnd);
-    document.addEventListener('touchcancel', this.handleTouchEnd);
+    // 触摸设备使用 passive: false 确保可以阻止默认滚动行为
+    document.addEventListener('pointermove', this.handlePointerMove, { passive: false });
+    document.addEventListener('pointerup', this.handlePointerUp);
+    document.addEventListener('pointercancel', this.handlePointerUp);
   }
 
   /**
@@ -689,96 +690,126 @@ export class HandComponent {
       dragStartTime: Date.now(),
       isTouch,
       rafId: null,
-      lastUpdateTime: 0
+      lastUpdateTime: 0,
+      originalRect: null
     };
   }
 
   /**
-   * 处理鼠标释放
+   * 处理指针移动（统一处理鼠标和触摸）
    */
-  private handleMouseUp = (e: MouseEvent): void => {
-    document.removeEventListener('mousemove', this.handleDragMove);
-    document.removeEventListener('mouseup', this.handleMouseUp);
-    this.handleDragEndInternal();
-  };
-
-  /**
-   * 处理触摸移动
-   */
-  private handleTouchMove = (e: TouchEvent): void => {
-    // 只有在确定是拖动后才阻止默认行为，且需要检查cancelable
-    if (this.dragState.isDragging && e.cancelable) {
+  private handlePointerMove = (e: PointerEvent): void => {
+    // 阻止默认行为以防止页面滚动，提升拖动流畅度
+    if (e.cancelable) {
       e.preventDefault();
     }
-    this.handleDragMove(e);
+    this.handleDragMove(e.clientX, e.clientY);
   };
 
   /**
-   * 处理触摸结束
+   * 处理指针释放（统一处理鼠标和触摸）
    */
-  private handleTouchEnd = (e: TouchEvent): void => {
-    document.removeEventListener('touchmove', this.handleTouchMove);
-    document.removeEventListener('touchend', this.handleTouchEnd);
-    document.removeEventListener('touchcancel', this.handleTouchEnd);
+  private handlePointerUp = (e: PointerEvent): void => {
+    document.removeEventListener('pointermove', this.handlePointerMove);
+    document.removeEventListener('pointerup', this.handlePointerUp);
+    document.removeEventListener('pointercancel', this.handlePointerUp);
     this.handleDragEndInternal();
   };
+
+  /**
+   * 清理可能残留的事件监听器
+   */
+  private cleanupDragListeners(): void {
+    document.removeEventListener('pointermove', this.handlePointerMove);
+    document.removeEventListener('pointerup', this.handlePointerUp);
+    document.removeEventListener('pointercancel', this.handlePointerUp);
+  }
 
   /**
    * 处理拖动移动
    */
-  private handleDragMove = (e: MouseEvent | TouchEvent): void => {
-    const clientX = this.dragState.isTouch ? (e as TouchEvent).touches[0].clientX : (e as MouseEvent).clientX;
-    const clientY = this.dragState.isTouch ? (e as TouchEvent).touches[0].clientY : (e as MouseEvent).clientY;
+  private handleDragMove = (clientX: number, clientY: number): void => {
 
     // 检查是否移动了足够距离才认为是拖动
     if (!this.dragState.isDragging) {
       const deltaX = Math.abs(clientX - this.dragState.startX);
       const deltaY = Math.abs(clientY - this.dragState.startY);
-      const dragThreshold = 5; // 5像素阈值
-      
+      // 触摸设备使用更大的阈值，避免手指轻微抖动导致误判
+      const dragThreshold = this.dragState.isTouch ? 10 : 5;
+
       if (deltaX < dragThreshold && deltaY < dragThreshold) {
         return; // 移动距离不够，不认为是拖动
       }
-      
+
       // 开始拖动
       this.dragState.isDragging = true;
+      // 缓存原始位置，避免后续频繁调用 getBoundingClientRect
+      if (this.dragState.originalElement) {
+        this.dragState.originalRect = this.dragState.originalElement.getBoundingClientRect();
+      }
       this.createDragElement();
-      
-      // 添加拖动样式
+
+      // 添加拖动样式并禁用过渡动画，避免拖动时的卡顿
       if (this.dragState.originalElement) {
         this.dragState.originalElement.classList.add('dragging');
         this.dragState.originalElement.style.opacity = '0.3';
+        // 禁用过渡动画，防止拖动经过其他卡牌时触发 hover 动画导致卡顿
+        this.dragState.originalElement.style.transition = 'none';
+        this.dragState.originalElement.style.pointerEvents = 'none';
       }
+
+      // 拖动期间禁用所有手牌卡牌的 hover 效果，避免触发过渡动画
+      this.cardElements.forEach(el => {
+        el.style.transition = 'none';
+      });
     }
 
-    // 直接更新拖动元素位置，不使用requestAnimationFrame以保证跟手性
-    if (this.dragState.dragElement) {
-      const deltaX = clientX - this.dragState.startX;
-      const deltaY = clientY - this.dragState.startY;
-      this.dragState.dragElement.style.transform = `translate(${deltaX}px, ${deltaY}px) scale(1.05) rotate(0deg)`;
-    }
-
-    // 计算当前应该插入的位置
-    this.updatePlaceholderIndex(clientX);
+    // 直接更新位置，使用 translate3d 已经是 GPU 加速，不会引起重排
+    // 避免使用 RAF 节流，确保拖动时位置更新实时跟随鼠标
+    this.dragState.currentX = clientX;
+    this.dragState.currentY = clientY;
+    this.updateDragElementPosition(clientX, clientY);
   };
+
+  /**
+   * 更新拖动元素位置（在 requestAnimationFrame 中调用）
+   */
+  private updateDragElementPosition(clientX: number, clientY: number): void {
+    if (!this.dragState.dragElement || !this.dragState.originalRect) return;
+
+    const deltaX = clientX - this.dragState.startX;
+    const deltaY = clientY - this.dragState.startY;
+
+    // 使用缓存的原始位置计算新位置
+    const newX = this.dragState.originalRect.left + deltaX;
+    const newY = this.dragState.originalRect.top + deltaY;
+
+    // 使用 translate3d 触发 GPU 加速，确保跟手
+    this.dragState.dragElement.style.transform = `translate3d(${newX}px, ${newY}px, 0) scale(1.05)`;
+  }
 
   /**
    * 创建拖动元素（跟随鼠标的视觉元素）
    */
   private createDragElement(): void {
-    if (!this.dragState.originalElement) return;
+    if (!this.dragState.originalElement || !this.dragState.originalRect) return;
 
-    const rect = this.dragState.originalElement.getBoundingClientRect();
+    // 使用缓存的 rect 避免再次调用 getBoundingClientRect
+    const rect = this.dragState.originalRect;
     const dragElement = this.dragState.originalElement.cloneNode(true) as HTMLElement;
-    
+
     dragElement.style.position = 'fixed';
-    dragElement.style.left = `${rect.left}px`;
-    dragElement.style.top = `${rect.top}px`;
+    dragElement.style.left = '0px';
+    dragElement.style.top = '0px';
     dragElement.style.width = `${rect.width}px`;
     dragElement.style.height = `${rect.height}px`;
     dragElement.style.zIndex = '1000';
     dragElement.style.pointerEvents = 'none';
-    dragElement.style.transform = 'scale(1.05) rotate(0deg)';
+    dragElement.style.willChange = 'transform';
+    // 使用 CSS containment 优化渲染性能
+    dragElement.style.contain = 'layout style paint';
+    // 使用 transform 来定位，避免 left/top 引起的布局计算
+    dragElement.style.transform = `translate3d(${rect.left}px, ${rect.top}px, 0) scale(1.05)`;
     dragElement.style.boxShadow = '0 10px 30px rgba(0,0,0,0.5)';
     dragElement.classList.add('dragging-clone');
 
@@ -787,39 +818,11 @@ export class HandComponent {
   }
 
   /**
-   * 更新拖动位置（在requestAnimationFrame中调用）
+   * 计算放置位置（松手时调用）
    */
-  private updateDragPosition(): void {
-    if (!this.dragState.isDragging) {
-      this.dragState.rafId = null;
-      return;
-    }
-
-    const { currentX, currentY, startX, startY } = this.dragState;
-
-    // 更新拖动元素位置
-    if (this.dragState.dragElement) {
-      const deltaX = currentX - startX;
-      const deltaY = currentY - startY;
-      this.dragState.dragElement.style.transform = `translate(${deltaX}px, ${deltaY}px) scale(1.05) rotate(0deg)`;
-    }
-
-    // 计算当前应该插入的位置（限制更新频率）
-    const now = Date.now();
-    if (now - this.dragState.lastUpdateTime > 50) { // 每50ms更新一次位置
-      this.updatePlaceholderIndex(currentX);
-      this.dragState.lastUpdateTime = now;
-    }
-
-    this.dragState.rafId = null;
-  }
-
-  /**
-   * 更新占位符位置（计算应该插入的索引）
-   */
-  private updatePlaceholderIndex(clientX: number): void {
+  private calculateDropIndex(clientX: number): number {
     const handArea = this.container.querySelector('.hand-area') as HTMLElement;
-    if (!handArea) return;
+    if (!handArea) return this.dragState.draggedIndex;
 
     const handRect = handArea.getBoundingClientRect();
     const cards = this.hand.getCards();
@@ -831,18 +834,8 @@ export class HandComponent {
     // 计算新的索引
     let newIndex = Math.floor(relativeX / cardWidth);
     newIndex = Math.max(0, Math.min(newIndex, cards.length - 1));
-
-    if (newIndex !== this.dragState.placeholderIndex) {
-      this.dragState.placeholderIndex = newIndex;
-      this.visualizePlaceholder(newIndex);
-    }
-  }
-
-  /**
-   * 可视化占位符位置 - 空实现，不添加任何动画效果
-   */
-  private visualizePlaceholder(targetIndex: number): void {
-    // 不添加任何视觉效果，保持卡牌位置不变
+    
+    return newIndex;
   }
 
   /**
@@ -852,7 +845,9 @@ export class HandComponent {
     const wasDragging = this.dragState.isDragging;
     const dragDuration = Date.now() - this.dragState.dragStartTime;
     const fromIndex = this.dragState.draggedIndex;
-    const toIndex = this.dragState.placeholderIndex;
+
+    // 松手时才计算目标位置
+    const toIndex = this.calculateDropIndex(this.dragState.currentX);
 
     // 移除拖动元素
     if (this.dragState.dragElement) {
@@ -863,12 +858,13 @@ export class HandComponent {
     if (this.dragState.originalElement) {
       this.dragState.originalElement.classList.remove('dragging');
       this.dragState.originalElement.style.opacity = '';
+      // 恢复过渡动画和 pointer-events
+      this.dragState.originalElement.style.transition = '';
+      this.dragState.originalElement.style.pointerEvents = '';
     }
 
-    // 取消可能存在的requestAnimationFrame
-    if (this.dragState.rafId !== null) {
-      cancelAnimationFrame(this.dragState.rafId);
-    }
+    // 清理事件监听器
+    this.cleanupDragListeners();
 
     // 如果确实是拖动且位置改变
     if (wasDragging && fromIndex !== toIndex && dragDuration > 100) {
@@ -878,6 +874,8 @@ export class HandComponent {
     // 重置所有卡牌的样式
     this.cardElements.forEach((el) => {
       el.style.opacity = '';
+      // 恢复过渡动画
+      el.style.transition = '';
     });
 
     // 重置拖动状态
@@ -894,7 +892,8 @@ export class HandComponent {
       dragStartTime: 0,
       isTouch: false,
       rafId: null,
-      lastUpdateTime: 0
+      lastUpdateTime: 0,
+      originalRect: null
     };
   }
 
