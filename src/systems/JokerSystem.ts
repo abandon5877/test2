@@ -21,6 +21,8 @@ interface EffectAccumulator {
   multMultiplier: number;
   moneyBonus: number;
   tarotBonus: number;
+  planetBonus: number; // 行星牌生成数量
+  spectralBonus: number; // 幻灵牌生成数量
   jokerBonus: number;
   handBonus: number;
   freeReroll: boolean;
@@ -300,6 +302,8 @@ export class JokerSystem {
       multMultiplier: 1,
       moneyBonus: 0,
       tarotBonus: 0,
+      planetBonus: 0, // 行星牌生成数量
+      spectralBonus: 0, // 幻灵牌生成数量
       jokerBonus: 0,
       handBonus: 0,
       freeReroll: false,
@@ -352,6 +356,8 @@ export class JokerSystem {
     if (result.multMultiplier) accumulator.multMultiplier *= result.multMultiplier;
     if (result.moneyBonus) accumulator.moneyBonus += result.moneyBonus;
     if (result.tarotBonus) accumulator.tarotBonus += result.tarotBonus;
+    if (result.planetBonus) accumulator.planetBonus += result.planetBonus; // 累加行星牌
+    if (result.spectralBonus) accumulator.spectralBonus += result.spectralBonus; // 累加幻灵牌
     if (result.jokerBonus) accumulator.jokerBonus += result.jokerBonus;
     if (result.handBonus) accumulator.handBonus += result.handBonus;
     if (result.freeReroll) accumulator.freeReroll = true;
@@ -794,6 +800,8 @@ export class JokerSystem {
     multMultiplier: number;
     moneyBonus: number;
     copyScoredCardToDeck?: number; // 修复：改为数字
+    spectralBonus: number; // 幻灵牌生成数量
+    planetBonus: number; // 行星牌生成数量
     effects: JokerEffectDetail[];
   } {
     const accumulator = this.createEffectAccumulator();
@@ -847,6 +855,8 @@ export class JokerSystem {
       multMultiplier: accumulator.multMultiplier,
       moneyBonus: accumulator.moneyBonus,
       copyScoredCardToDeck: accumulator.copyScoredCardToDeck,
+      spectralBonus: accumulator.spectralBonus,
+      planetBonus: accumulator.planetBonus,
       effects: accumulator.effects
     };
   }
