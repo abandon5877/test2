@@ -765,10 +765,10 @@ export class HandComponent {
    * 可视化占位符位置
    */
   private visualizePlaceholder(targetIndex: number): void {
-    // 移除之前的占位符样式
+    // 移除之前的占位符样式（无过渡动画，立即响应）
     this.cardElements.forEach((el, i) => {
       if (i !== this.dragState.draggedIndex) {
-        el.style.transition = 'transform 0.2s ease';
+        el.style.transition = 'none';
         
         // 根据目标位置调整其他卡牌的位置
         if (i < this.dragState.draggedIndex && i >= targetIndex) {
