@@ -1256,7 +1256,7 @@ export const JOKERS: Joker[] = [
   new Joker({
     id: 'drivers_license',
     name: '驾照',
-    description: '16+强化牌时x2倍率',
+    description: '16+强化牌时x3倍率',
     rarity: JokerRarity.UNCOMMON,
     cost: 6,
     trigger: JokerTrigger.ON_HAND_PLAYED,
@@ -1265,8 +1265,8 @@ export const JOKERS: Joker[] = [
       const enhancedCardsCount = (context as unknown as { enhancedCardsCount?: number }).enhancedCardsCount || 0;
       if (enhancedCardsCount >= 16) {
         return {
-          multMultiplier: 2,
-          message: `驾照: ${enhancedCardsCount}张强化牌，x2倍率`
+          multMultiplier: 3,
+          message: `驾照: ${enhancedCardsCount}张强化牌，x3倍率`
         };
       }
       return {
@@ -2184,16 +2184,11 @@ export const JOKERS: Joker[] = [
     trigger: JokerTrigger.ON_HAND_PLAYED,
     effect: (context: JokerEffectContext): JokerEffectResult => {
       const emptySlots = (context as unknown as { emptySlots?: number }).emptySlots || 0;
-      if (emptySlots > 0) {
-        const multiplier = emptySlots; // 每空槽x1，不是1+空槽
-        return {
-          multMultiplier: multiplier,
-          message: `小丑模板: ${emptySlots}个空槽位 x${multiplier}倍率`
-        };
-      }
+      // 每空槽x1倍率，基础x1，所以是 1 + 空槽数
+      const multiplier = 1 + emptySlots;
       return {
-        multMultiplier: 1,
-        message: '小丑模板: x1倍率'
+        multMultiplier: multiplier,
+        message: `小丑模板: ${emptySlots}个空槽位 x${multiplier}倍率`
       };
     }
   }),
