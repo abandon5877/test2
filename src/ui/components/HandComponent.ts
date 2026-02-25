@@ -706,8 +706,8 @@ export class HandComponent {
    * 处理触摸移动
    */
   private handleTouchMove = (e: TouchEvent): void => {
-    // 只有在确定是拖动后才阻止默认行为
-    if (this.dragState.isDragging) {
+    // 只有在确定是拖动后才阻止默认行为，且需要检查cancelable
+    if (this.dragState.isDragging && e.cancelable) {
       e.preventDefault();
     }
     this.handleDragMove(e);
@@ -751,15 +751,15 @@ export class HandComponent {
       }
     }
 
-    this.dragState.currentX = clientX;
-    this.dragState.currentY = clientY;
-
-    // 使用 requestAnimationFrame 优化性能
-    if (this.dragState.rafId === null) {
-      this.dragState.rafId = requestAnimationFrame(() => {
-        this.updateDragPosition();
-      });
+    // 直接更新拖动元素位置，不使用requestAnimationFrame以保证跟手性
+    if (this.dragState.dragElement) {
+      const deltaX = clientX - this.dragState.startX;
+      const deltaY = clientY - this.dragState.startY;
+      this.dragState.dragElement.style.transform = `translate(${deltaX}px, ${deltaY}px) scale(1.05) rotate(0deg)`;
     }
+
+    // 计算当前应该插入的位置
+    this.updatePlaceholderIndex(clientX);
   };
 
   /**
@@ -839,16 +839,10 @@ export class HandComponent {
   }
 
   /**
-   * 可视化占位符位置 - 简化为仅改变透明度，避免复杂transform
+   * 可视化占位符位置 - 空实现，不添加任何动画效果
    */
   private visualizePlaceholder(targetIndex: number): void {
-    this.cardElements.forEach((el, i) => {
-      if (i !== this.dragState.draggedIndex) {
-        // 简化动画：目标位置附近的卡牌降低透明度
-        const isNearTarget = Math.abs(i - targetIndex) <= 1;
-        el.style.opacity = isNearTarget ? '0.6' : '1';
-      }
-    });
+    // 不添加任何视觉效果，保持卡牌位置不变
   }
 
   /**
