@@ -1220,7 +1220,37 @@ export class GameBoard {
       const selectedIndices = this.gameState.cardPile.hand.getSelectedIndices();
       const heldCards = handCards.filter((_, index) => !selectedIndices.has(index));
 
-      const scoreResult = ScoringSystem.calculate(selectedCards, detectionResult.handType, gameState, heldCards, this.gameState.getJokerSlots(), undefined, undefined, undefined, undefined, undefined, undefined, undefined, true, this.gameState.getHandLevelState());
+      // 获取牌库信息（用于蓝色小丑、侵蚀等效果）
+      const deckSize = this.gameState.cardPile.totalCount;
+      const initialDeckSize = 52; // 标准牌组初始大小
+
+      // 获取回合统计（用于忠诚卡、照片、约里克等效果）
+      const handsPlayed = this.gameState['roundStats']?.handsPlayed || 0;
+      const discardsUsed = this.gameState['roundStats']?.discardsUsed || 0;
+
+      // 获取最常出的牌型（用于方尖碑）
+      const mostPlayedHand = this.gameState.bossState?.getMostPlayedHand?.() || null;
+
+      // 获取当前牌型的历史出牌次数（用于超新星）
+      const handTypeHistoryCount = this.gameState.getHandTypeHistoryCount(detectionResult.handType);
+
+      const scoreResult = ScoringSystem.calculate(
+        selectedCards,
+        detectionResult.handType,
+        gameState,
+        heldCards,
+        this.gameState.getJokerSlots(),
+        deckSize,
+        initialDeckSize,
+        handsPlayed,
+        discardsUsed,
+        this.gameState.handsRemaining,
+        mostPlayedHand,
+        handTypeHistoryCount,
+        true,
+        this.gameState.getHandLevelState(),
+        this.gameState.bossState
+      );
 
       // 左列：牌型名称
       handTypeEl.textContent = baseValue.displayName;
