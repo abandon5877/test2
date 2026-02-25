@@ -866,4 +866,75 @@ describe('Boss盲注系统', () => {
       expect(bossState.getRequiredCardId()).toBe(cardId);
     });
   });
+
+  describe('奇科 (Chicot) - Boss盲注无效', () => {
+    it('应该检测到奇科小丑牌', () => {
+      const chicotJoker = { id: 'chicot', disabled: false } as any;
+      const jokers = [chicotJoker];
+      expect(BossSystem.hasChicot(jokers)).toBe(true);
+    });
+
+    it('不应该检测被禁用的奇科', () => {
+      const chicotJoker = { id: 'chicot', disabled: true } as any;
+      const jokers = [chicotJoker];
+      expect(BossSystem.hasChicot(jokers)).toBe(false);
+    });
+
+    it('没有奇科时应该返回false', () => {
+      const otherJoker = { id: 'other', disabled: false } as any;
+      const jokers = [otherJoker];
+      expect(BossSystem.hasChicot(jokers)).toBe(false);
+    });
+
+    it('有奇科时Boss能力应该被禁用', () => {
+      const chicotJoker = { id: 'chicot', disabled: false } as any;
+      const jokers = [chicotJoker];
+      
+      BossSystem.setBoss(bossState, BossType.HOOK, jokers);
+      
+      // Boss应该被设置为null（能力无效）
+      expect(bossState.getCurrentBoss()).toBeNull();
+    });
+
+    it('没有奇科时Boss能力应该正常生效', () => {
+      const otherJoker = { id: 'other', disabled: false } as any;
+      const jokers = [otherJoker];
+      
+      BossSystem.setBoss(bossState, BossType.HOOK, jokers);
+      
+      // Boss应该正常设置
+      expect(bossState.getCurrentBoss()).toBe(BossType.HOOK);
+    });
+
+    it('钩子Boss的效果在奇科存在时应该无效', () => {
+      const chicotJoker = { id: 'chicot', disabled: false } as any;
+      const jokers = [chicotJoker];
+      
+      // 设置Boss（但有奇科，所以Boss会被禁用）
+      BossSystem.setBoss(bossState, BossType.HOOK, jokers);
+      
+      // 出牌后检查效果
+      const cards = [new Card(Suit.Hearts, Rank.Ten)];
+      const result = BossSystem.afterPlayHand(bossState, cards, PokerHandType.HighCard);
+      
+      // 不应该有钩子Boss的弃牌效果
+      expect(result.discardCount).toBeUndefined();
+      expect(result.message).toBeUndefined();
+    });
+
+    it('墙壁Boss的分数倍数在奇科存在时应该无效', () => {
+      const chicotJoker = { id: 'chicot', disabled: false } as any;
+      const jokers = [chicotJoker];
+      
+      // 设置Boss（但有奇科，所以Boss会被禁用）
+      BossSystem.setBoss(bossState, BossType.WALL, jokers);
+      
+      // 检查目标分数倍数
+      const baseScore = 1000;
+      const modifiedScore = BossSystem.modifyTargetScore(bossState, baseScore);
+      
+      // 有奇科时，应该使用默认倍数2x，而不是墙壁Boss的4x
+      expect(modifiedScore).toBe(baseScore * 2);
+    });
+  });
 });

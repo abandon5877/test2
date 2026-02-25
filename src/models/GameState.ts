@@ -178,8 +178,9 @@ export class GameState implements GameStateInterface {
     }
 
     // 如果是Boss盲注，设置当前Boss
+    // 传入小丑牌列表，检查是否有奇科（Chicot）让Boss能力无效
     if (blindType === BlindType.BOSS_BLIND && blind.bossType) {
-      BossSystem.setBoss(this.bossState, blind.bossType);
+      BossSystem.setBoss(this.bossState, blind.bossType, this.jokerSlots.getJokers());
       logger.info('Boss blind selected', { bossType: blind.bossType });
     } else {
       BossSystem.clearBoss(this.bossState);

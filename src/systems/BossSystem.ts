@@ -33,9 +33,23 @@ export class BossSystem {
   // ==================== 静态方法 ====================
 
   /**
+   * 检查是否有奇科（Chicot）小丑牌
+   * 奇科会让Boss盲注能力无效
+   */
+  static hasChicot(jokers: readonly JokerInterface[]): boolean {
+    return jokers.some(j => j.id === 'chicot' && !j.disabled);
+  }
+
+  /**
    * 设置当前Boss
    */
-  static setBoss(bossState: BossState, bossType: BossType | undefined): void {
+  static setBoss(bossState: BossState, bossType: BossType | undefined, jokers?: readonly JokerInterface[]): void {
+    // 如果有奇科，不设置Boss（Boss能力无效）
+    if (jokers && BossSystem.hasChicot(jokers)) {
+      logger.info('Chicot detected, boss ability disabled');
+      bossState.setBoss(undefined);
+      return;
+    }
     bossState.setBoss(bossType);
   }
 
