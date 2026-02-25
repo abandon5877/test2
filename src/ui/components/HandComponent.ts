@@ -639,26 +639,45 @@ export class HandComponent {
    */
   private bindDragEvents(cardElement: HTMLElement, index: number): void {
     // 鼠标事件
-    cardElement.addEventListener('mousedown', (e) => this.handleDragStart(e, index, false));
+    cardElement.addEventListener('mousedown', (e) => this.handleMouseDown(e, index));
     
-    // 触摸事件
-    cardElement.addEventListener('touchstart', (e) => this.handleDragStart(e, index, true), { passive: false });
+    // 触摸事件 - 使用passive: true避免阻塞滚动，在确定拖动后再阻止默认行为
+    cardElement.addEventListener('touchstart', (e) => this.handleTouchStart(e, index), { passive: true });
   }
 
   /**
-   * 处理拖动开始
+   * 处理鼠标按下
    */
-  private handleDragStart(e: MouseEvent | TouchEvent, index: number, isTouch: boolean): void {
-    // 防止默认行为（特别是触摸时的页面滚动）
-    if (isTouch) {
-      e.preventDefault();
-    }
+  private handleMouseDown(e: MouseEvent, index: number): void {
+    // 只响应左键
+    if (e.button !== 0) return;
+    
+    this.initDragState(e.clientX, e.clientY, index, false);
+    
+    // 添加全局事件监听
+    document.addEventListener('mousemove', this.handleDragMove);
+    document.addEventListener('mouseup', this.handleMouseUp);
+  }
 
-    const clientX = isTouch ? (e as TouchEvent).touches[0].clientX : (e as MouseEvent).clientX;
-    const clientY = isTouch ? (e as TouchEvent).touches[0].clientY : (e as MouseEvent).clientY;
+  /**
+   * 处理触摸开始
+   */
+  private handleTouchStart(e: TouchEvent, index: number): void {
+    const touch = e.touches[0];
+    this.initDragState(touch.clientX, touch.clientY, index, true);
+    
+    // 添加全局事件监听
+    document.addEventListener('touchmove', this.handleTouchMove, { passive: false });
+    document.addEventListener('touchend', this.handleTouchEnd);
+    document.addEventListener('touchcancel', this.handleTouchEnd);
+  }
 
+  /**
+   * 初始化拖动状态（不立即标记为拖动中）
+   */
+  private initDragState(clientX: number, clientY: number, index: number, isTouch: boolean): void {
     this.dragState = {
-      isDragging: true,
+      isDragging: false, // 初始为false，在移动足够距离后才标记为拖动
       draggedIndex: index,
       startX: clientX,
       startY: clientY,
@@ -668,28 +687,80 @@ export class HandComponent {
       dragElement: null,
       originalElement: this.cardElements[index],
       dragStartTime: Date.now(),
-      isTouch
+      isTouch,
+      rafId: null,
+      lastUpdateTime: 0
     };
-
-    // 创建拖动元素
-    this.createDragElement();
-
-    // 添加全局事件监听
-    if (isTouch) {
-      document.addEventListener('touchmove', this.handleDragMove, { passive: false });
-      document.addEventListener('touchend', this.handleDragEnd);
-      document.addEventListener('touchcancel', this.handleDragEnd);
-    } else {
-      document.addEventListener('mousemove', this.handleDragMove);
-      document.addEventListener('mouseup', this.handleDragEnd);
-    }
-
-    // 添加拖动样式
-    if (this.dragState.originalElement) {
-      this.dragState.originalElement.classList.add('dragging');
-      this.dragState.originalElement.style.opacity = '0.3';
-    }
   }
+
+  /**
+   * 处理鼠标释放
+   */
+  private handleMouseUp = (e: MouseEvent): void => {
+    document.removeEventListener('mousemove', this.handleDragMove);
+    document.removeEventListener('mouseup', this.handleMouseUp);
+    this.handleDragEndInternal();
+  };
+
+  /**
+   * 处理触摸移动
+   */
+  private handleTouchMove = (e: TouchEvent): void => {
+    // 只有在确定是拖动后才阻止默认行为
+    if (this.dragState.isDragging) {
+      e.preventDefault();
+    }
+    this.handleDragMove(e);
+  };
+
+  /**
+   * 处理触摸结束
+   */
+  private handleTouchEnd = (e: TouchEvent): void => {
+    document.removeEventListener('touchmove', this.handleTouchMove);
+    document.removeEventListener('touchend', this.handleTouchEnd);
+    document.removeEventListener('touchcancel', this.handleTouchEnd);
+    this.handleDragEndInternal();
+  };
+
+  /**
+   * 处理拖动移动
+   */
+  private handleDragMove = (e: MouseEvent | TouchEvent): void => {
+    const clientX = this.dragState.isTouch ? (e as TouchEvent).touches[0].clientX : (e as MouseEvent).clientX;
+    const clientY = this.dragState.isTouch ? (e as TouchEvent).touches[0].clientY : (e as MouseEvent).clientY;
+
+    // 检查是否移动了足够距离才认为是拖动
+    if (!this.dragState.isDragging) {
+      const deltaX = Math.abs(clientX - this.dragState.startX);
+      const deltaY = Math.abs(clientY - this.dragState.startY);
+      const dragThreshold = 5; // 5像素阈值
+      
+      if (deltaX < dragThreshold && deltaY < dragThreshold) {
+        return; // 移动距离不够，不认为是拖动
+      }
+      
+      // 开始拖动
+      this.dragState.isDragging = true;
+      this.createDragElement();
+      
+      // 添加拖动样式
+      if (this.dragState.originalElement) {
+        this.dragState.originalElement.classList.add('dragging');
+        this.dragState.originalElement.style.opacity = '0.3';
+      }
+    }
+
+    this.dragState.currentX = clientX;
+    this.dragState.currentY = clientY;
+
+    // 使用 requestAnimationFrame 优化性能
+    if (this.dragState.rafId === null) {
+      this.dragState.rafId = requestAnimationFrame(() => {
+        this.updateDragPosition();
+      });
+    }
+  };
 
   /**
    * 创建拖动元素（跟随鼠标的视觉元素）
@@ -714,29 +785,6 @@ export class HandComponent {
     document.body.appendChild(dragElement);
     this.dragState.dragElement = dragElement;
   }
-
-  /**
-   * 处理拖动移动
-   */
-  private handleDragMove = (e: MouseEvent | TouchEvent): void => {
-    if (!this.dragState.isDragging) return;
-
-    // 防止默认行为
-    e.preventDefault();
-
-    const clientX = this.dragState.isTouch ? (e as TouchEvent).touches[0].clientX : (e as MouseEvent).clientX;
-    const clientY = this.dragState.isTouch ? (e as TouchEvent).touches[0].clientY : (e as MouseEvent).clientY;
-
-    this.dragState.currentX = clientX;
-    this.dragState.currentY = clientY;
-
-    // 使用 requestAnimationFrame 优化性能
-    if (this.dragState.rafId === null) {
-      this.dragState.rafId = requestAnimationFrame(() => {
-        this.updateDragPosition();
-      });
-    }
-  };
 
   /**
    * 更新拖动位置（在requestAnimationFrame中调用）
@@ -804,24 +852,13 @@ export class HandComponent {
   }
 
   /**
-   * 处理拖动结束
+   * 处理拖动结束（内部方法）
    */
-  private handleDragEnd = (e: MouseEvent | TouchEvent): void => {
-    if (!this.dragState.isDragging) return;
-
+  private handleDragEndInternal(): void {
+    const wasDragging = this.dragState.isDragging;
     const dragDuration = Date.now() - this.dragState.dragStartTime;
     const fromIndex = this.dragState.draggedIndex;
     const toIndex = this.dragState.placeholderIndex;
-
-    // 移除全局事件监听
-    if (this.dragState.isTouch) {
-      document.removeEventListener('touchmove', this.handleDragMove);
-      document.removeEventListener('touchend', this.handleDragEnd);
-      document.removeEventListener('touchcancel', this.handleDragEnd);
-    } else {
-      document.removeEventListener('mousemove', this.handleDragMove);
-      document.removeEventListener('mouseup', this.handleDragEnd);
-    }
 
     // 移除拖动元素
     if (this.dragState.dragElement) {
@@ -839,8 +876,8 @@ export class HandComponent {
       cancelAnimationFrame(this.dragState.rafId);
     }
 
-    // 如果位置改变且拖动时间超过100ms（区分点击和拖动）
-    if (fromIndex !== toIndex && dragDuration > 100) {
+    // 如果确实是拖动且位置改变
+    if (wasDragging && fromIndex !== toIndex && dragDuration > 100) {
       this.reorderCard(fromIndex, toIndex);
     }
 
@@ -865,7 +902,7 @@ export class HandComponent {
       rafId: null,
       lastUpdateTime: 0
     };
-  };
+  }
 
   /**
    * 重新排序卡牌
