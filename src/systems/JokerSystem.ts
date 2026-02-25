@@ -938,7 +938,7 @@ export class JokerSystem {
   /**
    * 处理回合结束
    */
-  static processEndRound(jokerSlots: JokerSlots, gameState?: { money: number; interestCap: number; hands: number; discards: number }, defeatedBoss?: boolean, heldCards?: readonly Card[]): {
+  static processEndRound(jokerSlots: JokerSlots, gameState?: { money: number; interestCap: number; hands: number; discards: number }, defeatedBoss?: boolean, heldCards?: readonly Card[], ninesInDeck?: number): {
     moneyBonus: number;
     effects: JokerEffectDetail[];
     destroyedJokers: number[];
@@ -952,7 +952,7 @@ export class JokerSystem {
     const jokers = jokerSlots.getActiveJokers();
     const allCardsAreFace = this.hasPareidolia(jokers);
 
-    const context: JokerEffectContext = { gameState, defeatedBoss, heldCards, allCardsAreFace };
+    const context: JokerEffectContext = { gameState, defeatedBoss, heldCards, allCardsAreFace, ninesInDeck };
 
     for (let i = jokers.length - 1; i >= 0; i--) {
       const joker = jokers[i];

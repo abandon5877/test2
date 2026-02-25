@@ -733,12 +733,17 @@ export class GameState implements GameStateInterface {
     // 处理回合结束时的小丑牌效果（如大麦克、爆米花等）
     // 检查是否是Boss盲注且被击败
     const defeatedBoss = this.currentBlind?.type === BlindType.BOSS_BLIND;
+
+    // 计算牌库中9的数量（用于九霄云外）
+    const deckCards = this.cardPile.deck.getCards();
+    const ninesInDeck = deckCards.filter(card => card.rank === Rank.Nine).length;
+
     const endRoundResult = JokerSystem.processEndRound(this.jokerSlots, {
       money: this.money,
       interestCap: this.config.interestCap,
       hands: this.handsRemaining,
       discards: this.discardsRemaining
-    }, defeatedBoss);
+    }, defeatedBoss, undefined, ninesInDeck);
 
     // 添加小丑牌提供的金钱奖励
     if (endRoundResult.moneyBonus > 0) {

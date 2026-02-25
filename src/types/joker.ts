@@ -85,6 +85,8 @@ export interface JokerEffectContext {
   readonly smearedJoker?: boolean; // 是否激活Smeared_Joker效果
   // Pareidolia相关
   readonly allCardsAreFace?: boolean; // 是否激活幻想性错觉效果（所有牌视为人头牌）
+  // Cloud 9相关
+  readonly ninesInDeck?: number; // 牌库中9的数量（用于九霄云外）
 }
 
 export interface JokerEffectResult {
