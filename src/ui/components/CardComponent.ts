@@ -1019,7 +1019,7 @@ export class CardComponent {
       [CardEnhancement.Mult]: '倍率 (+4倍率)',
       [CardEnhancement.Wild]: '万能 (可当作任意花色)',
       [CardEnhancement.Glass]: '玻璃 (x2倍率, 1/4几率自毁)',
-      [CardEnhancement.Steel]: '钢铁 (持有时+1.5倍率)',
+      [CardEnhancement.Steel]: '钢铁 (持有时×1.5倍率)',
       [CardEnhancement.Stone]: '石头 (固定50筹码, 无点数花色)',
       [CardEnhancement.Gold]: '黄金 (回合结束获得$3)',
       [CardEnhancement.Lucky]: '幸运 (+20%几率+20筹码, +5%几率+5倍率)'

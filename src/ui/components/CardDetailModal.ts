@@ -245,7 +245,7 @@ export class CardDetailModal {
       [CardEnhancement.Mult]: '计分时+4倍率',
       [CardEnhancement.Wild]: '可当作任意花色使用',
       [CardEnhancement.Glass]: '计分时x2倍率，但有1/4几率自毁',
-      [CardEnhancement.Steel]: '手持时+1.5倍率',
+      [CardEnhancement.Steel]: '手持时×1.5倍率',
       [CardEnhancement.Stone]: '固定50筹码，无点数和花色',
       [CardEnhancement.Gold]: '回合结束时获得$3',
       [CardEnhancement.Lucky]: '计分时20%几率+20筹码，5%几率+5倍率'
