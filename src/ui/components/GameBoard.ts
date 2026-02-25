@@ -350,7 +350,7 @@ export class GameBoard {
     anteBlindSection.style.cursor = 'pointer';
     anteBlindSection.style.position = 'relative';
     anteBlindSection.innerHTML = `
-      <div class="text-gray-400 text-center" style="font-size: ${this.scaled(19)}">底注 ${this.gameState.ante}</div>
+      <div class="text-gray-400 text-center" style="font-size: ${this.scaled(19)}">底注 ${this.gameState.getAnte()}</div>
       <div class="text-yellow-400 font-bold text-center" style="font-size: ${this.scaled(23)}" id="blind-name">${this.gameState.currentBlind?.name || '选择关卡'}</div>
     `;
     
@@ -1076,7 +1076,7 @@ export class GameBoard {
       // 更新底注值（在父元素的第一个子元素中）
       const anteLabel = blindName.parentElement?.querySelector('.text-gray-400');
       if (anteLabel) {
-        anteLabel.textContent = `底注 ${this.gameState.ante}`;
+        anteLabel.textContent = `底注 ${this.gameState.getAnte()}`;
       }
     }
 

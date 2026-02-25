@@ -60,7 +60,7 @@ export class BlindSelect {
     const anteDisplay = document.createElement('div');
     anteDisplay.style.fontSize = 'clamp(1rem, 3vw, 2rem)';
     anteDisplay.className = 'text-gray-400';
-    anteDisplay.textContent = `底注 ${this.gameState.ante}`;
+    anteDisplay.textContent = `底注 ${this.gameState.getAnte()}`;
     headerArea.appendChild(anteDisplay);
 
     this.container.appendChild(headerArea);
@@ -97,7 +97,7 @@ export class BlindSelect {
     skipButton.style.alignItems = 'center';
     skipButton.style.justifyContent = 'center';
     skipButton.className = 'game-btn game-btn-secondary px-[clamp(20px,4vw,32px)]';
-    const currentBlind = Blind.create(this.gameState.ante, currentBlindType);
+    const currentBlind = Blind.create(this.gameState.getAnte(), currentBlindType);
     const canSkip = currentBlind?.canSkipBlind() ?? false;
     const skipReward = currentBlind?.getSkipReward() ?? 0;
     skipButton.textContent = canSkip ? `跳过 (+$${skipReward})` : '不可跳过';
@@ -165,7 +165,7 @@ export class BlindSelect {
    * 创建关卡卡片
    */
   private createBlindCard(blindType: BlindType, label: string, isCurrent: boolean): HTMLElement {
-    const ante = this.gameState.ante;
+    const ante = this.gameState.getAnte();
     const blind = Blind.create(ante, blindType);
 
     if (!blind) {
@@ -323,7 +323,7 @@ export class BlindSelect {
    */
   private handleSkip(): void {
     const currentBlindType = this.getCurrentBlindType();
-    const currentBlind = Blind.create(this.gameState.ante, currentBlindType);
+    const currentBlind = Blind.create(this.gameState.getAnte(), currentBlindType);
     if (currentBlind?.canSkipBlind()) {
       this.callbacks.onSkipBlind?.();
     }

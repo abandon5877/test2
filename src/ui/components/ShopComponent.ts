@@ -456,7 +456,7 @@ export class ShopComponent {
     anteSection.className = 'game-panel';
     anteSection.innerHTML = `
       <div class="text-gray-400 text-center" style="font-size: ${this.scaled(17)}">底注</div>
-      <div class="text-yellow-400 font-bold text-center" style="font-size: ${this.scaled(27)}">${this.gameState.ante}</div>
+      <div class="text-yellow-400 font-bold text-center" style="font-size: ${this.scaled(27)}">${this.gameState.getAnte()}</div>
     `;
     panel.appendChild(anteSection);
 
