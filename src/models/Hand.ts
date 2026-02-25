@@ -238,4 +238,39 @@ export class Hand {
       return `${index}:${card.toString()}${selected}`;
     }).join(', ');
   }
+
+  /**
+   * 重新排序卡牌
+   * @param fromIndex 原始索引
+   * @param toIndex 目标索引
+   * @returns 是否成功
+   */
+  reorderCards(fromIndex: number, toIndex: number): boolean {
+    if (fromIndex < 0 || fromIndex >= this.cards.length ||
+        toIndex < 0 || toIndex >= this.cards.length ||
+        fromIndex === toIndex) {
+      return false;
+    }
+
+    // 移动卡牌
+    const [movedCard] = this.cards.splice(fromIndex, 1);
+    this.cards.splice(toIndex, 0, movedCard);
+
+    // 更新选中状态映射
+    const newSelection = new Set<number>();
+    for (const selectedIndex of this.selectedIndices) {
+      if (selectedIndex === fromIndex) {
+        newSelection.add(toIndex);
+      } else if (selectedIndex < fromIndex && selectedIndex >= toIndex) {
+        newSelection.add(selectedIndex + 1);
+      } else if (selectedIndex > fromIndex && selectedIndex <= toIndex) {
+        newSelection.add(selectedIndex - 1);
+      } else {
+        newSelection.add(selectedIndex);
+      }
+    }
+    this.selectedIndices = newSelection;
+
+    return true;
+  }
 }

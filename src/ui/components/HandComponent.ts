@@ -46,6 +46,8 @@ export class HandComponent {
     originalElement: HTMLElement | null;
     dragStartTime: number;
     isTouch: boolean;
+    rafId: number | null;
+    lastUpdateTime: number;
   } = {
     isDragging: false,
     draggedIndex: -1,
@@ -57,7 +59,9 @@ export class HandComponent {
     dragElement: null,
     originalElement: null,
     dragStartTime: 0,
-    isTouch: false
+    isTouch: false,
+    rafId: null,
+    lastUpdateTime: 0
   };
 
   constructor(container: HTMLElement, hand: Hand, callbacks: HandComponentCallbacks = {}) {
@@ -726,16 +730,41 @@ export class HandComponent {
     this.dragState.currentX = clientX;
     this.dragState.currentY = clientY;
 
+    // 使用 requestAnimationFrame 优化性能
+    if (this.dragState.rafId === null) {
+      this.dragState.rafId = requestAnimationFrame(() => {
+        this.updateDragPosition();
+      });
+    }
+  };
+
+  /**
+   * 更新拖动位置（在requestAnimationFrame中调用）
+   */
+  private updateDragPosition(): void {
+    if (!this.dragState.isDragging) {
+      this.dragState.rafId = null;
+      return;
+    }
+
+    const { currentX, currentY, startX, startY } = this.dragState;
+
     // 更新拖动元素位置
     if (this.dragState.dragElement) {
-      const deltaX = clientX - this.dragState.startX;
-      const deltaY = clientY - this.dragState.startY;
+      const deltaX = currentX - startX;
+      const deltaY = currentY - startY;
       this.dragState.dragElement.style.transform = `translate(${deltaX}px, ${deltaY}px) scale(1.05) rotate(0deg)`;
     }
 
-    // 计算当前应该插入的位置
-    this.updatePlaceholderIndex(clientX);
-  };
+    // 计算当前应该插入的位置（限制更新频率）
+    const now = Date.now();
+    if (now - this.dragState.lastUpdateTime > 50) { // 每50ms更新一次位置
+      this.updatePlaceholderIndex(currentX);
+      this.dragState.lastUpdateTime = now;
+    }
+
+    this.dragState.rafId = null;
+  }
 
   /**
    * 更新占位符位置（计算应该插入的索引）
@@ -762,31 +791,14 @@ export class HandComponent {
   }
 
   /**
-   * 可视化占位符位置
+   * 可视化占位符位置 - 简化为仅改变透明度，避免复杂transform
    */
   private visualizePlaceholder(targetIndex: number): void {
-    // 移除之前的占位符样式（无过渡动画，立即响应）
     this.cardElements.forEach((el, i) => {
       if (i !== this.dragState.draggedIndex) {
-        el.style.transition = 'none';
-        
-        // 根据目标位置调整其他卡牌的位置
-        if (i < this.dragState.draggedIndex && i >= targetIndex) {
-          // 需要向右移动的卡牌
-          el.style.transform = `translateX(20px) ${el.style.transform.replace(/translateX\([^)]+\)\s*/, '')}`;
-        } else if (i > this.dragState.draggedIndex && i <= targetIndex) {
-          // 需要向左移动的卡牌
-          el.style.transform = `translateX(-20px) ${el.style.transform.replace(/translateX\([^)]+\)\s*/, '')}`;
-        } else {
-          // 恢复原位
-          const rotation = this.calculateCardRotation(i, this.hand.getCards().length);
-          const isSelected = this.hand.isSelected(i);
-          if (isSelected) {
-            el.style.transform = 'rotate(0deg) translateY(-20px)';
-          } else {
-            el.style.transform = `rotate(${rotation}deg)`;
-          }
-        }
+        // 简化动画：目标位置附近的卡牌降低透明度
+        const isNearTarget = Math.abs(i - targetIndex) <= 1;
+        el.style.opacity = isNearTarget ? '0.6' : '1';
       }
     });
   }
@@ -822,21 +834,19 @@ export class HandComponent {
       this.dragState.originalElement.style.opacity = '';
     }
 
+    // 取消可能存在的requestAnimationFrame
+    if (this.dragState.rafId !== null) {
+      cancelAnimationFrame(this.dragState.rafId);
+    }
+
     // 如果位置改变且拖动时间超过100ms（区分点击和拖动）
     if (fromIndex !== toIndex && dragDuration > 100) {
       this.reorderCard(fromIndex, toIndex);
     }
 
-    // 重置所有卡牌的过渡样式
-    this.cardElements.forEach((el, i) => {
-      el.style.transition = '';
-      const rotation = this.calculateCardRotation(i, this.hand.getCards().length);
-      const isSelected = this.hand.isSelected(i);
-      if (isSelected) {
-        el.style.transform = 'rotate(0deg) translateY(-20px)';
-      } else {
-        el.style.transform = `rotate(${rotation}deg)`;
-      }
+    // 重置所有卡牌的样式
+    this.cardElements.forEach((el) => {
+      el.style.opacity = '';
     });
 
     // 重置拖动状态
@@ -851,7 +861,9 @@ export class HandComponent {
       dragElement: null,
       originalElement: null,
       dragStartTime: 0,
-      isTouch: false
+      isTouch: false,
+      rafId: null,
+      lastUpdateTime: 0
     };
   };
 
@@ -859,42 +871,11 @@ export class HandComponent {
    * 重新排序卡牌
    */
   private reorderCard(fromIndex: number, toIndex: number): void {
-    const cards = this.hand.getCards();
-    if (fromIndex < 0 || fromIndex >= cards.length || toIndex < 0 || toIndex >= cards.length) {
-      return;
+    // 使用Hand类的reorderCards方法
+    const success = this.hand.reorderCards(fromIndex, toIndex);
+    if (success) {
+      // 重新渲染
+      this.render();
     }
-
-    // 获取选中的索引映射
-    const selectedIndices = this.hand.getSelectedIndices();
-    const isSelected = selectedIndices.has(fromIndex);
-
-    // 移动卡牌
-    const [movedCard] = cards.splice(fromIndex, 1);
-    cards.splice(toIndex, 0, movedCard);
-
-    // 更新选中状态映射
-    const newSelectedIndices = new Set<number>();
-    selectedIndices.forEach(index => {
-      if (index === fromIndex) {
-        newSelectedIndices.add(toIndex);
-      } else if (index < fromIndex && index >= toIndex) {
-        newSelectedIndices.add(index + 1);
-      } else if (index > fromIndex && index <= toIndex) {
-        newSelectedIndices.add(index - 1);
-      } else {
-        newSelectedIndices.add(index);
-      }
-    });
-
-    // 清空并重新设置选中状态
-    this.hand.clearSelection();
-    newSelectedIndices.forEach(index => {
-      if (index >= 0 && index < cards.length) {
-        this.hand.selectCard(index);
-      }
-    });
-
-    // 重新渲染
-    this.render();
   }
 }
