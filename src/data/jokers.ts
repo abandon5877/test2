@@ -3012,7 +3012,7 @@ export const JOKERS: Joker[] = [
     trigger: JokerTrigger.ON_INDEPENDENT,
     effect: (context: JokerEffectContext): JokerEffectResult => {
       return {
-        discardsBonus: 3,
+        extraDiscards: 3,
         handSizeBonus: -1,
         message: '快乐的安迪: +3弃牌，-1手牌'
       };
@@ -3194,6 +3194,34 @@ export const JOKERS: Joker[] = [
       const cardsSold = state.cardsSold || 0;
       const multiplier = 1 + (cardsSold * 0.25);
       return `每卖出一张牌x0.25倍率（已卖出${cardsSold}张牌，当前x${multiplier.toFixed(2)}倍率，击败Boss后重置）`;
+    }
+  }),
+
+  // Glass Joker - 玻璃牌破碎时x0.75倍率
+  new Joker({
+    id: 'glass_joker',
+    name: '玻璃小丑',
+    description: '每张玻璃牌破碎时x0.75倍率',
+    rarity: JokerRarity.UNCOMMON,
+    cost: 6,
+    trigger: JokerTrigger.ON_INDEPENDENT,
+    initialState: { brokenCount: 0 },
+    effect: (context: JokerEffectContext): JokerEffectResult => {
+      const jokerState = (context as unknown as { jokerState?: { brokenCount?: number } }).jokerState || {};
+      const brokenCount = jokerState.brokenCount || 0;
+      if (brokenCount > 0) {
+        const multiplier = 1 + (brokenCount * 0.75);
+        return {
+          multMultiplier: multiplier,
+          message: `玻璃小丑: ${brokenCount}张玻璃牌破碎 x${multiplier.toFixed(2)}倍率`
+        };
+      }
+      return {};
+    },
+    getDynamicDescription: (state: JokerState): string => {
+      const brokenCount = state.brokenCount || 0;
+      const multiplier = 1 + (brokenCount * 0.75);
+      return `每张玻璃牌破碎时x0.75倍率（${brokenCount}张已破碎，当前x${multiplier.toFixed(2)}倍率）`;
     }
   }),
 

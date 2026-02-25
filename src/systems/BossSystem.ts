@@ -22,6 +22,8 @@ export interface BossEffectResult {
   jokersFlipped?: boolean;
   disabledJokerIndex?: number; // 深红之心Boss禁用的小丑位置
   requiredCardId?: string; // 天青铃铛Boss要求的卡牌ID
+  handTypeDowngraded?: boolean; // 手臂Boss：牌型是否被降级
+  cardsDebuffed?: boolean; // 房子Boss：卡牌是否被削弱
 }
 
 /**
@@ -145,10 +147,18 @@ export class BossSystem {
       const increased = bossState.increaseHandLevelReduction(handType, currentHandLevel);
       const reduction = bossState.getHandLevelReduction(handType);
       if (increased) {
+        result.handTypeDowngraded = true;
         result.message = `手臂Boss: ${handType}等级降低${reduction}级`;
       } else {
         result.message = `手臂Boss: ${handType}已降至最低等级`;
       }
+    }
+
+    // 检查是否有卡牌被削弱（用于Matador效果）
+    // 包括：植物、房子、标记、柱子、花色Boss、翠绿叶子
+    const hasDebuffedCards = cards.some(card => BossSystem.isCardDisabled(bossState, card));
+    if (hasDebuffedCards) {
+      result.cardsDebuffed = true;
     }
 
     // 记录本底注出过的牌

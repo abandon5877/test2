@@ -463,6 +463,15 @@ export class GameState implements GameStateInterface {
     if (scoreResult.destroyedCards && scoreResult.destroyedCards.length > 0) {
       logger.info('Glass cards destroyed', { count: scoreResult.destroyedCards.length });
       this.cardPile.playSelected(scoreResult.destroyedCards);
+
+      // 更新Glass Joker（玻璃小丑）的状态
+      const glassJokers = this.jokerSlots.getActiveJokers().filter(j => j.id === 'glass_joker');
+      for (const glassJoker of glassJokers) {
+        const currentBroken = (glassJoker.state?.brokenCount as number) || 0;
+        const newBroken = currentBroken + scoreResult.destroyedCards.length;
+        glassJoker.updateState({ brokenCount: newBroken });
+        logger.info('Glass Joker updated', { brokenCount: newBroken });
+      }
     } else {
       this.cardPile.playSelected();
     }
@@ -499,6 +508,19 @@ export class GameState implements GameStateInterface {
       if (discardIndices.length > 0) {
         this.cardPile.hand.removeCards(discardIndices);
         logger.info('钩子Boss弃牌', { discardCount: discardIndices.length, indices: discardIndices });
+      }
+    }
+
+    // 处理斗牛士效果：如果Boss效果被触发，给予$8
+    const isBossTriggered = bossResult.handTypeDowngraded ||
+                           bossResult.moneyChange ||
+                           bossResult.discardCount ||
+                           bossResult.cardsDebuffed;
+    if (isBossTriggered) {
+      const jokerResult = JokerSystem.processIndependent(this.jokerSlots, this.cardPile.hand.getCards(), true);
+      if (jokerResult.moneyBonus > 0) {
+        this.money += jokerResult.moneyBonus;
+        logger.info('斗牛士效果触发', { moneyBonus: jokerResult.moneyBonus, newMoney: this.money });
       }
     }
 
@@ -827,6 +849,16 @@ export class GameState implements GameStateInterface {
 
     // 重置所有小丑牌的翻面状态（琥珀橡果Boss效果）
     this.jokerSlots.setAllJokersFaceDown(false);
+
+    // 重置Hit the Road（上路）的倍率加成
+    this.jokerSlots.getActiveJokers()
+      .filter(j => j.id === 'hit_the_road')
+      .forEach(j => j.updateState({ multiplierBonus: 0 }));
+
+    // 重置Campfire（篝火）的卖出计数
+    this.jokerSlots.getActiveJokers()
+      .filter(j => j.id === 'campfire')
+      .forEach(j => j.updateState({ cardsSold: 0 }));
 
     this.currentBlind = null;
 

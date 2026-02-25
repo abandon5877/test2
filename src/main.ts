@@ -18,6 +18,7 @@ import { Suit, Rank } from './types/card';
 import { getRandomJokers, getRandomJoker, getRandomJokerByRarity } from './data/jokers';
 import { getRandomConsumables, getConsumableById } from './data/consumables';
 import { JokerEdition, JokerRarity } from './types/joker';
+import { ProbabilitySystem, PROBABILITIES } from './systems/ProbabilitySystem';
 
 class Game {
   private gameState: GameState;
@@ -540,6 +541,22 @@ class Game {
       case 'spectral':
         contents.push(...getRandomConsumables(pack.choices, 'spectral'));
         break;
+    }
+
+    // 处理Hallucination（幻觉）效果：开包时有50%概率生成一张塔罗牌
+    const hasHallucination = this.gameState.jokerSlots.getActiveJokers().some(j => j.id === 'hallucination');
+    if (hasHallucination) {
+      // 更新Oops! All 6s数量
+      const oopsCount = this.gameState.jokerSlots.getActiveJokers().filter(j => j.id === 'oops_all_6s').length;
+      ProbabilitySystem.setOopsAll6sCount(oopsCount);
+
+      if (ProbabilitySystem.check(PROBABILITIES.HALLUCINATION)) {
+        const tarotCards = getRandomConsumables(1, 'tarot');
+        if (tarotCards.length > 0) {
+          contents.push(tarotCards[0]);
+          Toast.info('幻觉: 生成了一张塔罗牌！');
+        }
+      }
     }
 
     return contents;

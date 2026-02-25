@@ -1316,12 +1316,13 @@ export class JokerSystem {
    * 处理独立触发器效果（ON_INDEPENDENT）
    * 这些效果不依赖于手牌，应该始终触发（如特技演员、哑剧演员）
    */
-  static processIndependent(jokerSlots: JokerSlots, heldCards?: readonly Card[]): {
+  static processIndependent(jokerSlots: JokerSlots, heldCards?: readonly Card[], bossTriggered?: boolean): {
     chipBonus: number;
     multBonus: number;
     multMultiplier: number;
     effects: JokerEffectDetail[];
     heldCardRetrigger: number; // 修复：改为数字，记录触发次数
+    moneyBonus: number; // 修复：添加金钱奖励（用于斗牛士等）
   } {
     const accumulator = this.createEffectAccumulator();
     const jokers = jokerSlots.getActiveJokers();
@@ -1342,6 +1343,11 @@ export class JokerSystem {
       // 添加jokerState到context
       (context as unknown as { jokerState: typeof joker.state }).jokerState = joker.state;
 
+      // 添加bossTriggered到context（用于斗牛士）
+      if (bossTriggered) {
+        (context as unknown as { bossTriggered: boolean }).bossTriggered = bossTriggered;
+      }
+
       const result = joker.effect(context);
 
       // 检查是否有heldCardRetrigger效果（哑剧演员）
@@ -1353,8 +1359,9 @@ export class JokerSystem {
       if (result.chipBonus) accumulator.chipBonus += result.chipBonus;
       if (result.multBonus) accumulator.multBonus += result.multBonus;
       if (result.multMultiplier) accumulator.multMultiplier *= result.multMultiplier;
+      if (result.moneyBonus) accumulator.moneyBonus += result.moneyBonus;
 
-      if (result.message || result.chipBonus || result.multBonus || result.multMultiplier) {
+      if (result.message || result.chipBonus || result.multBonus || result.multMultiplier || result.moneyBonus) {
         accumulator.effects.push({
           jokerName: joker.name,
           effect: result.message || '触发效果',
@@ -1371,6 +1378,7 @@ export class JokerSystem {
       chipBonus: accumulator.chipBonus,
       multBonus: accumulator.multBonus,
       multMultiplier: accumulator.multMultiplier,
+      moneyBonus: accumulator.moneyBonus,
       effects: accumulator.effects,
       heldCardRetrigger: accumulator.heldCardRetrigger
     };

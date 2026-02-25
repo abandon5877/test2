@@ -177,6 +177,7 @@ export interface JokerState {
   targetRank?: string; // 目标点数（邮寄返利、偶像）
   targetSuit?: Suit; // 目标花色（城堡、偶像）
   targetHandType?: string; // 目标牌型（待办清单）
+  brokenCount?: number; // 破碎的玻璃牌数量（玻璃小丑）
 }
 
 export interface JokerInterface {
