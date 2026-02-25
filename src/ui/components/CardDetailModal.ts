@@ -282,10 +282,10 @@ export class CardDetailModal {
   private getSealDescription(seal: SealType): string {
     const descriptions: Record<SealType, string> = {
       [SealType.None]: '无特殊效果',
-      [SealType.Gold]: '打出时获得$3',
-      [SealType.Red]: '重新触发一次卡牌效果',
-      [SealType.Blue]: '生成一张星球牌',
-      [SealType.Purple]: '生成一张塔罗牌'
+      [SealType.Gold]: '计分时获得$3',
+      [SealType.Red]: '计分时重新触发一次卡牌效果',
+      [SealType.Blue]: '回合结束时留在手牌中，生成一张对应最后出牌牌型的星球牌',
+      [SealType.Purple]: '弃掉时生成一张塔罗牌'
     };
     return descriptions[seal];
   }
