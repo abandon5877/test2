@@ -464,4 +464,69 @@ describe('Seal System', () => {
       expect(cardDetail.enhancements.some(e => e.includes('Gold Seal'))).toBe(true);
     });
   });
+
+  describe('Blue Seal Integration with GameState', () => {
+    it('should generate planet card when held at end of round', () => {
+      // Create a card with Blue Seal
+      const blueSealCard = new Card(Suit.Spades, Rank.Ace);
+      blueSealCard.seal = SealType.Blue;
+      
+      // Test the SealSystem directly - simulating card held in hand at end of round
+      const sealEffects = SealSystem.calculateSealsForCards(
+        [blueSealCard], 
+        false, // not played
+        false, // not discarded
+        PokerHandType.OnePair
+      );
+      
+      expect(sealEffects.planetCount).toBe(1);
+      expect(sealEffects.planetHandType).toBe(PokerHandType.OnePair);
+    });
+
+    it('should not generate planet when blue seal card is played', () => {
+      const blueSealCard = new Card(Suit.Spades, Rank.Ace);
+      blueSealCard.seal = SealType.Blue;
+      
+      const sealEffects = SealSystem.calculateSealsForCards(
+        [blueSealCard], 
+        true, // played
+        false, // not discarded
+        PokerHandType.OnePair
+      );
+      
+      expect(sealEffects.planetCount).toBe(0);
+    });
+
+    it('should not generate planet when blue seal card is discarded', () => {
+      const blueSealCard = new Card(Suit.Spades, Rank.Ace);
+      blueSealCard.seal = SealType.Blue;
+      
+      const sealEffects = SealSystem.calculateSealsForCards(
+        [blueSealCard], 
+        false, // not played
+        true, // discarded
+        PokerHandType.OnePair
+      );
+      
+      expect(sealEffects.planetCount).toBe(0);
+    });
+
+    it('should generate multiple planets for multiple blue seal cards', () => {
+      const cards = [
+        Object.assign(new Card(Suit.Spades, Rank.Ace), { seal: SealType.Blue }),
+        Object.assign(new Card(Suit.Hearts, Rank.King), { seal: SealType.Blue }),
+        Object.assign(new Card(Suit.Diamonds, Rank.Queen), { seal: SealType.None })
+      ];
+      
+      const sealEffects = SealSystem.calculateSealsForCards(
+        cards, 
+        false, // not played
+        false, // not discarded
+        PokerHandType.TwoPair
+      );
+      
+      expect(sealEffects.planetCount).toBe(2);
+      expect(sealEffects.planetHandType).toBe(PokerHandType.TwoPair);
+    });
+  });
 });

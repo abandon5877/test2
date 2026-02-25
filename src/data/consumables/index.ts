@@ -28,6 +28,7 @@ export {
 export {
   PLANET_CARDS,
   getPlanetCardByHandType,
+  getPlanetConsumableByHandType,
   getAllPlanetCards,
   PLANET_CONSUMABLES,
   getPlanetById,

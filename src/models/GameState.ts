@@ -20,7 +20,7 @@ import { PokerHandDetector } from '../systems/PokerHandDetector';
 import { SealSystem } from '../systems/SealSystem';
 import { initializeBlindConfigs, resetBlindConfigs } from '../data/blinds';
 import { ConsumableDataManager } from '../data/ConsumableDataManager';
-import { getConsumableById } from '../data/consumables';
+import { getConsumableById, getPlanetConsumableByHandType } from '../data/consumables';
 import type { JokerInterface } from '../types/joker';
 import type { ConsumableInterface } from '../types/consumable';
 import { getJokerById, resetGrosMichelDestroyed } from '../data/jokers';
@@ -778,16 +778,23 @@ export class GameState implements GameStateInterface {
     });
 
     // 处理蓝色蜡封：回合结束时如果留在手牌中，生成对应最后出牌牌型的星球牌（每张蓝色蜡封生成一张）
+    logger.info('蓝色蜡封检查', { lastPlayedHandType: this.lastPlayedHandType, handCardCount: this.cardPile.hand.getCards().length });
     if (this.lastPlayedHandType) {
       const handCards = this.cardPile.hand.getCards();
+      logger.info('蓝色蜡封处理', { handCardCount: handCards.length, lastPlayedHandType: this.lastPlayedHandType });
+      // 检查手牌中是否有蓝色蜡封
+      const blueSealCards = handCards.filter(card => card.seal === 'blue');
+      logger.info('手牌中的蓝色蜡封', { blueSealCount: blueSealCards.length });
+      
       const sealEffects = SealSystem.calculateSealsForCards(handCards, false, false, this.lastPlayedHandType);
+      logger.info('蓝色蜡封效果计算结果', { planetCount: sealEffects.planetCount, planetHandType: sealEffects.planetHandType });
       for (let i = 0; i < sealEffects.planetCount; i++) {
         if (sealEffects.planetHandType) {
-          const planetCard = ConsumableDataManager.getPlanetCardByHandType(sealEffects.planetHandType);
+          const planetCard = getPlanetConsumableByHandType(sealEffects.planetHandType);
           if (planetCard) {
             if (this.consumableSlots.hasAvailableSlot()) {
-              this.consumableSlots.addConsumable(planetCard);
-              logger.info('蓝色蜡封效果：生成星球牌', { planetCard: planetCard.name, handType: sealEffects.planetHandType, index: i + 1, total: sealEffects.planetCount });
+              const added = this.consumableSlots.addConsumable(planetCard);
+              logger.info('蓝色蜡封效果：生成星球牌', { planetCard: planetCard.name, handType: sealEffects.planetHandType, index: i + 1, total: sealEffects.planetCount, added });
             } else {
               logger.info('蓝色蜡封效果：消耗品槽位已满，无法生成星球牌', { index: i + 1, total: sealEffects.planetCount });
               break;

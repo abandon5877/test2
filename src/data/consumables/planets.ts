@@ -93,10 +93,28 @@ export const PLANET_CARDS: PlanetData[] = [
 ];
 
 /**
- * 根据牌型获取对应的星球牌
+ * 根据牌型获取对应的星球牌数据
  */
 export function getPlanetCardByHandType(handType: PokerHandType): PlanetData | undefined {
   return PLANET_CARDS.find(card => card.handType === handType);
+}
+
+/**
+ * 根据牌型获取对应的星球牌消耗品实例
+ */
+export function getPlanetConsumableByHandType(handType: PokerHandType): Consumable | undefined {
+  const planetData = PLANET_CARDS.find(card => card.handType === handType);
+  if (!planetData) return undefined;
+  
+  return new Consumable({
+    id: planetData.id,
+    name: planetData.name,
+    description: planetData.description,
+    type: planetData.type,
+    cost: planetData.cost,
+    useCondition: '无特殊条件',
+    use: planetData.createUseFunction()
+  });
 }
 
 /**
