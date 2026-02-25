@@ -1006,9 +1006,15 @@ export class JokerSystem {
           jokerSlots.removeJoker(randomIndex);
         }
 
-        // 处理增加售价（礼品卡效果）
+        // 处理增加售价
         if (result.increaseSellValue && result.increaseSellValue > 0) {
-          totalIncreaseSellValue += result.increaseSellValue;
+          // 鸡蛋(egg)只增加自己的售价，不应用到其他牌
+          if (joker.id === 'egg') {
+            joker.increaseSellValue(result.increaseSellValue);
+          } else {
+            // 其他情况（如礼品卡）应用到所有牌
+            totalIncreaseSellValue += result.increaseSellValue;
+          }
         }
 
         if (result.moneyBonus || result.message) {
