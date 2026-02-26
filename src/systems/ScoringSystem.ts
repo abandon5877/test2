@@ -210,12 +210,20 @@ export class ScoringSystem {
     });
     
     // 修复3: 计算手持卡牌效果（Steel）- 初始计算，后面会根据哑剧演员效果重新计算
+    // 红蜡封效果：手牌中的钢铁牌效果触发两次
     let heldMultMultiplier = 1;
-    const steelCardCount = heldCards
-      ? heldCards.filter(card => card.enhancement === CardEnhancement.Steel).length
-      : 0;
-    if (steelCardCount > 0) {
-      heldMultMultiplier = Math.pow(1.5, steelCardCount);
+    let steelCardEffectCount = 0;
+    if (heldCards) {
+      for (const card of heldCards) {
+        if (card.enhancement === CardEnhancement.Steel) {
+          // 红蜡封让钢铁牌效果触发两次
+          const retriggerCount = card.seal === SealType.Red ? 2 : 1;
+          steelCardEffectCount += retriggerCount;
+        }
+      }
+    }
+    if (steelCardEffectCount > 0) {
+      heldMultMultiplier = Math.pow(1.5, steelCardEffectCount);
     }
 
     // 从 jokerSlots 获取小丑牌列表（如果提供了 jokerSlots）
@@ -645,10 +653,12 @@ export class ScoringSystem {
 
     // 修复3: 应用手持卡牌倍率乘数（Steel效果）
     // 如果哑剧演员效果激活，Steel效果触发多次（修复：支持蓝图+默剧演员）
-    if (heldCardRetrigger && heldCardRetrigger > 0 && steelCardCount > 0) {
+    // 红蜡封已经与steelCardEffectCount计算在内
+    if (heldCardRetrigger && heldCardRetrigger > 0 && steelCardEffectCount > 0) {
       // 哑剧演员效果：每个默剧演员使Steel卡效果额外触发1次
       // 1个默剧演员：触发2次，2个默剧演员（蓝图）：触发3次，以此类推
-      heldMultMultiplier = Math.pow(1.5, steelCardCount * (1 + heldCardRetrigger));
+      // 红蜡封效果已经包含在steelCardEffectCount中
+      heldMultMultiplier = Math.pow(1.5, steelCardEffectCount * (1 + heldCardRetrigger));
     }
     totalMultiplier *= heldMultMultiplier;
 

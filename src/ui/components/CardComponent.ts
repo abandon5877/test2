@@ -378,7 +378,13 @@ export class CardComponent {
     onClick?: (card: Card) => void
   ): HTMLElement {
     const cardElement = document.createElement('div');
-    cardElement.className = 'compact-card';
+    cardElement.className = `compact-card ${card.faceDown ? 'face-down' : ''}`;
+
+    // 如果卡牌翻面，显示牌背
+    if (card.faceDown) {
+      return this.renderCompactCardBack(cardElement, onClick);
+    }
+
     cardElement.style.cssText = `
       position: relative;
       width: 60px;
@@ -496,6 +502,79 @@ export class CardComponent {
   }
 
   /**
+   * 渲染紧凑卡牌背面（用于翻面状态）
+   * @param cardElement - 已有的卡牌元素
+   * @param onClick - 点击回调
+   */
+  private static renderCompactCardBack(
+    cardElement: HTMLElement,
+    onClick?: (card: Card) => void
+  ): HTMLElement {
+    cardElement.style.cssText = `
+      position: relative;
+      width: 60px;
+      height: 84px;
+      background: linear-gradient(135deg, #1e3c72 0%, #2a5298 50%, #1e3c72 100%);
+      border: 2px solid #4a90d9;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+    `;
+
+    // 添加牌背图案
+    const pattern = document.createElement('div');
+    pattern.style.cssText = `
+      width: 40px;
+      height: 56px;
+      background: repeating-linear-gradient(
+        45deg,
+        rgba(255,255,255,0.1) 0px,
+        rgba(255,255,255,0.1) 2px,
+        transparent 2px,
+        transparent 6px
+      );
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 3px;
+    `;
+
+    // 添加中心图标
+    const centerIcon = document.createElement('div');
+    centerIcon.style.cssText = `
+      position: absolute;
+      font-size: 20px;
+      opacity: 0.6;
+      text-shadow: 0 0 5px rgba(255,255,255,0.5);
+    `;
+    centerIcon.textContent = '🎴';
+
+    cardElement.appendChild(pattern);
+    cardElement.appendChild(centerIcon);
+
+    // 悬停提示
+    cardElement.title = '翻面的卡牌';
+
+    // 悬停效果
+    cardElement.addEventListener('mouseenter', () => {
+      cardElement.style.transform = 'translateY(-4px) scale(1.05)';
+      cardElement.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.3), inset 0 0 10px rgba(0,0,0,0.5)';
+    });
+    cardElement.addEventListener('mouseleave', () => {
+      cardElement.style.transform = 'translateY(0) scale(1)';
+      cardElement.style.boxShadow = 'inset 0 0 10px rgba(0,0,0,0.5)';
+    });
+
+    // 点击事件（翻面卡牌也可以点击）
+    if (onClick) {
+      cardElement.addEventListener('click', () => onClick({ faceDown: true } as Card));
+    }
+
+    return cardElement;
+  }
+
+  /**
    * 渲染牌背
    */
   static renderBack(): HTMLElement {
@@ -552,7 +631,7 @@ export class CardComponent {
     cardElement.appendChild(centerIcon);
 
     // 添加悬停提示
-    cardElement.title = `翻面的${cardType}（琥珀橡果Boss效果）`;
+    cardElement.title = `翻面的${cardType}`;
 
     return cardElement;
   }
@@ -752,7 +831,7 @@ export class CardComponent {
     cardElement.appendChild(faceDownLabel);
 
     // 添加悬停提示
-    cardElement.title = '翻面的小丑牌（琥珀橡果Boss效果）- 效果仍然生效';
+    cardElement.title = '翻面的小丑牌 - 效果仍然生效';
 
     // 点击查看详情（即使翻面也能查看）
     cardElement.addEventListener('click', () => {
@@ -760,7 +839,7 @@ export class CardComponent {
       const faceDownJoker = {
         id: 'face-down',
         name: '翻面的小丑牌',
-        description: '这张小丑牌被琥珀橡果Boss翻面了，但效果仍然生效。',
+        description: '这张小丑牌被翻面了，但效果仍然生效。',
         rarity: 'common',
         cost: 0,
         faceDown: true

@@ -1,5 +1,6 @@
 import { JokerInterface, JokerEffectContext, JokerEffectResult, JokerTrigger } from '../types/joker';
 import { Card } from '../models/Card';
+import { SealType } from '../types/card';
 import { PokerHandType } from '../types/pokerHands';
 import { ScoreResult } from './ScoringSystem';
 import { createModuleLogger } from '../utils/logger';
@@ -947,6 +948,7 @@ export class JokerSystem {
 
   /**
    * 处理回合结束
+   * 红蜡封效果：手牌中的牌效果触发两次
    */
   static processEndRound(jokerSlots: JokerSlots, gameState?: { money: number; interestCap: number; hands: number; discards: number }, defeatedBoss?: boolean, heldCards?: readonly Card[], ninesInDeck?: number): {
     moneyBonus: number;
@@ -964,11 +966,19 @@ export class JokerSystem {
 
     const context: JokerEffectContext = { gameState, defeatedBoss, heldCards, allCardsAreFace, ninesInDeck };
 
+    // 计算红蜡封重触发
+    const redSealHelper = heldCards ? this.calculateRedSealRetrigger(heldCards) : null;
+
     for (let i = jokers.length - 1; i >= 0; i--) {
       const joker = jokers[i];
 
       // 添加jokerState到context
       (context as unknown as { jokerState: typeof joker.state }).jokerState = joker.state;
+
+      // 添加红蜡封辅助函数到context
+      if (redSealHelper) {
+        (context as unknown as { redSealHelper: { getCardEffectMultiplier: (filterFn: (card: Card) => boolean) => number } }).redSealHelper = redSealHelper;
+      }
 
       // 1. 处理小丑自身的 onEndRound 效果
       if (joker.onEndRound) {
@@ -1385,7 +1395,32 @@ export class JokerSystem {
   }
 
   /**
+   * 计算红蜡封对手持效果的重触发次数
+   * 返回一个函数，用于计算特定卡牌在红蜡封影响下的效果触发次数
+   */
+  private static calculateRedSealRetrigger(heldCards: readonly Card[]): {
+    getCardEffectMultiplier: (filterFn: (card: Card) => boolean) => number;
+  } {
+    // 计算红蜡封重触发倍数
+    // 对于满足条件的卡牌，如果有红蜡封则效果触发2次
+    return {
+      getCardEffectMultiplier: (filterFn: (card: Card) => boolean): number => {
+        let totalEffectCount = 0;
+        for (const card of heldCards) {
+          if (filterFn(card)) {
+            // 红蜡封让效果触发2次
+            const retriggerCount = card.seal === SealType.Red ? 2 : 1;
+            totalEffectCount += retriggerCount;
+          }
+        }
+        return totalEffectCount;
+      }
+    };
+  }
+
+  /**
    * 处理手牌中效果（ON_HELD触发器）
+   * 红蜡封效果：手牌中的牌效果触发两次
    */
   static processHeld(jokerSlots: JokerSlots, heldCards: readonly Card[]): {
     chipBonus: number;
@@ -1397,6 +1432,9 @@ export class JokerSystem {
     const accumulator = this.createEffectAccumulator();
     const jokers = jokerSlots.getActiveJokers();
 
+    // 计算红蜡封重触发
+    const redSealHelper = this.calculateRedSealRetrigger(heldCards);
+
     for (let i = 0; i < jokers.length; i++) {
       const joker = jokers[i];
 
@@ -1407,6 +1445,9 @@ export class JokerSystem {
 
       // 添加jokerState到context
       (context as unknown as { jokerState: typeof joker.state }).jokerState = joker.state;
+
+      // 添加红蜡封辅助函数到context
+      (context as unknown as { redSealHelper: { getCardEffectMultiplier: (filterFn: (card: Card) => boolean) => number } }).redSealHelper = redSealHelper;
 
       // 1. 处理小丑自身的 onHeld 效果
       this.processJokerEffect(joker, joker.onHeld, context, accumulator);

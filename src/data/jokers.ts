@@ -1683,7 +1683,7 @@ export const JOKERS: Joker[] = [
     }
   }),
 
-  // Raised Fist - 手牌中最低牌点数x2加到倍率
+  // Raised Fist - 手牌中最低牌点数x2加到倍率（红蜡封效果：触发两次）
   new Joker({
     id: 'raised_fist',
     name: '高举拳头',
@@ -1696,11 +1696,17 @@ export const JOKERS: Joker[] = [
       if (heldCards && heldCards.length > 0) {
         // 官方规则：A=11点，不是1点
         const rankValues: Record<string, number> = { 'A': 11, '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9, '10': 10, 'J': 10, 'Q': 10, 'K': 10 };
+        // 找到最低牌点数
         const minValue = Math.min(...heldCards.map(card => rankValues[card.rank] || 10));
-        const bonus = minValue * 2;
+        // 检查最低牌是否有红蜡封（可能有多个相同最低值的牌）
+        const minCards = heldCards.filter(card => rankValues[card.rank] === minValue);
+        const hasRedSeal = minCards.some(card => card.seal === 'red');
+        // 红蜡封让效果触发两次
+        const retriggerCount = hasRedSeal ? 2 : 1;
+        const bonus = minValue * 2 * retriggerCount;
         return {
           multBonus: bonus,
-          message: `高举拳头: 最低牌点数${minValue} x2 +${bonus}倍率`
+          message: `高举拳头: 最低牌点数${minValue} x2${retriggerCount > 1 ? ' x2(红蜡封)' : ''} +${bonus}倍率`
         };
       }
       return {};
@@ -2017,7 +2023,7 @@ export const JOKERS: Joker[] = [
     }
   }),
 
-  // Reserved Parking - 手牌脸牌1/2概率+$1
+  // Reserved Parking - 手牌脸牌1/2概率+$1（红蜡封效果：触发两次）
   new Joker({
     id: 'reserved_parking',
     name: '预留车位',
@@ -2027,16 +2033,21 @@ export const JOKERS: Joker[] = [
     trigger: JokerTrigger.END_OF_ROUND,
     effect: (context: JokerEffectContext): JokerEffectResult => {
       const heldCards = (context as unknown as { heldCards?: Card[] }).heldCards;
+      const redSealHelper = (context as unknown as { redSealHelper?: { getCardEffectMultiplier: (filterFn: (card: Card) => boolean) => number } }).redSealHelper;
       if (heldCards) {
-        const faceCards = heldCards.filter(card => context.allCardsAreFace || card.isFaceCard);
+        // 使用红蜡封辅助函数计算效果次数
+        const faceCardEffectCount = redSealHelper
+          ? redSealHelper.getCardEffectMultiplier(card => context.allCardsAreFace || card.isFaceCard)
+          : heldCards.filter(card => context.allCardsAreFace || card.isFaceCard).length;
         let moneyEarned = 0;
-        for (const _ of faceCards) {
+        // 每张脸牌有1/2概率+$1，红蜡封让效果触发两次
+        for (let i = 0; i < faceCardEffectCount; i++) {
           if (Math.random() < 0.5) moneyEarned++;
         }
         if (moneyEarned > 0) {
           return {
             moneyBonus: moneyEarned,
-            message: `预留车位: ${faceCards.length}张脸牌，${moneyEarned}张触发 +$${moneyEarned}`
+            message: `预留车位: 脸牌效果${faceCardEffectCount}次，${moneyEarned}次触发 +$${moneyEarned}`
           };
         }
       }
@@ -2148,7 +2159,7 @@ export const JOKERS: Joker[] = [
     }
   }),
 
-  // Shoot the Moon - 每张Q在手牌+13倍率
+  // Shoot the Moon - 每张Q在手牌+13倍率（红蜡封效果：触发两次）
   new Joker({
     id: 'shoot_the_moon',
     name: '射月',
@@ -2158,13 +2169,17 @@ export const JOKERS: Joker[] = [
     trigger: JokerTrigger.ON_HELD,
     effect: (context: JokerEffectContext): JokerEffectResult => {
       const heldCards = (context as unknown as { heldCards?: Card[] }).heldCards;
+      const redSealHelper = (context as unknown as { redSealHelper?: { getCardEffectMultiplier: (filterFn: (card: Card) => boolean) => number } }).redSealHelper;
       if (heldCards) {
-        const queenCount = heldCards.filter(card => card.rank === 'Q').length;
-        if (queenCount > 0) {
-          const bonus = queenCount * 13;
+        // 使用红蜡封辅助函数计算效果次数
+        const queenEffectCount = redSealHelper
+          ? redSealHelper.getCardEffectMultiplier(card => card.rank === 'Q')
+          : heldCards.filter(card => card.rank === 'Q').length;
+        if (queenEffectCount > 0) {
+          const bonus = queenEffectCount * 13;
           return {
             multBonus: bonus,
-            message: `射月: 手牌${queenCount}张Q +${bonus}倍率`
+            message: `射月: 手牌Q效果${queenEffectCount}次 +${bonus}倍率`
           };
         }
       }
@@ -3389,7 +3404,7 @@ export const JOKERS: Joker[] = [
     }
   }),
 
-  // Baron - 每张K在手牌x1.5倍率
+  // Baron - 每张K在手牌x1.5倍率（红蜡封效果：触发两次）
   new Joker({
     id: 'baron',
     name: '男爵',
@@ -3399,13 +3414,17 @@ export const JOKERS: Joker[] = [
     trigger: JokerTrigger.ON_HELD,
     effect: (context: JokerEffectContext): JokerEffectResult => {
       const heldCards = (context as unknown as { heldCards?: Card[] }).heldCards;
+      const redSealHelper = (context as unknown as { redSealHelper?: { getCardEffectMultiplier: (filterFn: (card: Card) => boolean) => number } }).redSealHelper;
       if (heldCards) {
-        const kingCount = heldCards.filter(card => card.rank === 'K').length;
-        if (kingCount > 0) {
-          const multiplier = Math.pow(1.5, kingCount);
+        // 使用红蜡封辅助函数计算效果次数
+        const kingEffectCount = redSealHelper
+          ? redSealHelper.getCardEffectMultiplier(card => card.rank === 'K')
+          : heldCards.filter(card => card.rank === 'K').length;
+        if (kingEffectCount > 0) {
+          const multiplier = Math.pow(1.5, kingEffectCount);
           return {
             multMultiplier: multiplier,
-            message: `男爵: 手牌${kingCount}张K x${multiplier.toFixed(2)}倍率`
+            message: `男爵: 手牌K效果${kingEffectCount}次 x${multiplier.toFixed(2)}倍率`
           };
         }
       }
