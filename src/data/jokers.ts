@@ -1057,6 +1057,10 @@ export const JOKERS: Joker[] = [
         multBonus: tarotCardsUsed,
         message: `算命先生: 已使用${tarotCardsUsed}张塔罗牌, +${tarotCardsUsed}倍率`
       };
+    },
+    getDynamicDescription: (state: JokerState): string => {
+      const tarotCardsUsed = state.tarotCardsUsed || 0;
+      return `每张使用过的塔罗牌+1倍率（当前已使用${tarotCardsUsed}张，+${tarotCardsUsed}倍率）`;
     }
   }),
 
