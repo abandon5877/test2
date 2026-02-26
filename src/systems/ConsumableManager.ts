@@ -1,5 +1,7 @@
 import type { ConsumableInterface, ConsumableEffectContext, ConsumableEffectResult } from '../types/consumable';
 import type { ConsumableSlots } from '../models/ConsumableSlots';
+import type { JokerSlots } from '../models/JokerSlots';
+import { JokerSystem } from './JokerSystem';
 import { createModuleLogger } from '../utils/logger';
 
 const logger = createModuleLogger('ConsumableManager');
@@ -122,5 +124,41 @@ export class ConsumableManager {
    */
   static getConsumableInfo(consumableSlots: ConsumableSlots): string {
     return consumableSlots.getConsumableInfo();
+  }
+
+  /**
+   * 出售消耗牌
+   * @param consumableSlots 消耗牌槽位
+   * @param jokerSlots 小丑牌槽位（用于更新篝火等联动效果）
+   * @param index 消耗牌索引
+   * @returns 出售结果
+   */
+  static sellConsumable(
+    consumableSlots: ConsumableSlots,
+    jokerSlots: JokerSlots,
+    index: number
+  ): { success: boolean; sellPrice?: number; error?: string } {
+    const consumable = consumableSlots.getConsumable(index);
+    if (!consumable) {
+      logger.warn('Cannot sell consumable: invalid index', { index });
+      return { success: false, error: 'Invalid consumable index' };
+    }
+
+    // 使用消耗牌的getSellPrice方法计算售价（包含礼品卡加成）
+    const sellPrice = consumable.getSellPrice();
+
+    // 移除消耗牌
+    consumableSlots.removeConsumable(index);
+
+    logger.info('Consumable sold', {
+      consumableId: consumable.id,
+      consumableName: consumable.name,
+      sellPrice
+    });
+
+    // 更新Campfire状态：每卖出一张牌，Campfire的cardsSold+1
+    JokerSystem.updateCampfireOnCardSold(jokerSlots);
+
+    return { success: true, sellPrice };
   }
 }

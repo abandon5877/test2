@@ -5,6 +5,9 @@ import { getJokerById } from '../data/jokers';
 import { Card } from '../models/Card';
 import { Suit, Rank } from '../types/card';
 import { PokerHandType } from '../types/pokerHands';
+import { GameState } from '../models/GameState';
+import { Consumable } from '../models/Consumable';
+import { ConsumableType } from '../types/consumable';
 
 describe('Campfire 篝火测试', () => {
   it('出售小丑牌时应该增加Campfire的cardsSold计数', () => {
@@ -145,5 +148,72 @@ describe('Campfire 篝火测试', () => {
     // 验证两张Campfire都重置了
     expect(campfire1.state.cardsSold).toBe(0);
     expect(campfire2.state.cardsSold).toBe(0);
+  });
+
+  it('出售消耗牌（塔罗牌/幻灵牌）时应该增加Campfire的cardsSold计数', () => {
+    const gameState = new GameState();
+
+    // 添加Campfire
+    const campfire = getJokerById('campfire')!;
+    gameState.jokerSlots.addJoker(campfire);
+
+    // 添加一张塔罗牌到消耗牌槽
+    const tarot = new Consumable({
+      id: 'the_fool',
+      name: '愚人',
+      description: '生成最后使用的塔罗牌或星球牌（游戏内）',
+      type: ConsumableType.TAROT,
+      cost: 3,
+      use: () => ({ success: true, message: '使用成功' })
+    });
+    gameState.addConsumable(tarot);
+
+    // 验证初始状态
+    expect(campfire.state.cardsSold).toBeUndefined();
+
+    // 出售塔罗牌
+    const sellResult = gameState.sellConsumable(0);
+    expect(sellResult.success).toBe(true);
+
+    // 验证Campfire状态已更新
+    expect(campfire.state.cardsSold).toBe(1);
+  });
+
+  it('出售多张消耗牌时Campfire应该累积计数', () => {
+    const gameState = new GameState();
+
+    // 添加Campfire
+    const campfire = getJokerById('campfire')!;
+    gameState.jokerSlots.addJoker(campfire);
+
+    // 添加多张消耗牌（默认槽位为2个）
+    const tarot1 = new Consumable({
+      id: 'the_fool',
+      name: '愚人',
+      description: '生成最后使用的塔罗牌或星球牌',
+      type: ConsumableType.TAROT,
+      cost: 3,
+      use: () => ({ success: true, message: '使用成功' })
+    });
+    const spectral = new Consumable({
+      id: 'crystal_ball',
+      name: '水晶球',
+      description: '生成一张塔罗牌',
+      type: ConsumableType.SPECTRAL,
+      cost: 4,
+      use: () => ({ success: true, message: '使用成功' })
+    });
+    gameState.addConsumable(tarot1);
+    gameState.addConsumable(spectral);
+
+    // 验证初始状态
+    expect(campfire.state.cardsSold).toBeUndefined();
+
+    // 出售2张消耗牌（注意：每次出售后索引会变化）
+    gameState.sellConsumable(0);
+    expect(campfire.state.cardsSold).toBe(1);
+
+    gameState.sellConsumable(0);
+    expect(campfire.state.cardsSold).toBe(2);
   });
 });

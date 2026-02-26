@@ -1263,17 +1263,15 @@ export class GameState implements GameStateInterface {
   }
 
   sellConsumable(index: number): { success: boolean; sellPrice?: number; error?: string } {
-    const consumable = this.consumableSlots.getConsumable(index);
-    if (!consumable) {
-      return { success: false, error: 'Invalid consumable index' };
+    // 调用 ConsumableManager 处理出售逻辑
+    const result = ConsumableManager.sellConsumable(this.consumableSlots, this.jokerSlots, index);
+
+    if (result.success && result.sellPrice !== undefined) {
+      // 添加金钱到玩家账户
+      this.money += result.sellPrice;
     }
 
-    // 使用消耗牌的getSellPrice方法计算售价（包含礼品卡加成）
-    const sellPrice = consumable.getSellPrice();
-    this.consumableSlots.removeConsumable(index);
-    this.money += sellPrice;
-
-    return { success: true, sellPrice };
+    return result;
   }
 
   getAnte(): number {
