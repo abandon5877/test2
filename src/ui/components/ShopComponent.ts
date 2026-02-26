@@ -53,15 +53,18 @@ export class ShopComponent {
 
   /**
    * 获取刷新费用（从 gameState.shop 读取）
-   * 如果有混沌小丑，返回0（免费刷新）
    */
   private get refreshCost(): number {
-    // 检查是否有混沌小丑的免费刷新效果
-    const rerollResult = JokerSystem.processReroll(this.gameState.jokerSlots);
-    if (rerollResult.freeReroll) {
-      return 0;
-    }
     return this.gameState.shop?.rerollCost ?? 5;
+  }
+
+  /**
+   * 检查是否有免费刷新效果（混沌小丑）
+   * 注意：这个方法会更新小丑状态，应该只调用一次
+   */
+  private checkFreeReroll(): boolean {
+    const rerollResult = JokerSystem.processReroll(this.gameState.jokerSlots);
+    return rerollResult.freeReroll;
   }
 
   constructor(container: HTMLElement, gameState: GameState, callbacks: ShopComponentCallbacks = {}) {
@@ -499,10 +502,12 @@ export class ShopComponent {
     // 刷新费用
     const refreshSection = document.createElement('div');
     refreshSection.className = 'game-panel';
-    const isFreeReroll = this.refreshCost === 0;
+    // 检查是否有混沌小丑（只读检查，不更新状态）
+    const hasChaosClown = this.gameState.jokerSlots.getJokers().some(j => j.id === 'chaos_the_clown');
+    const isFreeRerollDisplay = hasChaosClown && !this.gameState.jokerSlots.getJokers().find(j => j.id === 'chaos_the_clown')?.state?.freeRerollUsed;
     refreshSection.innerHTML = `
       <div class="text-gray-400 text-center" style="font-size: ${this.scaled(17)}">刷新费用</div>
-      <div class="${isFreeReroll ? 'text-green-400' : 'text-blue-400'} font-bold text-center" style="font-size: ${this.scaled(25)}">${isFreeReroll ? '免费' : '$' + this.refreshCost}</div>
+      <div class="${isFreeRerollDisplay ? 'text-green-400' : 'text-blue-400'} font-bold text-center" style="font-size: ${this.scaled(25)}">${isFreeRerollDisplay ? '免费' : '$' + this.refreshCost}</div>
     `;
     panel.appendChild(refreshSection);
 
@@ -1101,9 +1106,8 @@ ${description}
    * 处理刷新
    */
   private handleRefresh(): void {
-    // 检查是否有混沌小丑的免费刷新效果
-    const rerollResult = JokerSystem.processReroll(this.gameState.jokerSlots);
-    const isFreeReroll = rerollResult.freeReroll;
+    // 检查是否有混沌小丑的免费刷新效果（只调用一次，会更新状态）
+    const isFreeReroll = this.checkFreeReroll();
 
     if (!isFreeReroll && this.gameState.money < this.refreshCost) {
       Toast.warning('金钱不足！');
