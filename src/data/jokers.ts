@@ -1635,7 +1635,7 @@ export const JOKERS: Joker[] = [
   new Joker({
     id: 'yorick',
     name: '约里克',
-    description: '每弃掉23张牌，本回合x1倍率',
+    description: '每弃掉23张牌，获得x1倍率',
     rarity: JokerRarity.LEGENDARY,
     cost: 20,
     trigger: JokerTrigger.ON_HAND_PLAYED,
@@ -1643,7 +1643,7 @@ export const JOKERS: Joker[] = [
       const jokerState = (context as unknown as { jokerState?: { totalDiscarded?: number } }).jokerState || {};
       const totalDiscarded = (jokerState.totalDiscarded || 0) + (context.discardsUsed || 0);
       const multiplier = 1 + Math.floor(totalDiscarded / 23);
-      
+
       return {
         multMultiplier: multiplier,
         message: `约里克: 已弃${totalDiscarded}张牌 x${multiplier}倍率`,
@@ -1653,7 +1653,7 @@ export const JOKERS: Joker[] = [
     getDynamicDescription: (state: JokerState): string => {
       const totalDiscarded = state.totalDiscarded || 0;
       const multiplier = 1 + Math.floor(totalDiscarded / 23);
-      return `每弃掉23张牌，本回合x1倍率（已弃${totalDiscarded}张牌，当前x${multiplier}倍率）`;
+      return `每弃掉23张牌，获得x1倍率（已弃${totalDiscarded}张牌，当前x${multiplier}倍率）`;
     }
   }),
 
