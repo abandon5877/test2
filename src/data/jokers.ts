@@ -725,7 +725,7 @@ export const JOKERS: Joker[] = [
     }
   }),
 
-  // 混沌小丑 - 需要商店系统支持免费刷新
+  // 混沌小丑 - 每回合1次免费刷新
   new Joker({
     id: 'chaos_the_clown',
     name: '混沌小丑',
@@ -734,10 +734,28 @@ export const JOKERS: Joker[] = [
     cost: 3,
     trigger: JokerTrigger.ON_REROLL,
     effect: (context: JokerEffectContext): JokerEffectResult => {
+      const jokerState = (context as unknown as { jokerState?: { freeRerollUsed?: boolean } }).jokerState || {};
+      
+      // 如果本回合已经使用过免费刷新，不再提供免费刷新
+      if (jokerState.freeRerollUsed) {
+        return {
+          message: '混沌小丑: 本回合免费刷新已使用'
+        };
+      }
+      
+      // 标记免费刷新已使用
       return {
         freeReroll: true,
-        message: '混沌小丑: 免费刷新'
+        message: '混沌小丑: 免费刷新',
+        stateUpdate: { freeRerollUsed: true }
       };
+    },
+    getDynamicDescription: (state: JokerState): string => {
+      const freeRerollUsed = state.freeRerollUsed || false;
+      if (freeRerollUsed) {
+        return '每回合1次免费刷新（本回合已使用）';
+      }
+      return '每回合1次免费刷新（可用）';
     }
   }),
 

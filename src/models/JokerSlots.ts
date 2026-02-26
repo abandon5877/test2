@@ -39,6 +39,17 @@ export class JokerSlots {
   }
 
   /**
+   * 重置混沌小丑的免费刷新状态（进入商店时）
+   */
+  resetChaosClownFreeReroll(): void {
+    for (const joker of this.jokers) {
+      if (joker.id === 'chaos_the_clown') {
+        joker.updateState({ freeRerollUsed: false });
+      }
+    }
+  }
+
+  /**
    * 获取被禁用的小丑索引（用于显示）
    */
   getDisabledJokerIndex(): number | null {
