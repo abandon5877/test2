@@ -590,49 +590,8 @@ export class CardComponent {
    */
   private static renderCardBack(cardElement: HTMLElement, cardType: string = '卡牌'): HTMLElement {
     cardElement.classList.add('card-back');
-    cardElement.style.cssText = `
-      background: linear-gradient(135deg, #1e3c72 0%, #2a5298 50%, #1e3c72 100%);
-      border: 2px solid #4a90d9;
-      box-shadow: inset 0 0 20px rgba(0,0,0,0.5), 0 0 10px rgba(74,144,217,0.5);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      position: relative;
-      overflow: hidden;
-    `;
-
-    // 添加牌背图案
-    const pattern = document.createElement('div');
-    pattern.style.cssText = `
-      width: 60%;
-      height: 60%;
-      background: repeating-linear-gradient(
-        45deg,
-        rgba(255,255,255,0.1) 0px,
-        rgba(255,255,255,0.1) 2px,
-        transparent 2px,
-        transparent 8px
-      );
-      border: 1px solid rgba(255,255,255,0.2);
-      border-radius: 4px;
-    `;
-
-    // 添加中心图标
-    const centerIcon = document.createElement('div');
-    centerIcon.style.cssText = `
-      position: absolute;
-      font-size: 32px;
-      opacity: 0.6;
-      text-shadow: 0 0 10px rgba(255,255,255,0.5);
-    `;
-    centerIcon.textContent = '🎴';
-
-    cardElement.appendChild(pattern);
-    cardElement.appendChild(centerIcon);
-
-    // 添加悬停提示
+    // 修复：只添加悬停提示，牌背图案由CSS的 ::before 和 ::after 伪元素处理
     cardElement.title = `翻面的${cardType}`;
-
     return cardElement;
   }
 
@@ -776,61 +735,7 @@ export class CardComponent {
    */
   private static renderJokerCardBack(cardElement: HTMLElement): HTMLElement {
     cardElement.classList.add('joker-card-back');
-    cardElement.style.cssText = `
-      background: linear-gradient(135deg, #2d1b4e 0%, #4a2c7a 50%, #2d1b4e 100%);
-      border: 2px solid #9b59b6;
-      box-shadow: inset 0 0 20px rgba(0,0,0,0.5), 0 0 10px rgba(155,89,182,0.5);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      position: relative;
-      overflow: hidden;
-    `;
-
-    // 添加牌背图案
-    const pattern = document.createElement('div');
-    pattern.style.cssText = `
-      width: 70%;
-      height: 70%;
-      background: repeating-linear-gradient(
-        45deg,
-        rgba(255,255,255,0.05) 0px,
-        rgba(255,255,255,0.05) 2px,
-        transparent 2px,
-        transparent 10px
-      );
-      border: 2px solid rgba(255,255,255,0.15);
-      border-radius: 8px;
-    `;
-
-    // 添加中心图标
-    const centerIcon = document.createElement('div');
-    centerIcon.style.cssText = `
-      position: absolute;
-      font-size: 40px;
-      opacity: 0.7;
-      text-shadow: 0 0 15px rgba(255,255,255,0.5);
-    `;
-    centerIcon.textContent = '🃏';
-
-    // 添加"翻面"标签
-    const faceDownLabel = document.createElement('div');
-    faceDownLabel.style.cssText = `
-      position: absolute;
-      bottom: 10px;
-      font-size: 12px;
-      color: rgba(255,255,255,0.6);
-      background: rgba(0,0,0,0.5);
-      padding: 2px 6px;
-      border-radius: 4px;
-    `;
-    faceDownLabel.textContent = '翻面';
-
-    cardElement.appendChild(pattern);
-    cardElement.appendChild(centerIcon);
-    cardElement.appendChild(faceDownLabel);
-
-    // 添加悬停提示
+    // 修复：只添加点击事件和悬停提示，牌背样式由CSS处理
     cardElement.title = '翻面的小丑牌 - 效果仍然生效';
 
     // 点击查看详情（即使翻面也能查看）

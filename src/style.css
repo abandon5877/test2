@@ -217,6 +217,45 @@ body {
   opacity: 0.8;
 }
 
+/* 小丑牌背面样式 */
+.joker-card-back {
+  background: linear-gradient(145deg, #2d1b4e 0%, #0d1b2a 100%);
+  border-color: #9b59b6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.joker-card-back::before {
+  content: '';
+  width: 60px;
+  height: 84px;
+  background:
+    repeating-linear-gradient(
+      45deg,
+      #9b59b6,
+      #9b59b6 2px,
+      transparent 2px,
+      transparent 8px
+    ),
+    repeating-linear-gradient(
+      -45deg,
+      #9b59b6,
+      #9b59b6 2px,
+      transparent 2px,
+      transparent 8px
+    );
+  border-radius: 4px;
+  opacity: 0.6;
+}
+
+.joker-card-back::after {
+  content: '🃏';
+  position: absolute;
+  font-size: 32px;
+  opacity: 0.8;
+}
+
 /* 小丑牌样式 - 使用 vmin 实现更好的屏幕比例缩放 */
 .joker-card {
   width: clamp(60px, 22vmin, 120px);
