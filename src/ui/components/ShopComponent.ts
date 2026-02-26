@@ -1104,7 +1104,8 @@ ${description}
     }
 
     if (isFreeReroll) {
-      // 免费刷新，直接执行
+      // 免费刷新，显示提示后直接执行
+      Toast.info('混沌小丑：免费刷新！');
       this.refreshShop();
     } else {
       showConfirm(
