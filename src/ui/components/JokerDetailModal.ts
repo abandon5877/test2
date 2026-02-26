@@ -71,7 +71,8 @@ export class JokerDetailModal {
       font-weight: bold;
       color: ${rarityColor};
     `;
-    title.textContent = joker.name;
+    // 修复：如果小丑牌翻面，显示"未知小丑"而不是真实名称
+    title.textContent = joker.faceDown ? '未知小丑' : joker.name;
     header.appendChild(title);
 
     const closeBtn = document.createElement('button');
@@ -91,52 +92,55 @@ export class JokerDetailModal {
 
     modal.appendChild(header);
 
-    // 稀有度标签
-    const rarityLabel = document.createElement('div');
-    rarityLabel.style.cssText = `
-      display: inline-block;
-      padding: 1vh 2vw;
-      border-radius: 2vh;
-      font-size: clamp(14px, 2.5vh, 20px);
-      font-weight: bold;
-      margin-bottom: 1vh;
-      background: ${rarityColor}33;
-      color: ${rarityColor};
-      width: fit-content;
-    `;
-    rarityLabel.textContent = this.getRarityText(joker.rarity);
-    modal.appendChild(rarityLabel);
-
-    // 版本标签（如果有）
-    if (joker.edition && joker.edition !== JokerEdition.None) {
-      const editionLabel = document.createElement('div');
-      const editionInfo = this.getEditionInfo(joker.edition);
-      editionLabel.style.cssText = `
+    // 修复：如果小丑牌翻面，不显示稀有度、版本和效果描述
+    if (!joker.faceDown) {
+      // 稀有度标签
+      const rarityLabel = document.createElement('div');
+      rarityLabel.style.cssText = `
         display: inline-block;
         padding: 1vh 2vw;
         border-radius: 2vh;
         font-size: clamp(14px, 2.5vh, 20px);
         font-weight: bold;
-        margin-bottom: 2vh;
-        background: ${editionInfo.color}33;
-        color: ${editionInfo.color};
+        margin-bottom: 1vh;
+        background: ${rarityColor}33;
+        color: ${rarityColor};
         width: fit-content;
       `;
-      editionLabel.textContent = editionInfo.name;
-      modal.appendChild(editionLabel);
-    }
+      rarityLabel.textContent = this.getRarityText(joker.rarity);
+      modal.appendChild(rarityLabel);
 
-    // 效果描述
-    const desc = document.createElement('div');
-    desc.style.cssText = `
-      font-size: clamp(16px, 3vh, 22px);
-      color: #d1d5db;
-      margin-bottom: 3vh;
-      line-height: 1.6;
-      flex: 1;
-    `;
-    desc.textContent = joker.getDynamicDescription();
-    modal.appendChild(desc);
+      // 版本标签（如果有）
+      if (joker.edition && joker.edition !== JokerEdition.None) {
+        const editionLabel = document.createElement('div');
+        const editionInfo = this.getEditionInfo(joker.edition);
+        editionLabel.style.cssText = `
+          display: inline-block;
+          padding: 1vh 2vw;
+          border-radius: 2vh;
+          font-size: clamp(14px, 2.5vh, 20px);
+          font-weight: bold;
+          margin-bottom: 2vh;
+          background: ${editionInfo.color}33;
+          color: ${editionInfo.color};
+          width: fit-content;
+        `;
+        editionLabel.textContent = editionInfo.name;
+        modal.appendChild(editionLabel);
+      }
+
+      // 效果描述
+      const desc = document.createElement('div');
+      desc.style.cssText = `
+        font-size: clamp(16px, 3vh, 22px);
+        color: #d1d5db;
+        margin-bottom: 3vh;
+        line-height: 1.6;
+        flex: 1;
+      `;
+      desc.textContent = joker.getDynamicDescription();
+      modal.appendChild(desc);
+    }
 
     // 价格信息
     const costInfo = document.createElement('div');

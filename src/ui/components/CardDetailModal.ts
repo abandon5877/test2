@@ -68,7 +68,8 @@ export class CardDetailModal {
       font-weight: bold;
       color: #ffd700;
     `;
-    title.textContent = card.getDisplayName();
+    // 修复：如果卡牌翻面，显示"未知卡牌"而不是真实名称
+    title.textContent = card.faceDown ? '未知卡牌' : card.getDisplayName();
     header.appendChild(title);
 
     const closeBtn = document.createElement('button');
@@ -107,43 +108,50 @@ export class CardDetailModal {
       background: rgba(0, 0, 0, 0.3);
       border-radius: 1vh;
     `;
-    baseInfo.innerHTML = `
+    // 修复：如果卡牌翻面，不显示基础筹码
+    baseInfo.innerHTML = card.faceDown ? `
+      <span style="color: #9ca3af; font-size: clamp(14px, 2.5vh, 18px);">基础筹码</span>
+      <span style="color: #60a5fa; font-size: clamp(16px, 3vh, 22px); font-weight: bold;">?</span>
+    ` : `
       <span style="color: #9ca3af; font-size: clamp(14px, 2.5vh, 18px);">基础筹码</span>
       <span style="color: #60a5fa; font-size: clamp(16px, 3vh, 22px); font-weight: bold;">${card.getChipValue()}</span>
     `;
     infoSection.appendChild(baseInfo);
 
-    // 增强效果
-    if (card.enhancement !== CardEnhancement.None) {
-      const enhancementInfo = this.createEffectSection(
-        '增强效果',
-        this.getEnhancementName(card.enhancement),
-        this.getEnhancementDescription(card.enhancement),
-        this.getEnhancementColor(card.enhancement)
-      );
-      infoSection.appendChild(enhancementInfo);
-    }
+    // 修复：如果卡牌翻面，不显示增强效果、蜡封、版本
+    if (!card.faceDown) {
+      // 增强效果
+      if (card.enhancement !== CardEnhancement.None) {
+        const enhancementInfo = this.createEffectSection(
+          '增强效果',
+          this.getEnhancementName(card.enhancement),
+          this.getEnhancementDescription(card.enhancement),
+          this.getEnhancementColor(card.enhancement)
+        );
+        infoSection.appendChild(enhancementInfo);
+      }
 
-    // 蜡封
-    if (card.seal !== SealType.None) {
-      const sealInfo = this.createEffectSection(
-        '蜡封',
-        this.getSealName(card.seal),
-        this.getSealDescription(card.seal),
-        '#fbbf24'
-      );
-      infoSection.appendChild(sealInfo);
-    }
+      // 蜡封
+      if (card.seal !== SealType.None) {
+        const sealInfo = this.createEffectSection(
+          '蜡封',
+          this.getSealName(card.seal),
+          this.getSealDescription(card.seal),
+          '#fbbf24'
+        );
+        infoSection.appendChild(sealInfo);
+      }
 
-    // 版本
-    if (card.edition !== CardEdition.None) {
-      const editionInfo = this.createEffectSection(
-        '版本',
-        this.getEditionName(card.edition),
-        this.getEditionDescription(card.edition),
-        '#c084fc'
-      );
-      infoSection.appendChild(editionInfo);
+      // 版本
+      if (card.edition !== CardEdition.None) {
+        const editionInfo = this.createEffectSection(
+          '版本',
+          this.getEditionName(card.edition),
+          this.getEditionDescription(card.edition),
+          '#c084fc'
+        );
+        infoSection.appendChild(editionInfo);
+      }
     }
 
     modal.appendChild(infoSection);

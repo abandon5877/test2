@@ -408,6 +408,18 @@ export class Storage {
       });
     }
 
+    // 修复标记Boss: 存档恢复后，如果当前Boss是标记Boss，需要翻面所有人头牌
+    // 这是因为存档可能是在标记Boss激活之前创建的，或者存档中的faceDown状态不正确
+    const currentBoss = gameState.bossState.getCurrentBoss();
+    if (currentBoss === BossType.MARK) {
+      const handCards = gameState.cardPile.hand.getCards();
+      for (const card of handCards) {
+        if (card.rank === 'J' || card.rank === 'Q' || card.rank === 'K') {
+          card.setFaceDown(true);
+        }
+      }
+    }
+
     // 重新计算出牌次数（考虑小丑牌效果）
     const maxHands = gameState.getMaxHandsPerRound();
     // 如果存档中的出牌次数大于最大值，则使用最大值
