@@ -218,7 +218,7 @@ export class GameState implements GameStateInterface {
     this.updateMailInRebateTargetRank();
 
     // 处理选择盲注时的小丑牌效果（ON_BLIND_SELECT触发器）
-    const blindSelectResult = JokerSystem.processBlindSelect(this.jokerSlots, blindType);
+    const blindSelectResult = JokerSystem.processBlindSelect(this.jokerSlots, blindType, this.consumableSlots);
 
     // 应用盲注选择效果（如额外塔罗牌、星球牌等）
     if (blindSelectResult.tarotBonus > 0) {

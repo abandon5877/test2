@@ -380,11 +380,7 @@ export const JOKERS: Joker[] = [
     cost: 6,
     trigger: JokerTrigger.ON_BLIND_SELECT,
     effect: (context: JokerEffectContext): JokerEffectResult => {
-      // 从 jokerSlots 检查是否有空间
-      const jokerSlots = (context as unknown as { jokerSlots?: { getAvailableSlots: () => number } }).jokerSlots;
-      if (jokerSlots && jokerSlots.getAvailableSlots() <= 0) {
-        return {};
-      }
+      // 注意：消耗牌槽位检查在 JokerSystem.processBlindSelect 中统一处理
       return {
         tarotBonus: 1,
         message: '纸牌占卜师: 生成一张塔罗牌'

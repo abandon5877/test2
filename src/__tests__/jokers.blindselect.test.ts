@@ -1,13 +1,18 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { JokerSystem } from '../systems/JokerSystem';
 import { JokerSlots } from '../models/JokerSlots';
+import { ConsumableSlots } from '../models/ConsumableSlots';
 import { getJokerById } from '../data/jokers';
+import { ConsumableDataManager } from '../data/ConsumableDataManager';
+import { ConsumableType } from '../types/consumable';
 
 describe('ON_BLIND_SELECT 触发器类小丑牌测试', () => {
   let jokerSlots: JokerSlots;
+  let consumableSlots: ConsumableSlots;
 
   beforeEach(() => {
     jokerSlots = new JokerSlots(5);
+    consumableSlots = new ConsumableSlots(2); // 默认2个消耗牌槽位
   });
 
   describe('Cartomancer (纸牌占卜师)', () => {
@@ -15,23 +20,23 @@ describe('ON_BLIND_SELECT 触发器类小丑牌测试', () => {
       const joker = getJokerById('cartomancer')!;
       jokerSlots.addJoker(joker);
 
-      const result = JokerSystem.processBlindSelect(jokerSlots, 'SMALL_BLIND');
+      const result = JokerSystem.processBlindSelect(jokerSlots, 'SMALL_BLIND', consumableSlots);
 
       expect(result.tarotBonus).toBeGreaterThan(0);
       expect(result.effects).toHaveLength(1);
       expect(result.effects[0].jokerName).toBe('纸牌占卜师');
     });
 
-    it('无空间时不应生成塔罗牌', () => {
+    it('消耗牌槽位满时不应生成塔罗牌', () => {
       const joker = getJokerById('cartomancer')!;
       jokerSlots.addJoker(joker);
 
-      // 填满所有槽位，模拟无空间情况
-      for (let i = 0; i < 5; i++) {
-        jokerSlots.addJoker(getJokerById('joker')!);
+      // 填满消耗牌槽位，模拟无空间情况
+      for (let i = 0; i < 2; i++) {
+        consumableSlots.addConsumable(ConsumableDataManager.getRandomByType(ConsumableType.TAROT));
       }
 
-      const result = JokerSystem.processBlindSelect(jokerSlots, 'SMALL_BLIND');
+      const result = JokerSystem.processBlindSelect(jokerSlots, 'SMALL_BLIND', consumableSlots);
 
       expect(result.tarotBonus).toBe(0);
     });
