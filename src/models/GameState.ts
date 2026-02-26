@@ -856,10 +856,8 @@ export class GameState implements GameStateInterface {
       .filter(j => j.id === 'hit_the_road')
       .forEach(j => j.updateState({ multiplierBonus: 0 }));
 
-    // 重置Campfire（篝火）的卖出计数
-    this.jokerSlots.getActiveJokers()
-      .filter(j => j.id === 'campfire')
-      .forEach(j => j.updateState({ cardsSold: 0 }));
+    // 注意：Campfire（篝火）的重置在 JokerSystem.processEndRound 中处理
+    // 只有在击败Boss时才会重置
 
     this.currentBlind = null;
 
