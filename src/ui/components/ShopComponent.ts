@@ -21,6 +21,7 @@ import { getConsumableById } from '../../data/consumables';
 import { Storage } from '../../utils/storage';
 import { PokerHandType } from '../../types/pokerHands';
 import { ConsumableHelper } from '../../utils/consumableHelper';
+import { JokerSystem } from '../../systems/JokerSystem';
 
 export interface ShopItem {
   id: string;
@@ -1093,16 +1094,25 @@ ${description}
    * 处理刷新
    */
   private handleRefresh(): void {
-    if (this.gameState.money < this.refreshCost) {
+    // 检查是否有混沌小丑的免费刷新效果
+    const rerollResult = JokerSystem.processReroll(this.gameState.jokerSlots);
+    const isFreeReroll = rerollResult.freeReroll;
+
+    if (!isFreeReroll && this.gameState.money < this.refreshCost) {
       Toast.warning('金钱不足！');
       return;
     }
 
-    showConfirm(
-      '确认刷新',
-      `确定要花费 $${this.refreshCost} 刷新商店？`,
-      () => this.refreshShop()
-    );
+    if (isFreeReroll) {
+      // 免费刷新，直接执行
+      this.refreshShop();
+    } else {
+      showConfirm(
+        '确认刷新',
+        `确定要花费 $${this.refreshCost} 刷新商店？`,
+        () => this.refreshShop()
+      );
+    }
   }
 
   /**
