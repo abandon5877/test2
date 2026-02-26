@@ -300,14 +300,7 @@ export class GameState implements GameStateInterface {
    * 更新Throwback状态：当盲注被跳过时
    */
   private updateThrowbackOnBlindSkipped(): void {
-    const jokers = this.jokerSlots.getJokers();
-    for (const joker of jokers) {
-      if (joker.id === 'throwback') {
-        const currentBlindsSkipped = (joker.state?.blindsSkipped as number) || 0;
-        joker.updateState({ blindsSkipped: currentBlindsSkipped + 1 });
-        logger.info('Throwback updated', { blindsSkipped: currentBlindsSkipped + 1 });
-      }
-    }
+    this.jokerSlots.updateBlindsSkipped();
   }
 
   /**

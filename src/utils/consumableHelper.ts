@@ -170,6 +170,11 @@ export class ConsumableHelper {
     if (consumableType === 'tarot') {
       this.gameState.jokerSlots.updateTarotCardCount();
     }
+
+    // 如果是行星牌，更新星座的计数
+    if (consumableType === 'planet') {
+      this.gameState.jokerSlots.updatePlanetCardCount();
+    }
   }
 
   /**
