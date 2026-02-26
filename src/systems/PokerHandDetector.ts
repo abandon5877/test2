@@ -359,8 +359,21 @@ export class PokerHandDetector {
         // 四指只是降低门槛到4张，但5张同花仍然是5张同花
         const scoringCardCount = Math.min(sorted.length, 5);
         const scoringCards = sorted.slice(0, scoringCardCount);
-        // 踢牌：超过5张的部分
-        const kickers = sorted.length > 5 ? sorted.slice(5, 6) : [];
+
+        // 修复: 踢牌包括非同花色的牌
+        // 首先收集同花色中超过5张的部分，然后加上非同花色的牌
+        const kickers: Card[] = [];
+        if (sorted.length > 5) {
+          kickers.push(...sorted.slice(5, 6));
+        }
+        // 添加非同花色的牌作为踢牌（四指效果下）
+        const nonSuitedCards = cards.filter(c => !suitedCards.includes(c));
+        if (nonSuitedCards.length > 0) {
+          // 按点数排序，取最大的作为踢牌
+          const sortedNonSuited = this.sortByRankDesc(nonSuitedCards);
+          // 最多取1张踢牌（保持与其他牌型一致）
+          kickers.push(...sortedNonSuited.slice(0, 1));
+        }
 
         // 构建描述信息
         let description = HAND_BASE_VALUES[PokerHandType.Flush].displayName;

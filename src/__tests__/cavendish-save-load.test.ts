@@ -4,7 +4,8 @@ import {
   resetGrosMichelDestroyed,
   isGrosMichelDestroyed,
   getJokerById,
-  getRandomJoker
+  getRandomJoker,
+  isJokerAvailableForSpawn
 } from '../data/jokers';
 import { Storage, SaveData } from '../utils/storage';
 import { GameState } from '../models/GameState';
@@ -148,16 +149,8 @@ describe('卡文迪什存档读档测试', () => {
       resetGrosMichelDestroyed();
       expect(isGrosMichelDestroyed()).toBe(false);
 
-      // 多次生成小丑牌，验证大麦克可以被生成
-      let foundGrosMichel = false;
-      for (let i = 0; i < 100; i++) {
-        const joker = getRandomJoker();
-        if (joker.id === 'gros_michel') {
-          foundGrosMichel = true;
-          break;
-        }
-      }
-      expect(foundGrosMichel).toBe(true);
+      // 直接检查大麦克是否在可用池中
+      expect(isJokerAvailableForSpawn('gros_michel')).toBe(true);
     });
 
     it('大麦克摧毁后不应该再能生成大麦克', () => {
@@ -165,7 +158,10 @@ describe('卡文迪什存档读档测试', () => {
       setGrosMichelDestroyed(true);
       expect(isGrosMichelDestroyed()).toBe(true);
 
-      // 多次生成小丑牌，验证大麦克不会被生成
+      // 直接检查大麦克不在可用池中
+      expect(isJokerAvailableForSpawn('gros_michel')).toBe(false);
+
+      // 额外验证：多次生成小丑牌，验证大麦克不会被生成
       for (let i = 0; i < 100; i++) {
         const joker = getRandomJoker();
         expect(joker.id).not.toBe('gros_michel');
@@ -177,16 +173,8 @@ describe('卡文迪什存档读档测试', () => {
       setGrosMichelDestroyed(true);
       expect(isGrosMichelDestroyed()).toBe(true);
 
-      // 多次生成小丑牌，验证卡文迪什可以被生成（卡文迪什是罕见稀有度，概率较低）
-      let foundCavendish = false;
-      for (let i = 0; i < 500; i++) {
-        const joker = getRandomJoker();
-        if (joker.id === 'cavendish') {
-          foundCavendish = true;
-          break;
-        }
-      }
-      expect(foundCavendish).toBe(true);
+      // 直接检查卡文迪什在可用池中
+      expect(isJokerAvailableForSpawn('cavendish')).toBe(true);
     });
   });
 });

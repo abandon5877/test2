@@ -3510,6 +3510,17 @@ function getAvailableJokersForSpawn(): Joker[] {
 }
 
 /**
+ * 检查指定ID的小丑牌是否在可用生成池中
+ * 用于测试验证大麦克和卡文迪什的生成限制
+ * @param jokerId 小丑牌ID
+ * @returns 是否在可用池中
+ */
+export function isJokerAvailableForSpawn(jokerId: string): boolean {
+  const pool = getAvailableJokersForSpawn();
+  return pool.some(j => j.id === jokerId);
+}
+
+/**
  * 根据稀有度从小丑牌池中随机选择一个小丑牌
  * @param pool 小丑牌池
  * @param rarity 目标稀有度
