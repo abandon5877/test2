@@ -3501,6 +3501,10 @@ function getAvailableJokersForSpawn(): Joker[] {
     if (joker.id === 'cavendish' && !grosMichelDestroyed) {
       return false;
     }
+    // 大麦克自毁后不应再出现在商店中
+    if (joker.id === 'gros_michel' && grosMichelDestroyed) {
+      return false;
+    }
     return true;
   });
 }
