@@ -135,11 +135,13 @@ export class ScoringSystem {
     faceCards: boolean;      // sock_and_buskin: 脸牌触发两次
     lowCards: boolean;       // hack: 2,3,4,5触发两次
     firstCard: boolean;      // hanging_chad: 第一张牌触发两次
+    allCards: boolean;       // seltzer: 所有牌触发两次
   } {
     const jokerList = jokers ?? [];
     let faceCards = false;
     let lowCards = false;
     let firstCard = false;
+    let allCards = false;
 
     for (const joker of jokerList) {
       switch (joker.id) {
@@ -152,10 +154,17 @@ export class ScoringSystem {
         case 'hanging_chad':
           firstCard = true;
           break;
+        case 'seltzer':
+          // 苏打水：检查是否还有剩余次数
+          const handsRemaining = (joker.state?.handsRemaining ?? 10);
+          if (handsRemaining > 0) {
+            allCards = true;
+          }
+          break;
       }
     }
 
-    return { faceCards, lowCards, firstCard };
+    return { faceCards, lowCards, firstCard, allCards };
   }
 
   /**
@@ -164,11 +173,14 @@ export class ScoringSystem {
   private static shouldRetriggerCard(
     card: Card,
     index: number,
-    retriggerEffects: { faceCards: boolean; lowCards: boolean; firstCard: boolean },
+    retriggerEffects: { faceCards: boolean; lowCards: boolean; firstCard: boolean; allCards: boolean },
     allCardsAreFace = false
   ): boolean {
     const lowRanks = ['2', '3', '4', '5'];
 
+    if (retriggerEffects.allCards) {
+      return true;
+    }
     if (retriggerEffects.firstCard && index === 0) {
       return true;
     }
@@ -208,22 +220,21 @@ export class ScoringSystem {
       cards: cards.map(c => c.toString()),
       heldCardCount: heldCards?.length ?? 0 
     });
-    
-    // 修复3: 计算手持卡牌效果（Steel）- 初始计算，后面会根据哑剧演员效果重新计算
-    // 红蜡封效果：手牌中的钢铁牌效果触发两次
+
+    // 计算手牌钢铁牌效果（当没有jokerSlots时的后备计算）
     let heldMultMultiplier = 1;
-    let steelCardEffectCount = 0;
-    if (heldCards) {
+    if (heldCards && !jokerSlots) {
+      // 没有jokerSlots时，使用简单的钢铁牌计算
+      let steelCardEffectCount = 0;
       for (const card of heldCards) {
         if (card.enhancement === CardEnhancement.Steel) {
-          // 红蜡封让钢铁牌效果触发两次
           const retriggerCount = card.seal === SealType.Red ? 2 : 1;
           steelCardEffectCount += retriggerCount;
         }
       }
-    }
-    if (steelCardEffectCount > 0) {
-      heldMultMultiplier = Math.pow(1.5, steelCardEffectCount);
+      if (steelCardEffectCount > 0) {
+        heldMultMultiplier = Math.pow(1.5, steelCardEffectCount);
+      }
     }
 
     // 从 jokerSlots 获取小丑牌列表（如果提供了 jokerSlots）
@@ -340,6 +351,8 @@ export class ScoringSystem {
     let sealMoneyBonus = 0;
     // 哑剧演员效果：手牌能力触发次数（修复：改为数字，支持蓝图+默剧演员）
     let heldCardRetrigger: number | undefined = undefined;
+    // 小丑牌效果详情收集器
+    let jokerEffects: JokerEffectDetail[] = [];
 
     for (let i = 0; i < handResult.scoringCards.length; i++) {
       const card = handResult.scoringCards[i];
@@ -461,6 +474,29 @@ export class ScoringSystem {
       chipBonus += cardChipBonus * retriggerCount;
       multBonus += cardMultBonus * retriggerCount;
 
+      // 触发该牌对应的小丑牌效果（从左到右）
+        if (jokerSlots) {
+          const cardJokerResult = JokerSystem.processSingleCardScored(
+            jokerSlots,
+            card,
+            i,
+            handResult.scoringCards,
+            handResult.handType,
+            baseChips + chipBonus,
+            baseMultiplier + multBonus,
+            undefined,
+            isPreview
+          );
+
+          // 累加该牌触发的小丑牌效果
+          chipBonus += cardJokerResult.chipBonus;
+          multBonus += cardJokerResult.multBonus;
+          editionMultMultiplier *= cardJokerResult.multMultiplier;
+          totalLuckyMoney += cardJokerResult.moneyBonus;
+          // 收集小丑牌效果详情
+          jokerEffects.push(...cardJokerResult.effects);
+        }
+
       cardDetails.push({
         card: card.toString(),
         baseChips: cardBaseChips,
@@ -515,7 +551,6 @@ export class ScoringSystem {
     let totalChips = baseChips + chipBonus;
     let totalMultiplier = baseMultiplier + multBonus;
 
-    let jokerEffects: JokerEffectDetail[] = [];
     let allCardsScore = false;
     // 水花飞溅生效后的所有计分牌（包含原始计分牌和踢牌）
     let allScoringCards: readonly Card[] = handResult.scoringCards;
@@ -589,25 +624,51 @@ export class ScoringSystem {
       const independentResult = JokerSystem.processIndependent(jokerSlots, heldCards);
       let heldChipBonus = independentResult.chipBonus;
       let heldMultBonus = independentResult.multBonus;
-      let heldMultMultiplier = independentResult.multMultiplier;
+      // 使用外部定义的 heldMultMultiplier，不要重新定义
+      heldMultMultiplier = independentResult.multMultiplier;
       // 修复：累加触发次数
       if (independentResult.heldCardRetrigger) {
         heldCardRetrigger = (heldCardRetrigger || 0) + independentResult.heldCardRetrigger;
       }
       jokerEffects.push(...independentResult.effects);
 
-      // 修复: 处理手牌中的小丑牌效果（ON_HELD触发器，如高举拳头）
-      // 只有在有手牌时才处理
+      // 修复: 逐张处理手牌（从左到右）
+      // 手牌中的钢铁牌效果 + ON_HELD触发器小丑牌（如高举拳头、射月、男爵）
+      let totalSteelEffectCount = 0;
       if (heldCards && heldCards.length > 0) {
-        const heldResult = JokerSystem.processHeld(jokerSlots, heldCards);
-        heldChipBonus += heldResult.chipBonus;
-        heldMultBonus += heldResult.multBonus;
-        heldMultMultiplier *= heldResult.multMultiplier;
-        // 修复：累加触发次数
-        if (heldResult.heldCardRetrigger) {
-          heldCardRetrigger = (heldCardRetrigger || 0) + heldResult.heldCardRetrigger;
+        for (let i = 0; i < heldCards.length; i++) {
+          const card = heldCards[i];
+
+          // 触发该手牌对应的小丑牌效果（从左到右）
+          const heldCardResult = JokerSystem.processSingleHeldCard(
+            jokerSlots,
+            card,
+            i,
+            heldCards,
+            baseChips + chipBonus + heldChipBonus,
+            baseMultiplier + multBonus + heldMultBonus,
+            isPreview
+          );
+
+          // 累加该手牌触发的小丑牌效果
+          heldChipBonus += heldCardResult.chipBonus;
+          heldMultBonus += heldCardResult.multBonus;
+          heldMultMultiplier *= heldCardResult.multMultiplier;
+          totalSteelEffectCount += heldCardResult.steelEffectCount;
+          jokerEffects.push(...heldCardResult.effects);
         }
-        jokerEffects.push(...heldResult.effects);
+      }
+
+      // 计算钢铁牌倍率乘数（1.5^效果次数）
+      // 哑剧演员效果：让每个手牌效果额外触发
+      if (totalSteelEffectCount > 0) {
+        // 基础触发次数
+        let triggerCount = totalSteelEffectCount;
+        // 哑剧演员效果：每个哑剧演员使效果额外触发1次
+        if (heldCardRetrigger && heldCardRetrigger > 0) {
+          triggerCount = totalSteelEffectCount * (1 + heldCardRetrigger);
+        }
+        heldMultMultiplier *= Math.pow(1.5, triggerCount);
       }
 
       const jokerResult = JokerSystem.calculateFinalScore(
@@ -650,17 +711,6 @@ export class ScoringSystem {
       // 累加小丑牌给的钱
       totalLuckyMoney += jokerResult.totalMoneyEarned || 0;
     }
-
-    // 修复3: 应用手持卡牌倍率乘数（Steel效果）
-    // 如果哑剧演员效果激活，Steel效果触发多次（修复：支持蓝图+默剧演员）
-    // 红蜡封已经与steelCardEffectCount计算在内
-    if (heldCardRetrigger && heldCardRetrigger > 0 && steelCardEffectCount > 0) {
-      // 哑剧演员效果：每个默剧演员使Steel卡效果额外触发1次
-      // 1个默剧演员：触发2次，2个默剧演员（蓝图）：触发3次，以此类推
-      // 红蜡封效果已经包含在steelCardEffectCount中
-      heldMultMultiplier = Math.pow(1.5, steelCardEffectCount * (1 + heldCardRetrigger));
-    }
-    totalMultiplier *= heldMultMultiplier;
 
     // 应用卡牌版本效果的倍率乘数
     totalMultiplier *= editionMultMultiplier;

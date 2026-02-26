@@ -703,7 +703,80 @@ export class JokerSystem {
   }
 
   /**
-   * 处理计分卡牌
+   * 处理单张打出牌的计分效果
+   * 从左到右触发所有小丑牌的 onScored 效果
+   * @param jokerSlots 小丑牌槽位
+   * @param card 当前处理的牌
+   * @param cardIndex 牌的索引
+   * @param allScoredCards 所有计分牌
+   * @param handType 牌型
+   * @param currentChips 当前筹码
+   * @param currentMult 当前倍率
+   * @param consumableSlots 消耗牌槽位（可选）
+   * @param isPreview 是否为预览模式
+   * @returns 处理结果
+   */
+  static processSingleCardScored(
+    jokerSlots: JokerSlots,
+    card: Card,
+    cardIndex: number,
+    allScoredCards: readonly Card[],
+    handType: PokerHandType,
+    currentChips: number,
+    currentMult: number,
+    consumableSlots?: ConsumableSlots,
+    isPreview = false
+  ): {
+    chipBonus: number;
+    multBonus: number;
+    multMultiplier: number;
+    moneyBonus: number;
+    effects: JokerEffectDetail[];
+  } {
+    const accumulator = this.createEffectAccumulator();
+    const jokers = jokerSlots.getActiveJokers();
+
+    for (let i = 0; i < jokers.length; i++) {
+      const joker = jokers[i];
+
+      const context: JokerEffectContext = {
+        currentCard: card,
+        cardIndex,
+        scoredCards: allScoredCards,
+        handType,
+        currentChips,
+        currentMult,
+        ...this.createPositionContext(jokerSlots, i)
+      };
+
+      // 添加jokerState到context
+      (context as unknown as { jokerState: typeof joker.state }).jokerState = joker.state;
+
+      // 1. 处理小丑自身的 onScored 效果
+      this.processJokerEffect(joker, joker.onScored, context, accumulator, undefined, consumableSlots, isPreview);
+
+      // 2. 处理蓝图的复制效果
+      if (joker.id === 'blueprint') {
+        this.processCopyEffect(joker, 'blueprint', 'onScored', context, accumulator, i, jokers, consumableSlots, isPreview);
+      }
+
+      // 3. 处理头脑风暴的复制效果
+      if (joker.id === 'brainstorm') {
+        this.processCopyEffect(joker, 'brainstorm', 'onScored', context, accumulator, i, jokers, consumableSlots, isPreview);
+      }
+    }
+
+    return {
+      chipBonus: accumulator.chipBonus,
+      multBonus: accumulator.multBonus,
+      multMultiplier: accumulator.multMultiplier,
+      moneyBonus: accumulator.moneyBonus,
+      effects: accumulator.effects
+    };
+  }
+
+  /**
+   * 处理计分卡牌（批量处理，保留用于兼容性）
    */
   static processScoredCards(
     jokerSlots: JokerSlots,
@@ -771,6 +844,88 @@ export class JokerSystem {
       copyScoredCardToDeck: accumulator.copyScoredCardToDeck,
       effects: accumulator.effects,
       modifyScoredCards: allModifyScoredCards.length > 0 ? allModifyScoredCards : undefined
+    };
+  }
+
+  /**
+   * 处理单张手牌的计分效果
+   * 从左到右触发所有小丑牌的 onHeld 效果
+   * @param jokerSlots 小丑牌槽位
+   * @param card 当前处理的手牌
+   * @param cardIndex 牌的索引
+   * @param allHeldCards 所有手牌
+   * @param currentChips 当前筹码
+   * @param currentMult 当前倍率
+   * @param isPreview 是否为预览模式
+   * @returns 处理结果
+   */
+  static processSingleHeldCard(
+    jokerSlots: JokerSlots,
+    card: Card,
+    cardIndex: number,
+    allHeldCards: readonly Card[],
+    currentChips: number,
+    currentMult: number,
+    isPreview = false
+  ): {
+    chipBonus: number;
+    multBonus: number;
+    multMultiplier: number;
+    steelEffectCount: number; // 钢铁牌效果触发次数
+    effects: JokerEffectDetail[];
+  } {
+    const accumulator = this.createEffectAccumulator();
+    const jokers = jokerSlots.getActiveJokers();
+    let steelEffectCount = 0;
+
+    // 计算钢铁牌效果（红蜡封触发两次）
+    if (card.enhancement === 'steel') {
+      steelEffectCount = card.seal === 'red' ? 2 : 1;
+    }
+
+    // 计算红蜡封重触发辅助函数（用于男爵、射月等）
+    const redSealHelper = this.calculateRedSealRetrigger(allHeldCards);
+
+    for (let i = 0; i < jokers.length; i++) {
+      const joker = jokers[i];
+
+      const context: JokerEffectContext = {
+        currentCard: card,
+        cardIndex,
+        heldCards: allHeldCards,
+        currentChips,
+        currentMult,
+        ...this.createPositionContext(jokerSlots, i)
+      };
+
+      // 添加jokerState到context
+      (context as unknown as { jokerState: typeof joker.state }).jokerState = joker.state;
+
+      // 添加红蜡封辅助函数到context
+      (context as unknown as { redSealHelper: { getCardEffectMultiplier: (filterFn: (card: Card) => boolean) => number } }).redSealHelper = redSealHelper;
+
+      // 处理 onHeld 效果（高举拳头、射月、男爵等）
+      if (joker.onHeld) {
+        this.processJokerEffect(joker, joker.onHeld, context, accumulator, undefined, undefined, isPreview);
+      }
+
+      // 2. 处理蓝图的复制效果
+      if (joker.id === 'blueprint') {
+        this.processCopyEffect(joker, 'blueprint', 'onHeld', context, accumulator, i, jokers, undefined, isPreview);
+      }
+
+      // 3. 处理头脑风暴的复制效果
+      if (joker.id === 'brainstorm') {
+        this.processCopyEffect(joker, 'brainstorm', 'onHeld', context, accumulator, i, jokers, undefined, isPreview);
+      }
+    }
+
+    return {
+      chipBonus: accumulator.chipBonus,
+      multBonus: accumulator.multBonus,
+      multMultiplier: accumulator.multMultiplier,
+      steelEffectCount,
+      effects: accumulator.effects
     };
   }
 
@@ -1535,6 +1690,9 @@ export class JokerSystem {
     totalMultMultiplier *= onPlayResult.multMultiplier;
     jokerEffects.push(...onPlayResult.effects);
 
+    // 注意：processScoredCards 现在由 ScoringSystem 逐张调用
+    // 这里只调用 processScoredCards 来处理 modifyScoredCards（远足者效果）
+    // 不重复计算筹码和倍率
     const scoredResult = this.processScoredCards(
       jokerSlots,
       scoredCards,
@@ -1544,14 +1702,7 @@ export class JokerSystem {
       undefined,
       isPreview
     );
-    console.log('[JokerSystem] processScoredCards结果:', { chipBonus: scoredResult.chipBonus, multBonus: scoredResult.multBonus, multMultiplier: scoredResult.multMultiplier, moneyBonus: scoredResult.moneyBonus });
-    totalChipBonus += scoredResult.chipBonus;
-    totalMultBonus += scoredResult.multBonus;
-    totalMultMultiplier *= scoredResult.multMultiplier;
-    totalMoneyEarned += scoredResult.moneyBonus || 0;
-    jokerEffects.push(...scoredResult.effects);
-
-    // 处理 modifyScoredCards（远足者效果）- 预览模式下不修改卡牌
+    // 只处理 modifyScoredCards（远足者效果），不重复计算分数
     if (scoredResult.modifyScoredCards && !isPreview) {
       for (const { card, permanentBonusDelta } of scoredResult.modifyScoredCards) {
         card.addPermanentBonus(permanentBonusDelta);

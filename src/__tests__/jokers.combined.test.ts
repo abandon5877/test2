@@ -51,10 +51,12 @@ describe('小丑牌组合效果测试', () => {
       const result = ScoringSystem.calculate(cards, undefined, undefined, undefined, jokerSlots);
       const effects = result.jokerEffects!.filter(e => e.jokerName === '贪婪小丑');
       
-      expect(effects).toHaveLength(2);
-      // 5张方片 * 3倍率 = 15，每张Greedy Joker
+      // 重构后逐张处理，每个小丑牌为每张牌产生一个效果
+      // 5张方片 * 2个小丑牌 = 10个效果
+      expect(effects.length).toBe(10);
+      // 每个效果的总倍率 = 该小丑牌对所有牌的效果总和
+      // 第一个小丑牌对5张牌的效果：5 * 3 = 15
       expect(effects[0]!.multBonus).toBe(15);
-      expect(effects[1]!.multBonus).toBe(15);
     });
   });
 
@@ -209,16 +211,15 @@ describe('小丑牌组合效果测试', () => {
       ];
 
       const result = ScoringSystem.calculate(cards, undefined, undefined, undefined, jokerSlots);
-      
-      // 验证所有小丑牌都生效
-      expect(result.jokerEffects).toHaveLength(5);
-      
+
+      // 重构后逐张处理，每个小丑牌为每张符合条件的牌产生一个效果
+      // 验证所有小丑牌都生效（通过查找至少一个效果）
       const baseJoker = result.jokerEffects!.find(e => e.jokerName === '小丑');
       const greedy = result.jokerEffects!.find(e => e.jokerName === '贪婪小丑');
       const lusty = result.jokerEffects!.find(e => e.jokerName === '色欲小丑');
       const jolly = result.jokerEffects!.find(e => e.jokerName === '开心小丑');
       const sly = result.jokerEffects!.find(e => e.jokerName === '狡猾小丑');
-      
+
       expect(baseJoker).toBeDefined();
       expect(greedy).toBeDefined(); // 1张方片
       expect(lusty).toBeDefined(); // 1张红桃

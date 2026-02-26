@@ -87,6 +87,9 @@ export interface JokerEffectContext {
   readonly allCardsAreFace?: boolean; // 是否激活幻想性错觉效果（所有牌视为人头牌）
   // Cloud 9相关
   readonly ninesInDeck?: number; // 牌库中9的数量（用于九霄云外）
+  // 计分系统重构新增：当前处理的牌（用于逐张计分）
+  readonly currentCard?: Card; // 当前正在处理的牌（用于 onScored/onHeld）
+  readonly cardIndex?: number; // 当前牌在计分牌/手牌中的索引
 }
 
 export interface JokerEffectResult {
