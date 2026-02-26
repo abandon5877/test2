@@ -921,7 +921,7 @@ export class GameState implements GameStateInterface {
     });
 
     // 销毁骨头先生（自毁）
-    this.destroyBoneBoy();
+    this.destroyMrBones();
 
     // 清理当前回合状态
     this.cardPile.returnToDeckAndShuffle();
@@ -1379,8 +1379,8 @@ export class GameState implements GameStateInterface {
    * 使用后自毁
    */
   private canPreventDeath(): boolean {
-    const hasBoneBoy = this.jokers.some(joker => joker.id === 'bone_boy');
-    if (!hasBoneBoy) return false;
+    const hasMrBones = this.jokers.some(joker => joker.id === 'mr_bones');
+    if (!hasMrBones) return false;
 
     const targetScore = this.currentBlind?.targetScore ?? 0;
     if (targetScore <= 0) return false;
@@ -1395,10 +1395,10 @@ export class GameState implements GameStateInterface {
    * 销毁骨头先生 (Mr. Bones)
    * 使用后自毁
    */
-  private destroyBoneBoy(): void {
-    const boneBoyIndex = this.jokers.findIndex(joker => joker.id === 'bone_boy');
-    if (boneBoyIndex >= 0) {
-      this.jokerSlots.removeJoker(boneBoyIndex);
+  private destroyMrBones(): void {
+    const mrBonesIndex = this.jokers.findIndex(joker => joker.id === 'mr_bones');
+    if (mrBonesIndex >= 0) {
+      this.jokerSlots.removeJoker(mrBonesIndex);
       logger.info('Mr. Bones self-destructed after saving the player');
     }
   }

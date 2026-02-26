@@ -24,7 +24,7 @@ describe('ON_INDEPENDENT 小丑牌测试 - 空heldCards时也应该触发', () =
     { id: 'invisible_joker', name: '隐形小丑', checkMessage: true },
     { id: 'canio', name: '卡尼奥', conditional: true }, // 条件触发：destroyedFaceCards>0时
     { id: 'chicot', name: '奇科', checkMessage: true },
-    { id: 'bone_boy', name: '骨头先生', checkMessage: true },
+    { id: 'mr_bones', name: '骨头先生', checkMessage: true },
   ];
 
   for (const { id, name, expectedChipBonus, expectedHeldCardRetrigger, expectedDebtLimit, expectedAllCardsAreFace, expectedHandSizeBonus, expectedExtraDiscards, expectedDiscardsBonus, checkMessage, conditional } of independentJokers) {
