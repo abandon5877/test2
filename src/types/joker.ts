@@ -51,6 +51,7 @@ export interface JokerEffectContext {
   readonly money?: number;
   readonly handsPlayed?: number;
   readonly discardsUsed?: number;
+  readonly cardsDiscarded?: number; // 本回合弃掉的牌的数量（用于约里克等）
   readonly deckSize?: number;
   readonly initialDeckSize?: number;
   readonly gameState?: {

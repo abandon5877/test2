@@ -949,7 +949,8 @@ export class JokerSystem {
     consumableSlots?: ConsumableSlots,
     handTypeHistoryCount?: number,
     isPreview = false,
-    playedCards?: readonly Card[] // 打出的所有牌（用于重影等效果）
+    playedCards?: readonly Card[], // 打出的所有牌（用于重影等效果）
+    cardsDiscarded?: number // 本回合弃掉的牌的数量（用于约里克等）
   ): {
     chipBonus: number;
     multBonus: number;
@@ -977,6 +978,7 @@ export class JokerSystem {
         gameState,
         handsPlayed,
         discardsUsed,
+        cardsDiscarded,
         deckSize,
         initialDeckSize,
         handsRemaining,
@@ -1645,7 +1647,8 @@ export class JokerSystem {
     mostPlayedHand?: PokerHandType | null,
     handTypeHistoryCount?: number,
     isPreview = false,
-    playedCards?: readonly Card[] // 打出的所有牌（用于重影等效果）
+    playedCards?: readonly Card[], // 打出的所有牌（用于重影等效果）
+    cardsDiscarded?: number // 本回合弃掉的牌的数量（用于约里克等）
   ): ProcessedScoreResult {
     const jokerEffects: JokerEffectDetail[] = [];
     let totalChipBonus = 0;
@@ -1727,7 +1730,8 @@ export class JokerSystem {
       undefined, // consumableSlots
       handTypeHistoryCount,
       isPreview,
-      playedCards
+      playedCards,
+      cardsDiscarded
     );
     console.log('[JokerSystem] processHandPlayed结果:', { chipBonus: handPlayedResult.chipBonus, multBonus: handPlayedResult.multBonus, multMultiplier: handPlayedResult.multMultiplier, moneyBonus: handPlayedResult.moneyBonus, effects: handPlayedResult.effects });
     totalChipBonus += handPlayedResult.chipBonus;

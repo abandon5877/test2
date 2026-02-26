@@ -404,6 +404,7 @@ export class GameState implements GameStateInterface {
     // 获取当前回合统计（用于小丑牌效果）
     const handsPlayed = this.roundStats.handsPlayed;
     const discardsUsed = this.roundStats.discardsUsed;
+    const cardsDiscarded = this.roundStats.cardsDiscarded;
     const handsRemaining = this.handsRemaining;
 
     // 获取最常出的牌型（用于方尖碑）
@@ -413,7 +414,7 @@ export class GameState implements GameStateInterface {
     const tempScoreResult = ScoringSystem.calculate(selectedCards);
     const handTypeHistoryCount = this.getHandTypeHistoryCount(tempScoreResult.handType);
 
-    const scoreResult = ScoringSystem.calculate(selectedCards, undefined, gameState, heldCards, this.jokerSlots, currentTotalCards, initialDeckSize, handsPlayed, discardsUsed, handsRemaining, mostPlayedHand, handTypeHistoryCount, false, this.handLevelState, this.bossState);
+    const scoreResult = ScoringSystem.calculate(selectedCards, undefined, gameState, heldCards, this.jokerSlots, currentTotalCards, initialDeckSize, handsPlayed, discardsUsed, handsRemaining, mostPlayedHand, handTypeHistoryCount, false, this.handLevelState, this.bossState, cardsDiscarded);
 
     this.playedHandTypes.add(scoreResult.handType);
     // 更新最后打出的牌型（用于蓝色蜡封）

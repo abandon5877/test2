@@ -1641,7 +1641,9 @@ export const JOKERS: Joker[] = [
     trigger: JokerTrigger.ON_HAND_PLAYED,
     effect: (context: JokerEffectContext): JokerEffectResult => {
       const jokerState = (context as unknown as { jokerState?: { totalDiscarded?: number } }).jokerState || {};
-      const totalDiscarded = (jokerState.totalDiscarded || 0) + (context.discardsUsed || 0);
+      // 使用 cardsDiscarded（本回合弃掉的牌的数量）而不是 discardsUsed（弃牌操作次数）
+      const cardsDiscardedThisRound = context.cardsDiscarded || 0;
+      const totalDiscarded = (jokerState.totalDiscarded || 0) + cardsDiscardedThisRound;
       const multiplier = 1 + Math.floor(totalDiscarded / 23);
 
       return {

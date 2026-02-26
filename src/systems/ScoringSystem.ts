@@ -208,7 +208,8 @@ export class ScoringSystem {
     handTypeHistoryCount?: number, // 当前牌型的历史出牌次数（用于Supernova）
     isPreview = false, // 是否为预览模式（预览时不更新小丑牌状态）
     handLevelState?: HandLevelState, // 牌型等级状态（用于牌型升级）
-    bossState?: BossState // Boss状态（用于柱子等Boss效果）
+    bossState?: BossState, // Boss状态（用于柱子等Boss效果）
+    cardsDiscarded?: number // 本回合弃掉的牌的数量（用于约里克等）
   ): ScoreResult {
     if (cards.length === 0) {
       logger.warn('Calculate called with empty cards');
@@ -698,7 +699,8 @@ export class ScoringSystem {
         mostPlayedHand,
         handTypeHistoryCount,
         isPreview,
-        cards // 传递打出的所有牌（用于重影等效果）
+        cards, // 传递打出的所有牌（用于重影等效果）
+        cardsDiscarded
       );
 
       totalChips = jokerResult.totalChips;
