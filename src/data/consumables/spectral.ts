@@ -398,17 +398,19 @@ export const SPECTRAL_CONSUMABLES: Consumable[] = [
     use: (context: ConsumableEffectContext): ConsumableEffectResult => {
       // 首先复制随机小丑
       let copiedJokerName: string | undefined;
+      let originalIndex: number | undefined;
       if (context.copyRandomJoker) {
         const result = context.copyRandomJoker();
         if (result.success) {
           copiedJokerName = result.copiedJokerName;
+          originalIndex = result.originalIndex;
         }
       }
 
-      // 然后销毁其他小丑
+      // 然后销毁其他小丑（保留原始被复制的和复制出来的）
       let destroyedCount = 0;
       if (context.destroyOtherJokers) {
-        destroyedCount = context.destroyOtherJokers();
+        destroyedCount = context.destroyOtherJokers(originalIndex);
       }
 
       return {

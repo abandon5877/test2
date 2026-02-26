@@ -25,9 +25,9 @@ export interface ConsumableEffectContext {
   readonly addConsumable?: (consumable: ConsumableConfig) => boolean;
   readonly jokers?: readonly { edition?: string; hasEdition?: boolean; sellPrice?: number; sticker?: string }[];
   readonly addJoker?: (rarity?: 'rare' | 'legendary') => boolean;
-  readonly copyRandomJoker?: () => { success: boolean; copiedJokerName?: string };
+  readonly copyRandomJoker?: () => { success: boolean; copiedJokerName?: string; originalIndex?: number };
   readonly addEditionToRandomJoker?: (edition: string) => boolean;
-  readonly destroyOtherJokers?: () => number;
+  readonly destroyOtherJokers?: (originalIndex?: number) => number;
 }
 
 export interface ConsumableEffectResult {

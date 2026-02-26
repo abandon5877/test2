@@ -74,13 +74,14 @@ export class ConsumableHelper {
         }
         return false;
       },
-      destroyOtherJokers: (): number => {
+      destroyOtherJokers: (originalIndex?: number): number => {
         const jokers = this.gameState.jokers;
         if (jokers.length <= 1) return 0;
+        // 保留复制的小丑（最后一张）和原始被复制的小丑
         const copiedJokerIndex = jokers.length - 1;
         let destroyedCount = 0;
         for (let i = jokers.length - 1; i >= 0; i--) {
-          if (i !== copiedJokerIndex) {
+          if (i !== copiedJokerIndex && i !== originalIndex) {
             const joker = jokers[i] as Joker;
             if (joker.sticker !== 'eternal') {
               this.gameState.removeJoker(i);
@@ -90,7 +91,7 @@ export class ConsumableHelper {
         }
         return destroyedCount;
       },
-      copyRandomJoker: (): { success: boolean; copiedJokerName?: string } => {
+      copyRandomJoker: (): { success: boolean; copiedJokerName?: string; originalIndex?: number } => {
         const jokers = this.gameState.jokers;
         if (jokers.length === 0) {
           return { success: false };
@@ -104,7 +105,8 @@ export class ConsumableHelper {
         const success = this.gameState.addJoker(clonedJoker);
         return {
           success,
-          copiedJokerName: success ? clonedJoker.name : undefined
+          copiedJokerName: success ? clonedJoker.name : undefined,
+          originalIndex: randomIndex
         };
       }
     };

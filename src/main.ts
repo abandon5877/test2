@@ -627,7 +627,7 @@ class Game {
             }
             return false;
           },
-          copyRandomJoker: (): { success: boolean; copiedJokerName?: string } => {
+          copyRandomJoker: (): { success: boolean; copiedJokerName?: string; originalIndex?: number } => {
             console.log('[Game] copyRandomJoker 被调用');
             const jokers = this.gameState.jokers;
             if (jokers.length === 0) {
@@ -640,23 +640,25 @@ class Game {
               clonedJoker.edition = JokerEdition.None;
             }
             const success = this.gameState.addJoker(clonedJoker);
-            console.log('[Game] 复制小丑牌结果:', success, clonedJoker.name);
+            console.log('[Game] 复制小丑牌结果:', success, clonedJoker.name, '原始索引:', randomIndex);
             return {
               success,
-              copiedJokerName: success ? clonedJoker.name : undefined
+              copiedJokerName: success ? clonedJoker.name : undefined,
+              originalIndex: randomIndex
             };
           },
-          destroyOtherJokers: (): number => {
-            console.log('[Game] destroyOtherJokers 被调用');
+          destroyOtherJokers: (originalIndex?: number): number => {
+            console.log('[Game] destroyOtherJokers 被调用, 保留原始索引:', originalIndex);
             const jokers = this.gameState.jokers;
             if (jokers.length <= 1) return 0;
 
-            // 保留最后一张（复制的小丑）
+            // 保留最后一张（复制的小丑）和原始被复制的小丑
             const copiedJokerIndex = jokers.length - 1;
             let destroyedCount = 0;
 
             for (let i = jokers.length - 1; i >= 0; i--) {
-              if (i !== copiedJokerIndex) {
+              // 保留复制的小丑和原始被复制的小丑
+              if (i !== copiedJokerIndex && i !== originalIndex) {
                 const joker = jokers[i] as Joker;
                 // 不摧毁永恒小丑
                 if (joker.sticker !== 'eternal') {
