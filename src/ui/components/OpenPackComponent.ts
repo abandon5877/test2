@@ -91,8 +91,10 @@ export class OpenPackComponent {
         break;
 
       case 'buffoon':
-        // 获取玩家已有的小丑牌ID，避免卡包开出重复的小丑牌
-        const existingJokerIds = this.gameState.jokerSlots.getJokers().map(j => j.id);
+        // 获取玩家已有的小丑牌ID和商店中正在售卖的小丑牌ID，避免卡包开出重复的小丑牌
+        const playerJokerIds = this.gameState.jokerSlots.getJokers().map(j => j.id);
+        const shopJokerIds = this.gameState.shop?.getJokers().map(item => (item.item as Joker).id) || [];
+        const existingJokerIds = [...new Set([...playerJokerIds, ...shopJokerIds])];
         contents.push(...getRandomJokers(this.pack.choices, vouchersUsed, existingJokerIds));
         break;
 

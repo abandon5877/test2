@@ -253,7 +253,7 @@ export class JokerSystem {
   /**
    * 更新Campfire状态：当卡牌被出售时
    */
-  private static updateCampfireOnCardSold(jokerSlots: JokerSlots): void {
+  public static updateCampfireOnCardSold(jokerSlots: JokerSlots): void {
     const jokers = jokerSlots.getJokers();
     for (const joker of jokers) {
       if (joker.id === 'campfire') {

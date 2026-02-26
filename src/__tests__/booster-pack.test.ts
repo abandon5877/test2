@@ -787,4 +787,38 @@ describe('卡包系统测试', () => {
       }
     });
   });
+
+  describe('16. 开包与商店小丑不重复测试', () => {
+    it('小丑包开出的小丑牌不应该与商店中的小丑牌重复', () => {
+      // 模拟商店中有某些小丑牌ID
+      const shopJokerIds = ['joker_1', 'joker_2', 'joker_3'];
+      const playerJokerIds = gameState.jokerSlots.getJokers().map(j => j.id);
+
+      // 多次开小丑包，验证开出的小丑牌不会与商店重复
+      for (let attempt = 0; attempt < 10; attempt++) {
+        const existingJokerIds = [...playerJokerIds, ...shopJokerIds];
+        const packJokers = getRandomJokers(2, [], existingJokerIds);
+
+        for (const joker of packJokers) {
+          // 开出的小丑牌不应该在商店中
+          expect(shopJokerIds).not.toContain(joker.id);
+        }
+      }
+    });
+
+    it('getRandomJokers应该接受商店小丑牌ID作为排除列表', () => {
+      // 模拟商店中有某些小丑牌
+      const shopJokerIds = ['joker_1', 'joker_2', 'joker_3'];
+      const playerJokerIds = ['joker_4'];
+      const existingJokerIds = [...playerJokerIds, ...shopJokerIds];
+
+      // 生成小丑牌，传入包含商店小丑牌的排除列表
+      const jokers = getRandomJokers(5, [], existingJokerIds);
+
+      // 验证生成的小丑牌不在排除列表中
+      for (const joker of jokers) {
+        expect(existingJokerIds).not.toContain(joker.id);
+      }
+    });
+  });
 });
