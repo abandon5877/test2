@@ -53,8 +53,14 @@ export class ShopComponent {
 
   /**
    * 获取刷新费用（从 gameState.shop 读取）
+   * 如果有混沌小丑，返回0（免费刷新）
    */
   private get refreshCost(): number {
+    // 检查是否有混沌小丑的免费刷新效果
+    const rerollResult = JokerSystem.processReroll(this.gameState.jokerSlots);
+    if (rerollResult.freeReroll) {
+      return 0;
+    }
     return this.gameState.shop?.rerollCost ?? 5;
   }
 
@@ -493,9 +499,10 @@ export class ShopComponent {
     // 刷新费用
     const refreshSection = document.createElement('div');
     refreshSection.className = 'game-panel';
+    const isFreeReroll = this.refreshCost === 0;
     refreshSection.innerHTML = `
       <div class="text-gray-400 text-center" style="font-size: ${this.scaled(17)}">刷新费用</div>
-      <div class="text-blue-400 font-bold text-center" style="font-size: ${this.scaled(25)}">$${this.refreshCost}</div>
+      <div class="${isFreeReroll ? 'text-green-400' : 'text-blue-400'} font-bold text-center" style="font-size: ${this.scaled(25)}">${isFreeReroll ? '免费' : '$' + this.refreshCost}</div>
     `;
     panel.appendChild(refreshSection);
 

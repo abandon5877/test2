@@ -1027,7 +1027,7 @@ export class GameState implements GameStateInterface {
     // 执行刷新，传入玩家已有的小丑牌ID避免生成重复
     const playerJokerIds = this.jokerSlots.getJokers().map(j => j.id);
     const allowDuplicates = this.hasShowman();
-    this.shop.rerollShop(playerJokerIds, allowDuplicates);
+    this.shop.rerollShop(playerJokerIds, allowDuplicates, isFreeReroll);
 
     logger.info('Shop rerolled', {
       freeReroll: isFreeReroll,

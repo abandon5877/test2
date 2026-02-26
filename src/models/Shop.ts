@@ -128,12 +128,13 @@ export class Shop {
     logger.info('[Shop.enterNewShop] 完成');
   }
 
-  rerollShop(playerJokerIds: string[] = [], allowDuplicates: boolean = false): void {
+  rerollShop(playerJokerIds: string[] = [], allowDuplicates: boolean = false, isFreeReroll: boolean = false): void {
     logger.info('[Shop.rerollShop] 开始刷新商店', {
       currentRerollCount: this.rerollCount,
       baseRerollCost: this.baseRerollCost,
       playerJokerCount: playerJokerIds.length,
-      allowDuplicates
+      allowDuplicates,
+      isFreeReroll
     });
 
     const packsAndVouchers = this.items.filter(item =>
@@ -159,12 +160,16 @@ export class Shop {
       }
     }
 
-    this.rerollCount++;
-    this.rerollCost = this.baseRerollCost + this.rerollCount;
+    // 只有非免费刷新时才增加刷新费用
+    if (!isFreeReroll) {
+      this.rerollCount++;
+      this.rerollCost = this.baseRerollCost + this.rerollCount;
+    }
     logger.info('[Shop.rerollShop] 刷新完成', {
       newRerollCount: this.rerollCount,
       newRerollCost: this.rerollCost,
-      itemCount: this.items.length
+      itemCount: this.items.length,
+      isFreeReroll
     });
   }
 
