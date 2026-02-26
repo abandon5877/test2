@@ -165,6 +165,11 @@ export class ConsumableHelper {
 
     // 更新最后使用的消耗牌（用于愚者效果）
     this.gameState.lastUsedConsumable = { id: consumableId, type: consumableType as any };
+
+    // 如果是塔罗牌，更新算命先生的计数
+    if (consumableType === 'tarot') {
+      this.gameState.jokerSlots.updateTarotCardCount();
+    }
   }
 
   /**
