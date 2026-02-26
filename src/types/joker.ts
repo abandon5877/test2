@@ -146,6 +146,8 @@ export interface JokerState {
   tarotCardsUsed?: number;
   // throwback: 跳过盲注计数
   blindsSkipped?: number;
+  // chaos_the_clown: 免费刷新已使用
+  freeRerollUsed?: boolean;
   // runner: 顺子出牌次数（永久加成）
   straightCount?: number;
   // 通用计数器（用于其他需要状态的小丑牌）
