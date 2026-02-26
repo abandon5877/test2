@@ -126,6 +126,21 @@ describe('导演剪辑版优惠券功能测试', () => {
       bossSelectionState.setUnlimitedRerolls(true);
       expect(BossSelectionSystem.getRemainingRerolls(bossSelectionState, false)).toBe(Infinity);
     });
+
+    it('无限重掷不应该耗尽可用Boss', () => {
+      // 设置无限重掷
+      bossSelectionState.setUnlimitedRerolls(true);
+
+      // 连续重掷50次（远超正常Boss数量）
+      for (let i = 0; i < 50; i++) {
+        const result = BossSelectionSystem.rerollBoss(bossSelectionState, 1);
+        expect(result.success).toBe(true);
+        expect(result.newBoss).toBeDefined();
+      }
+
+      // 验证重掷次数确实增加了50次
+      expect(bossSelectionState.getBossRerollCount()).toBe(50);
+    });
   });
 
   describe('GameState 集成测试', () => {

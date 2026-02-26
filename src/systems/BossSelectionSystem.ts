@@ -281,9 +281,6 @@ export class BossSelectionSystem {
     assignments.set(ante, newBoss);
     setBossAssignments(assignments);
 
-    // 记录新Boss已出现
-    bossSelectionState.recordBossAppeared(newBoss);
-
     // 增加重掷次数
     bossSelectionState.incrementBossRerollCount();
 
