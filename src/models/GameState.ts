@@ -531,7 +531,11 @@ export class GameState implements GameStateInterface {
       this.drawCards(3, { ignoreHandSize: true });
     } else {
       // 修复火祭: 抽牌时补充到手牌满，处理火祭摧毁手牌后的情况
-      this.cardPile.drawToMaxHandSize();
+      // 修复鱼Boss: 使用drawCards方法确保新抽的牌翻面
+      const cardsNeeded = this.cardPile.hand.maxHandSize - this.cardPile.hand.count;
+      if (cardsNeeded > 0) {
+        this.drawCards(cardsNeeded);
+      }
     }
 
     logger.info('Hand played', { 
@@ -647,7 +651,11 @@ export class GameState implements GameStateInterface {
       this.drawCards(3, { ignoreHandSize: true });
     } else {
       // 修复火祭: 抽牌时补充到手牌满，处理火祭摧毁手牌后的情况
-      this.cardPile.drawToMaxHandSize();
+      // 修复鱼Boss: 使用drawCards方法确保新抽的牌翻面
+      const cardsNeeded = this.cardPile.hand.maxHandSize - this.cardPile.hand.count;
+      if (cardsNeeded > 0) {
+        this.drawCards(cardsNeeded);
+      }
     }
 
     logger.info('Cards discarded', {
