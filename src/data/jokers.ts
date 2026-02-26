@@ -488,6 +488,11 @@ export const JOKERS: Joker[] = [
         multMultiplier: multiplier,
         message: `星座: 已使用${planetCardsUsed}张行星牌, x${multiplier.toFixed(1)}倍率`
       };
+    },
+    getDynamicDescription: (state: JokerState): string => {
+      const planetCardsUsed = state.planetCardsUsed || 0;
+      const multiplier = 1 + planetCardsUsed * 0.1;
+      return `每使用一张行星牌x0.1倍率（已使用${planetCardsUsed}张，当前x${multiplier.toFixed(1)}倍率）`;
     }
   }),
 
@@ -1309,6 +1314,11 @@ export const JOKERS: Joker[] = [
         multMultiplier: multiplier,
         message: `复古: 已跳过${blindsSkipped}个盲注, x${multiplier.toFixed(2)}倍率`
       };
+    },
+    getDynamicDescription: (state: JokerState): string => {
+      const blindsSkipped = state.blindsSkipped || 0;
+      const multiplier = 1 + blindsSkipped * 0.25;
+      return `每跳过盲注x0.25倍率（已跳过${blindsSkipped}个，当前x${multiplier.toFixed(2)}倍率）`;
     }
   }),
 
