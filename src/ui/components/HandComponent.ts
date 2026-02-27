@@ -179,7 +179,8 @@ export class HandComponent {
       const firstCard = cards[0];
       const isFirstSelected = selectedIndices.has(0);
       const isFirstDisabled = this.bossState ? BossSystem.isCardDisabled(this.bossState, firstCard) : false;
-      const firstCardElement = CardComponent.renderCard(firstCard, isFirstSelected, isFirstDisabled);
+      const isFirstRequired = this.isCardRequired(firstCard);
+      const firstCardElement = CardComponent.renderCard(firstCard, isFirstSelected, isFirstDisabled, isFirstRequired);
 
       // 临时添加到 DOM 以获取实际尺寸
       firstCardElement.style.position = 'relative';
@@ -217,7 +218,8 @@ export class HandComponent {
         const card = cards[index];
         const isSelected = selectedIndices.has(index);
         const isDisabled = this.bossState ? BossSystem.isCardDisabled(this.bossState, card) : false;
-        const cardElement = CardComponent.renderCard(card, isSelected, isDisabled);
+        const isRequired = this.isCardRequired(card);
+        const cardElement = CardComponent.renderCard(card, isSelected, isDisabled, isRequired);
 
         // 设置卡牌样式（排序时永久禁用动画）
         cardElement.style.position = 'relative';
@@ -266,6 +268,16 @@ export class HandComponent {
     this.bossState = bossState;
     // 重新渲染以更新失效标记
     this.render();
+  }
+
+  /**
+   * 检查卡牌是否必须选择（天青铃铛Boss效果）
+   */
+  private isCardRequired(card: Card): boolean {
+    if (!this.bossState) return false;
+    const requiredCardId = this.bossState.getRequiredCardId();
+    if (!requiredCardId) return false;
+    return card.toString() === requiredCardId;
   }
 
   /**
@@ -328,7 +340,8 @@ export class HandComponent {
       const firstCard = cards[0];
       const isFirstSelected = selectedIndices.has(0);
       const isFirstDisabled = this.bossState ? BossSystem.isCardDisabled(this.bossState, firstCard) : false;
-      const firstCardElement = CardComponent.renderCard(firstCard, isFirstSelected, isFirstDisabled);
+      const isFirstRequired = this.isCardRequired(firstCard);
+      const firstCardElement = CardComponent.renderCard(firstCard, isFirstSelected, isFirstDisabled, isFirstRequired);
 
       // 临时添加到 DOM 以获取实际尺寸
       firstCardElement.style.position = 'relative';
@@ -366,7 +379,8 @@ export class HandComponent {
         const card = cards[index];
         const isSelected = selectedIndices.has(index);
         const isDisabled = this.bossState ? BossSystem.isCardDisabled(this.bossState, card) : false;
-        const cardElement = CardComponent.renderCard(card, isSelected, isDisabled);
+        const isRequired = this.isCardRequired(card);
+        const cardElement = CardComponent.renderCard(card, isSelected, isDisabled, isRequired);
 
         // 设置卡牌样式（初始禁用动画）
         cardElement.style.position = 'relative';

@@ -71,8 +71,9 @@ export class BossSystem {
 
   /**
    * 检查是否可以出牌
+   * @param selectedCardIds - 已选择的卡牌ID列表（用于天青铃铛检查）
    */
-  static canPlayHand(bossState: BossState, handType: PokerHandType, cardCount?: number): BossEffectResult {
+  static canPlayHand(bossState: BossState, handType: PokerHandType, cardCount?: number, selectedCardIds?: string[]): BossEffectResult {
     const currentBoss = bossState.getCurrentBoss();
 
     if (currentBoss === BossType.EYE) {
@@ -100,6 +101,20 @@ export class BossSystem {
           canPlay: false,
           message: '通灵Boss: 必须正好打出5张牌'
         };
+      }
+    }
+
+    // 天青铃铛Boss: 必须选择指定的卡牌
+    if (currentBoss === BossType.CERULEAN_BELL && selectedCardIds) {
+      const requiredCardId = bossState.getRequiredCardId();
+      if (requiredCardId) {
+        const hasRequiredCard = selectedCardIds.some(id => id === requiredCardId);
+        if (!hasRequiredCard) {
+          return {
+            canPlay: false,
+            message: '天青铃铛Boss: 必须选择被指定的卡牌'
+          };
+        }
       }
     }
 

@@ -162,10 +162,11 @@ export class CardComponent {
   /**
    * 渲染一张卡牌
    * @param isDisabled - 是否被Boss效果失效（显示红叉）
+   * @param isRequired - 是否必须选择（天青铃铛Boss效果）
    */
-  static renderCard(card: Card, isSelected: boolean = false, isDisabled: boolean = false): HTMLElement {
+  static renderCard(card: Card, isSelected: boolean = false, isDisabled: boolean = false, isRequired: boolean = false): HTMLElement {
     const cardElement = document.createElement('div');
-    cardElement.className = `card ${isSelected ? 'selected' : ''} ${isDisabled ? 'disabled' : ''} ${card.faceDown ? 'face-down' : ''}`;
+    cardElement.className = `card ${isSelected ? 'selected' : ''} ${isDisabled ? 'disabled' : ''} ${card.faceDown ? 'face-down' : ''} ${isRequired ? 'required' : ''}`;
     cardElement.dataset.cardId = `${card.suit}${card.rank}`;
 
     // 如果卡牌翻面，显示牌背
@@ -303,6 +304,48 @@ export class CardComponent {
 
       disabledOverlay.appendChild(redX);
       cardElement.appendChild(disabledOverlay);
+    }
+
+    // 必须选择标记 - 天青铃铛Boss效果
+    if (isRequired) {
+      const requiredOverlay = document.createElement('div');
+      requiredOverlay.className = 'card-required-overlay';
+      requiredOverlay.style.cssText = `
+        position: absolute;
+        top: -10px;
+        right: -10px;
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+        border: 3px solid #fbbf24;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 25;
+        box-shadow: 0 0 15px rgba(59, 130, 246, 0.8), 0 0 30px rgba(251, 191, 36, 0.5);
+        animation: pulse 1.5s ease-in-out infinite;
+      `;
+
+      const bell = document.createElement('div');
+      bell.textContent = '🔔';
+      bell.style.cssText = `
+        font-size: 18px;
+        filter: drop-shadow(0 2px 2px rgba(0,0,0,0.5));
+      `;
+
+      requiredOverlay.appendChild(bell);
+      cardElement.appendChild(requiredOverlay);
+
+      // 添加脉冲动画样式
+      const style = document.createElement('style');
+      style.textContent = `
+        @keyframes pulse {
+          0%, 100% { transform: scale(1); }
+          50% { transform: scale(1.1); }
+        }
+      `;
+      cardElement.appendChild(style);
     }
 
     cardElement.appendChild(topCorner);
