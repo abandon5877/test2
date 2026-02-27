@@ -13,6 +13,7 @@ import { Suit, Rank } from '../../types/card';
 import { JokerDetailModal } from './JokerDetailModal';
 import { ConsumableDetailModal } from './ConsumableDetailModal';
 import { generatePlayingCardModifiers } from '../../data/probabilities';
+import { getPlanetConsumableByHandType } from '../../data/consumables/planets';
 
 export interface OpenPackCallbacks {
   onClose: () => void;
@@ -87,7 +88,30 @@ export class OpenPackComponent {
         break;
 
       case 'celestial':
-        contents.push(...getRandomConsumables(this.pack.choices, 'planet'));
+        // 检查是否有望远镜优惠券
+        const hasTelescope = vouchersUsed.includes('voucher_telescope');
+        const mostPlayedHand = hasTelescope ? this.gameState.bossState.getMostPlayedHand() : null;
+        
+        if (hasTelescope && mostPlayedHand) {
+          // 有望远镜且有最常打出的牌型：包含该牌型对应的星球牌
+          const targetPlanet = getPlanetConsumableByHandType(mostPlayedHand);
+          
+          if (targetPlanet) {
+            // 第一张是目标星球牌，其余随机
+            contents.push(targetPlanet);
+            if (this.pack.choices > 1) {
+              const randomPlanets = getRandomConsumables(this.pack.choices - 1, 'planet')
+                .filter(p => p.id !== targetPlanet.id); // 避免重复
+              contents.push(...randomPlanets);
+            }
+          } else {
+            // 找不到对应星球牌，全部随机
+            contents.push(...getRandomConsumables(this.pack.choices, 'planet'));
+          }
+        } else {
+          // 没有望远镜或没有最常打出的牌型：全部随机
+          contents.push(...getRandomConsumables(this.pack.choices, 'planet'));
+        }
         break;
 
       case 'buffoon':
