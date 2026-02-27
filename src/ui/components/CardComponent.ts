@@ -312,40 +312,44 @@ export class CardComponent {
       requiredOverlay.className = 'card-required-overlay';
       requiredOverlay.style.cssText = `
         position: absolute;
-        top: -10px;
-        right: -10px;
-        width: 32px;
-        height: 32px;
+        top: 4px;
+        right: 4px;
+        width: 28px;
+        height: 28px;
         border-radius: 50%;
         background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
-        border: 3px solid #fbbf24;
+        border: 2px solid #fbbf24;
         display: flex;
         align-items: center;
         justify-content: center;
         z-index: 25;
-        box-shadow: 0 0 15px rgba(59, 130, 246, 0.8), 0 0 30px rgba(251, 191, 36, 0.5);
+        box-shadow: 0 0 10px rgba(59, 130, 246, 0.8), 0 0 20px rgba(251, 191, 36, 0.5);
         animation: pulse 1.5s ease-in-out infinite;
+        pointer-events: none;
       `;
 
       const bell = document.createElement('div');
       bell.textContent = '🔔';
       bell.style.cssText = `
-        font-size: 18px;
-        filter: drop-shadow(0 2px 2px rgba(0,0,0,0.5));
+        font-size: 16px;
+        filter: drop-shadow(0 1px 1px rgba(0,0,0,0.5));
       `;
 
       requiredOverlay.appendChild(bell);
       cardElement.appendChild(requiredOverlay);
 
-      // 添加脉冲动画样式
-      const style = document.createElement('style');
-      style.textContent = `
-        @keyframes pulse {
-          0%, 100% { transform: scale(1); }
-          50% { transform: scale(1.1); }
-        }
-      `;
-      cardElement.appendChild(style);
+      // 添加脉冲动画样式（如果还没有添加）
+      if (!document.getElementById('card-pulse-animation')) {
+        const style = document.createElement('style');
+        style.id = 'card-pulse-animation';
+        style.textContent = `
+          @keyframes pulse {
+            0%, 100% { transform: scale(1); box-shadow: 0 0 10px rgba(59, 130, 246, 0.8), 0 0 20px rgba(251, 191, 36, 0.5); }
+            50% { transform: scale(1.15); box-shadow: 0 0 20px rgba(59, 130, 246, 1), 0 0 40px rgba(251, 191, 36, 0.8); }
+          }
+        `;
+        document.head.appendChild(style);
+      }
     }
 
     cardElement.appendChild(topCorner);
