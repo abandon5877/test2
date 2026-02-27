@@ -97,9 +97,9 @@ describe('Supernova 超新星状态更新测试', () => {
     // 初始状态 - 没有值
     expect(supernova.getDynamicDescription()).toBe('本局该牌型每出过1次+1倍率');
 
-    // 设置状态为0
+    // 设置状态为0（显示基础说明，不显示"未出过"）
     supernova.updateState({ lastHandTypeHistoryCount: 0 });
-    expect(supernova.getDynamicDescription()).toBe('本局该牌型每出过1次+1倍率（该牌型未出过）');
+    expect(supernova.getDynamicDescription()).toBe('本局该牌型每出过1次+1倍率');
 
     // 设置状态为5
     supernova.updateState({ lastHandTypeHistoryCount: 5 });
