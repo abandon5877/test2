@@ -1067,11 +1067,17 @@ export const JOKERS: Joker[] = [
     },
     // 添加动态说明，显示当前牌型的出牌次数和倍率加成
     getDynamicDescription: (state: JokerState): string => {
-      const handTypeHistoryCount = state.lastHandTypeHistoryCount || 0;
-      if (handTypeHistoryCount > 0) {
-        return `本局该牌型每出过1次+1倍率（该牌型已出过${handTypeHistoryCount}次，+${handTypeHistoryCount}倍率）`;
+      // 优先使用state中保存的最后一次出牌次数
+      // 注意：预览时state不会更新，所以显示的是最后一次实际出牌的计数
+      const handTypeHistoryCount = state.lastHandTypeHistoryCount;
+      if (handTypeHistoryCount !== undefined) {
+        if (handTypeHistoryCount > 0) {
+          return `本局该牌型每出过1次+1倍率（该牌型已出过${handTypeHistoryCount}次，+${handTypeHistoryCount}倍率）`;
+        }
+        return '本局该牌型每出过1次+1倍率（该牌型未出过）';
       }
-      return '本局该牌型每出过1次+1倍率（该牌型未出过）';
+      // 如果state中没有值（刚获得小丑牌），显示基础说明
+      return '本局该牌型每出过1次+1倍率';
     }
   }),
 

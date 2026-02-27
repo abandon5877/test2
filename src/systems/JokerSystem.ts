@@ -991,6 +991,7 @@ export class JokerSystem {
       (context as unknown as { jokerState: typeof joker.state }).jokerState = joker.state;
 
       // 1. 处理小丑自身的 onHandPlayed 效果
+      // 注意：joker.onHandPlayed 方法会自动处理 trigger === ON_HAND_PLAYED 的情况
       if ('onHandPlayed' in joker && typeof (joker as any).onHandPlayed === 'function') {
         console.log(`[JokerSystem] 调用小丑[${i}] onHandPlayed, handType:`, handType);
         this.processJokerEffect(joker, joker.onHandPlayed, context, accumulator, undefined, consumableSlots, isPreview);
