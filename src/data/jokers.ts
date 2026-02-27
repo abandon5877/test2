@@ -1055,14 +1055,19 @@ export const JOKERS: Joker[] = [
       if (handTypeHistoryCount > 0) {
         return {
           multBonus: handTypeHistoryCount,
-          message: `超新星: 该牌型出过${handTypeHistoryCount}次 +${handTypeHistoryCount}倍率`
+          message: `超新星: 该牌型出过${handTypeHistoryCount}次 +${handTypeHistoryCount}倍率`,
+          // 保存最后一次出牌的次数到state，用于动态说明显示
+          stateUpdate: { lastHandTypeHistoryCount: handTypeHistoryCount }
         };
       }
-      return {};
+      // 即使不加倍率，也更新state为0，确保动态说明正确
+      return {
+        stateUpdate: { lastHandTypeHistoryCount: handTypeHistoryCount }
+      };
     },
     // 添加动态说明，显示当前牌型的出牌次数和倍率加成
-    getDynamicDescription: (state: JokerState, context?: JokerEffectContext): string => {
-      const handTypeHistoryCount = context?.handTypeHistoryCount || 0;
+    getDynamicDescription: (state: JokerState): string => {
+      const handTypeHistoryCount = state.lastHandTypeHistoryCount || 0;
       if (handTypeHistoryCount > 0) {
         return `本局该牌型每出过1次+1倍率（该牌型已出过${handTypeHistoryCount}次，+${handTypeHistoryCount}倍率）`;
       }
