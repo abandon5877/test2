@@ -1059,6 +1059,14 @@ export const JOKERS: Joker[] = [
         };
       }
       return {};
+    },
+    // 添加动态说明，显示当前牌型的出牌次数和倍率加成
+    getDynamicDescription: (state: JokerState, context?: JokerEffectContext): string => {
+      const handTypeHistoryCount = context?.handTypeHistoryCount || 0;
+      if (handTypeHistoryCount > 0) {
+        return `本局该牌型每出过1次+1倍率（该牌型已出过${handTypeHistoryCount}次，+${handTypeHistoryCount}倍率）`;
+      }
+      return '本局该牌型每出过1次+1倍率（该牌型未出过）';
     }
   }),
 
