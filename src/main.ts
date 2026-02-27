@@ -378,7 +378,13 @@ class Game {
 
     // 检查回合是否结束（出牌次数用完）
     if (this.gameState.isRoundComplete()) {
-      if (this.gameState.isRoundWon()) {
+      // 骨头先生救场后，phase 会被设置为 SHOP
+      // 此时不应该显示游戏结束界面
+      if (this.gameState.phase === GamePhase.SHOP) {
+        setTimeout(() => {
+          this.showShop();
+        }, 500);
+      } else if (this.gameState.isRoundWon()) {
         setTimeout(() => {
           // completeBlind 已经完成了进入商店的所有工作
           this.gameState.completeBlind();
@@ -976,10 +982,16 @@ class Game {
    */
   private handlePlayHand(): void {
     Storage.autoSave(this.gameState);
-    
+
     // 检查回合状态
     if (this.gameState.isRoundComplete()) {
-      if (this.gameState.isRoundWon()) {
+      // 骨头先生救场后，phase 会被设置为 SHOP
+      // 此时不应该显示游戏结束界面
+      if (this.gameState.phase === GamePhase.SHOP) {
+        setTimeout(() => {
+          this.showShop();
+        }, 1000);
+      } else if (this.gameState.isRoundWon()) {
         setTimeout(() => {
           // completeBlind 已经完成了进入商店的所有工作
           this.gameState.completeBlind();

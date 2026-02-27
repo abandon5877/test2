@@ -80,6 +80,14 @@ export class Hand {
     return true;
   }
 
+  /**
+   * 强制添加卡牌到手牌，可以突破手牌上限
+   * 用于使魔、冷酷、咒语等幻灵牌效果
+   */
+  forceAddCard(card: Card): void {
+    this.cards.push(card);
+  }
+
   playSelected(): Card[] {
     const selectedCards = this.getSelectedCards();
     if (selectedCards.length === 0) {

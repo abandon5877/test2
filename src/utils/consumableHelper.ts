@@ -157,6 +157,7 @@ export class ConsumableHelper {
     }
 
     // 处理新添加的卡牌（如使魔/冷酷/咒语添加的卡牌）
+    // 这些卡牌可以突破手牌上限
     if (result.newCards && result.newCards.length > 0) {
       for (const card of result.newCards) {
         // 修复标记Boss: 新添加的人头牌也需要翻面
@@ -164,7 +165,8 @@ export class ConsumableHelper {
         if (currentBoss === 'MARK' && (card.rank === 'J' || card.rank === 'Q' || card.rank === 'K')) {
           card.setFaceDown(true);
         }
-        this.gameState.cardPile.hand.addCard(card);
+        // 使用 forceAddCard 允许突破手牌上限
+        this.gameState.cardPile.hand.forceAddCard(card);
       }
     }
 

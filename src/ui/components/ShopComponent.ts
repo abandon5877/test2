@@ -60,11 +60,16 @@ export class ShopComponent {
 
   /**
    * 检查是否有免费刷新效果（混沌小丑）
-   * 注意：这个方法会更新小丑状态，应该只调用一次
+   * 注意：这个方法只检查状态，不更新状态
    */
   private checkFreeReroll(): boolean {
-    const rerollResult = JokerSystem.processReroll(this.gameState.jokerSlots);
-    return rerollResult.freeReroll;
+    // 直接检查混沌小丑的状态，不调用 processReroll（避免消耗免费刷新次数）
+    const chaosClown = this.gameState.jokerSlots.getJokers().find(j => j.id === 'chaos_the_clown');
+    if (chaosClown) {
+      // 如果 freeRerollUsed 为 false 或 undefined，说明免费刷新可用
+      return !chaosClown.state?.freeRerollUsed;
+    }
+    return false;
   }
 
   constructor(container: HTMLElement, gameState: GameState, callbacks: ShopComponentCallbacks = {}) {
@@ -1007,7 +1012,9 @@ export class ShopComponent {
     refreshBtn.style.overflow = 'hidden';
     refreshBtn.style.textOverflow = 'ellipsis';
     refreshBtn.innerHTML = `🔄 刷新`;
-    refreshBtn.disabled = this.gameState.money < this.refreshCost;
+    // 检查是否有免费刷新（混沌小丑），如果有则不需要检查金钱
+    const hasFreeReroll = this.checkFreeReroll();
+    refreshBtn.disabled = !hasFreeReroll && this.gameState.money < this.refreshCost;
     refreshBtn.addEventListener('click', () => this.handleRefresh());
     panel.appendChild(refreshBtn);
 
