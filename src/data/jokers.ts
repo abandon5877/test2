@@ -1045,7 +1045,7 @@ export const JOKERS: Joker[] = [
   new Joker({
     id: 'supernova',
     name: '超新星',
-    description: '将出牌次数加到倍率',
+    description: '本局该牌型每出过1次+1倍率',
     rarity: JokerRarity.COMMON,
     cost: 4,
     trigger: JokerTrigger.ON_HAND_PLAYED,

@@ -720,8 +720,8 @@ class Game {
         }
       }
     } else if (card instanceof Card) {
-      // 游戏牌：添加到卡组
-      this.gameState.cardPile.deck.addToBottom(card);
+      // 游戏牌：添加到卡组（使用addCardToDeck以触发全息影像等效果）
+      this.gameState.addCardToDeck(card, 'bottom');
       this.gameState.cardPile.deck.shuffle();
       Toast.success(`获得卡牌: ${card.toString()}`);
     }
@@ -1158,10 +1158,10 @@ class Game {
       }
     }
 
-    // 处理新创建的卡牌
+    // 处理新创建的卡牌（使用addCardToDeck以触发全息影像等效果）
     if (result.newCards && result.newCards.length > 0) {
       for (const newCard of result.newCards) {
-        this.gameState.cardPile.deck.addToBottom(newCard);
+        this.gameState.addCardToDeck(newCard, 'bottom');
       }
       Toast.success(`添加了 ${result.newCards.length} 张新卡牌到牌库`);
     }
