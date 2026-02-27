@@ -137,28 +137,18 @@ export class Shop {
       isFreeReroll
     });
 
-    const packsAndVouchers = this.items.filter(item =>
-      item.type === 'pack' || item.type === 'voucher'
-    );
-    logger.info('[Shop.rerollShop] 保留的卡包和优惠券:', packsAndVouchers.map(i => ({
-      id: i.id,
-      type: i.type,
-      itemId: (i.item as any).id,
-      sold: i.sold
-    })));
-
     this.items = [];
     this.itemIdCounter = 0;
     logger.info('[Shop.rerollShop] 清空商品，itemIdCounter重置为0');
 
+    // 重新生成2张随机卡片
     this.generateRandomCards(2, playerJokerIds, allowDuplicates);
 
-    for (const item of packsAndVouchers) {
-      if (!item.sold) {
-        this.items.push(item);
-        logger.info('[Shop.rerollShop] 恢复保留商品:', (item.item as any).id);
-      }
-    }
+    // 重新生成2个补充包
+    this.generateBoosterPacks(2);
+
+    // 重新生成1张优惠券
+    this.generateVoucher();
 
     // 只有非免费刷新时才增加刷新费用
     if (!isFreeReroll) {
