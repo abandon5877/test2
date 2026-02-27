@@ -108,6 +108,7 @@ export class GameState implements GameStateInterface {
     this.handLevelState = new HandLevelState();
     this.roundStats = this.createEmptyRoundStats();
     this.playedHandTypes.clear();
+    this.handTypeHistory.clear();
     this.lastPlayedHandType = null;
     this.lastPlayScore = 0;
     this.skippedBlinds.clear();
@@ -1535,6 +1536,25 @@ export class GameState implements GameStateInterface {
    */
   getHandTypeHistory(): Map<string, number> {
     return new Map(this.handTypeHistory);
+  }
+
+  /**
+   * 获取全局最常打出的牌型（用于望远镜优惠券）
+   * 使用全局牌型历史统计，不会随新底注重置
+   * @returns 最常打出的牌型，如果没有打出过任何牌则返回null
+   */
+  getMostPlayedHandGlobal(): PokerHandType | null {
+    let maxCount = 0;
+    let mostPlayedHand: PokerHandType | null = null;
+
+    for (const [handType, count] of this.handTypeHistory) {
+      if (count > maxCount) {
+        maxCount = count;
+        mostPlayedHand = handType as PokerHandType;
+      }
+    }
+
+    return mostPlayedHand;
   }
 
   isGameOver(): boolean {

@@ -90,7 +90,8 @@ export class OpenPackComponent {
       case 'celestial':
         // 检查是否有望远镜优惠券
         const hasTelescope = vouchersUsed.includes('voucher_telescope');
-        const mostPlayedHand = hasTelescope ? this.gameState.bossState.getMostPlayedHand() : null;
+        // 使用全局牌型统计（不会随新底注重置）
+        const mostPlayedHand = hasTelescope ? this.gameState.getMostPlayedHandGlobal() : null;
         
         if (hasTelescope && mostPlayedHand) {
           // 有望远镜且有最常打出的牌型：包含该牌型对应的星球牌
