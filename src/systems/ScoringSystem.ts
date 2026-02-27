@@ -38,6 +38,8 @@ export interface ScoreResult {
   copyScoredCardToDeck?: number; // DNA效果：复制计分牌到卡组（修复：改为数字，记录复制次数）
   // 修复牛Boss: 标记是否触发了牛Boss效果（打出最常用牌型）
   isOxMostPlayedHand?: boolean;
+  // 修复第六感: 标记是否摧毁计分牌
+  destroyScoredCards?: boolean;
 }
 
 export interface CardScoreDetail {
@@ -556,6 +558,7 @@ export class ScoringSystem {
     // 水花飞溅生效后的所有计分牌（包含原始计分牌和踢牌）
     let allScoringCards: readonly Card[] = handResult.scoringCards;
     let copyScoredCardToDeck: number | undefined = undefined; // 修复：改为数字类型
+    let destroyScoredCards = false; // 修复第六感：摧毁计分牌标记
 
     if (jokerSlots) {
       // 检查是否有水花飞溅效果（所有牌计分）
@@ -710,6 +713,11 @@ export class ScoringSystem {
       if (jokerResult.copyScoredCardToDeck) {
         copyScoredCardToDeck = (copyScoredCardToDeck || 0) + jokerResult.copyScoredCardToDeck;
       }
+      // 修复第六感：传递摧毁计分牌标记
+      if (jokerResult.destroyScoredCards) {
+        destroyScoredCards = true;
+      }
+
       // 累加小丑牌给的钱
       totalLuckyMoney += jokerResult.totalMoneyEarned || 0;
     }
@@ -757,7 +765,9 @@ export class ScoringSystem {
       heldMultMultiplier: heldMultMultiplier > 1 ? heldMultMultiplier : undefined,
       copyScoredCardToDeck,
       // 修复牛Boss: 返回是否触发了牛Boss效果
-      isOxMostPlayedHand
+      isOxMostPlayedHand,
+      // 修复第六感: 返回是否摧毁计分牌
+      destroyScoredCards
     };
   }
 

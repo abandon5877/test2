@@ -145,12 +145,28 @@ export class ConsumableHelper {
     if (result.destroyedCards && result.destroyedCards.length > 0) {
       const handCards = this.gameState.cardPile.hand.getCards();
       const indicesToRemove: number[] = [];
+
+      // 检查是否有卡尼奥小丑牌，统计摧毁的人头牌数量
+      const canioJoker = this.gameState.jokers.find(j => j.id === 'canio');
+      let destroyedFaceCardCount = 0;
+
       for (const card of result.destroyedCards) {
         const index = handCards.findIndex(c => c === card);
         if (index !== -1) {
           indicesToRemove.push(index);
         }
+        // 统计人头牌数量
+        if (card.isFaceCard) {
+          destroyedFaceCardCount++;
+        }
       }
+
+      // 更新卡尼奥的摧毁人头牌计数
+      if (canioJoker && destroyedFaceCardCount > 0) {
+        const currentCount = canioJoker.getState().destroyedFaceCards || 0;
+        canioJoker.updateState({ destroyedFaceCards: currentCount + destroyedFaceCardCount });
+      }
+
       if (indicesToRemove.length > 0) {
         this.gameState.cardPile.hand.removeCards(indicesToRemove);
       }

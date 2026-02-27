@@ -453,8 +453,26 @@ export class GameState implements GameStateInterface {
       logger.info('DNA effect: Cards copied to deck', { card: cardToCopy.toString(), count: scoreResult.copyScoredCardToDeck });
     }
 
+    // 处理第六感摧毁计分牌效果
+    if (scoreResult.destroyScoredCards && selectedCards.length > 0) {
+      logger.info('第六感效果：摧毁计分牌', { count: selectedCards.length });
+
+      // 更新卡尼奥的摧毁人头牌计数
+      const canioJoker = this.jokerSlots.getActiveJokers().find(j => j.id === 'canio');
+      if (canioJoker) {
+        const destroyedFaceCards = selectedCards.filter(card => card.isFaceCard);
+        if (destroyedFaceCards.length > 0) {
+          const currentCount = canioJoker.getState().destroyedFaceCards || 0;
+          canioJoker.updateState({ destroyedFaceCards: currentCount + destroyedFaceCards.length });
+          logger.info('卡尼奥更新摧毁人头牌计数（第六感）', { destroyedCount: destroyedFaceCards.length, totalCount: currentCount + destroyedFaceCards.length });
+        }
+      }
+
+      // 摧毁所有打出的牌（不移动到弃牌堆）
+      this.cardPile.hand.removeCards(Array.from(this.cardPile.hand.getSelectedIndices()));
+    }
     // 将打出的牌移到弃牌堆
-    if (scoreResult.destroyedCards && scoreResult.destroyedCards.length > 0) {
+    else if (scoreResult.destroyedCards && scoreResult.destroyedCards.length > 0) {
       logger.info('Glass cards destroyed', { count: scoreResult.destroyedCards.length });
       this.cardPile.playSelected(scoreResult.destroyedCards);
 
@@ -465,6 +483,17 @@ export class GameState implements GameStateInterface {
         const newBroken = currentBroken + scoreResult.destroyedCards.length;
         glassJoker.updateState({ brokenCount: newBroken });
         logger.info('Glass Joker updated', { brokenCount: newBroken });
+      }
+
+      // 更新卡尼奥的摧毁人头牌计数
+      const canioJoker = this.jokerSlots.getActiveJokers().find(j => j.id === 'canio');
+      if (canioJoker) {
+        const destroyedFaceCards = scoreResult.destroyedCards.filter(card => card.isFaceCard);
+        if (destroyedFaceCards.length > 0) {
+          const currentCount = canioJoker.getState().destroyedFaceCards || 0;
+          canioJoker.updateState({ destroyedFaceCards: currentCount + destroyedFaceCards.length });
+          logger.info('卡尼奥更新摧毁人头牌计数', { destroyedCount: destroyedFaceCards.length, totalCount: currentCount + destroyedFaceCards.length });
+        }
       }
     } else {
       this.cardPile.playSelected();
@@ -610,6 +639,17 @@ export class GameState implements GameStateInterface {
         this.cardPile.removeFromDiscard(card);
       }
       logger.info('交易卡效果：摧毁弃牌', { count: discardedCards.length });
+
+      // 更新卡尼奥的摧毁人头牌计数
+      const canioJoker = this.jokerSlots.getActiveJokers().find(j => j.id === 'canio');
+      if (canioJoker) {
+        const destroyedFaceCards = discardedCards.filter(card => card.isFaceCard);
+        if (destroyedFaceCards.length > 0) {
+          const currentCount = canioJoker.getState().destroyedFaceCards || 0;
+          canioJoker.updateState({ destroyedFaceCards: currentCount + destroyedFaceCards.length });
+          logger.info('卡尼奥更新摧毁人头牌计数（交易卡）', { destroyedCount: destroyedFaceCards.length, totalCount: currentCount + destroyedFaceCards.length });
+        }
+      }
     }
 
     // 修复烧焦的小丑：处理升级牌型效果

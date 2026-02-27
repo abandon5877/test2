@@ -32,6 +32,7 @@ interface EffectAccumulator {
   copyScoredCardToDeck: number; // 修复：改为数字，记录复制次数
   destroyDiscardedCard: boolean; // 修复：添加摧毁弃牌标记
   upgradeHandType: boolean; // 修复：添加升级牌型标记
+  destroyScoredCards: boolean; // 修复：添加摧毁计分牌标记（第六感）
   effects: JokerEffectDetail[];
   copiedConsumableIds: string[];
 }
@@ -45,6 +46,7 @@ export interface ProcessedScoreResult extends ScoreResult {
   jokerEffects: JokerEffectDetail[];
   totalMoneyEarned: number;
   copyScoredCardToDeck?: number; // 修复：改为数字，记录复制次数
+  destroyScoredCards?: boolean; // 修复：摧毁计分牌标记（第六感）
 }
 
 export interface JokerEffectDetail {
@@ -313,6 +315,7 @@ export class JokerSystem {
       copyScoredCardToDeck: 0, // 修复：初始化为0
       destroyDiscardedCard: false, // 修复：初始化为false
       upgradeHandType: false, // 修复：初始化为false
+      destroyScoredCards: false, // 修复：初始化为false
       effects: [],
       copiedConsumableIds: []
     };
@@ -367,6 +370,7 @@ export class JokerSystem {
     if (result.copyScoredCardToDeck) accumulator.copyScoredCardToDeck += 1; // 修复：累加复制次数
     if (result.destroyDiscardedCard) accumulator.destroyDiscardedCard = true; // 修复：标记摧毁弃牌
     if (result.upgradeHandType) accumulator.upgradeHandType = true; // 修复：标记升级牌型
+    if (result.destroyScoredCards) accumulator.destroyScoredCards = true; // 修复：标记摧毁计分牌
 
     // 处理特殊效果
     if (result.copiedConsumableId) accumulator.copiedConsumableIds.push(result.copiedConsumableId);
@@ -959,6 +963,7 @@ export class JokerSystem {
     copyScoredCardToDeck?: number; // 修复：改为数字
     spectralBonus: number; // 幻灵牌生成数量
     planetBonus: number; // 行星牌生成数量
+    destroyScoredCards: boolean; // 修复：摧毁计分牌标记（第六感）
     effects: JokerEffectDetail[];
   } {
     const accumulator = this.createEffectAccumulator();
@@ -1016,6 +1021,7 @@ export class JokerSystem {
       copyScoredCardToDeck: accumulator.copyScoredCardToDeck,
       spectralBonus: accumulator.spectralBonus,
       planetBonus: accumulator.planetBonus,
+      destroyScoredCards: accumulator.destroyScoredCards,
       effects: accumulator.effects
     };
   }
@@ -1328,6 +1334,7 @@ export class JokerSystem {
   } {
     const accumulator = this.createEffectAccumulator();
     const jokers = jokerSlots.getActiveJokers();
+    const destroyedJokers: number[] = [];
 
     for (let i = 0; i < jokers.length; i++) {
       const joker = jokers[i];
@@ -1342,7 +1349,24 @@ export class JokerSystem {
       (context as unknown as { jokerState: typeof joker.state }).jokerState = joker.state;
 
       // 1. 处理小丑自身的 onBlindSelect 效果
-      this.processJokerEffect(joker, joker.onBlindSelect, context, accumulator, undefined, consumableSlots);
+      const result = this.processJokerEffectWithResult(joker, joker.onBlindSelect, context, accumulator, undefined, consumableSlots);
+
+      // 处理摧毁右侧小丑（仪式匕首）
+      if (result?.destroyRightJoker && i < jokers.length - 1) {
+        const rightIndex = i + 1;
+        if (!destroyedJokers.includes(rightIndex)) {
+          destroyedJokers.push(rightIndex);
+        }
+      }
+
+      // 处理摧毁随机小丑（疯狂）
+      if (result?.destroyRandomJoker && jokers.length > 1) {
+        const otherIndices = jokers.map((_, idx) => idx).filter(idx => idx !== i && !destroyedJokers.includes(idx));
+        if (otherIndices.length > 0) {
+          const randomIndex = otherIndices[Math.floor(Math.random() * otherIndices.length)];
+          destroyedJokers.push(randomIndex);
+        }
+      }
 
       // 2. 处理蓝图的复制效果
       if (joker.id === 'blueprint') {
@@ -1352,6 +1376,14 @@ export class JokerSystem {
       // 3. 处理头脑风暴的复制效果
       if (joker.id === 'brainstorm') {
         this.processCopyEffect(joker, 'brainstorm', 'onBlindSelect', context, accumulator, i, jokers, consumableSlots);
+      }
+    }
+
+    // 执行摧毁小丑牌（从后往前删，避免索引变化）
+    destroyedJokers.sort((a, b) => b - a);
+    for (const index of destroyedJokers) {
+      if (index < jokerSlots.getJokerCount()) {
+        jokerSlots.removeJoker(index);
       }
     }
 
@@ -1759,7 +1791,8 @@ export class JokerSystem {
       totalMultiplier: finalMult,
       jokerEffects,
       totalMoneyEarned,
-      copyScoredCardToDeck: handPlayedResult.copyScoredCardToDeck
+      copyScoredCardToDeck: handPlayedResult.copyScoredCardToDeck,
+      destroyScoredCards: handPlayedResult.destroyScoredCards
     };
   }
 
