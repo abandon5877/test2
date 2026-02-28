@@ -345,6 +345,13 @@ export class GameState implements GameStateInterface {
     } else if (this.currentBlindPosition === BlindType.BOSS_BLIND) {
       this.ante++;
       this.currentBlindPosition = BlindType.SMALL_BLIND;
+      // 进入新底注，清除Boss状态（与advanceBlindPositionAfterComplete保持一致）
+      BossSystem.clearBoss(this.bossState);
+      // 触发新底注开始的事件
+      BossSystem.onNewAnte(this.bossState);
+      // 重置Boss重掷次数（与advanceBlindPositionAfterComplete保持一致）
+      this.bossSelectionState.resetBossRerollCount();
+      logger.info('New ante started (via skip), boss reroll count reset', { ante: this.ante });
       if (this.ante > 8 && !this.isEndlessMode) {
         this.phase = GamePhase.GAME_OVER;
       } else {
