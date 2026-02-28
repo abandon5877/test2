@@ -120,10 +120,10 @@ export class Shop {
   }
 
   enterNewShop(playerJokerIds: string[] = [], allowDuplicates: boolean = false): void {
-    logger.info('[Shop.enterNewShop] 进入新商店', { playerJokerCount: playerJokerIds.length, allowDuplicates });
+    logger.info('[Shop.enterNewShop] 进入新商店', { playerJokerCount: playerJokerIds.length, allowDuplicates, isFirstShopVisit: this.isFirstShopVisit });
     this.rerollCount = 0;
     this.rerollCost = this.baseRerollCost;
-    this.isFirstShopVisit = true;
+    // 注意：不再重置 isFirstShopVisit，确保只有第一个商店有固定小丑包
     this.refresh(playerJokerIds, allowDuplicates);
     logger.info('[Shop.enterNewShop] 完成');
   }

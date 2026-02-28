@@ -141,19 +141,46 @@ describe('Shop System', () => {
       expect(newShop.isFirstShopVisit).toBe(false); // After refresh()
     });
 
-    it('should reset first visit flag on enterNewShop', () => {
+    it('should keep first visit flag false on enterNewShop after first visit', () => {
       // Before enterNewShop, isFirstShopVisit should be false (from previous refresh)
       expect(shop.isFirstShopVisit).toBe(false);
-      
+
       shop.enterNewShop();
-      // After enterNewShop, isFirstShopVisit should be false because refresh() sets it to false
-      // But the first visit logic should have been applied (generating fixed buffoon pack)
+      // After enterNewShop, isFirstShopVisit should still be false
+      // Because we no longer reset it to true
       expect(shop.isFirstShopVisit).toBe(false);
-      
-      // Verify that the fixed buffoon pack was generated on first visit
+
+      // Verify that no fixed buffoon pack was generated (since this is not the first shop ever)
       const packs = shop.getPacks();
       const hasBuffoonPack = packs.some(p => (p.item as any).id === 'pack_buffoon_normal');
+      expect(hasBuffoonPack).toBe(false);
+    });
+
+    it('should have fixed buffoon pack only on first shop ever', () => {
+      // Create a fresh shop (simulating first shop ever)
+      const firstShop = new Shop();
+      // After constructor, isFirstShopVisit should be false (refresh sets it to false)
+      // But the first visit logic should have been applied
+      expect(firstShop.isFirstShopVisit).toBe(false);
+
+      // Verify that the fixed buffoon pack was generated (第一个商店有固定小丑包)
+      const packs = firstShop.getPacks();
+      const hasBuffoonPack = packs.some(p => (p.item as any).id === 'pack_buffoon_normal');
       expect(hasBuffoonPack).toBe(true);
+
+      // 记录第一次的isFirstShopVisit状态
+      const isFirstVisitBefore = firstShop.isFirstShopVisit;
+
+      // Now simulate entering a new shop
+      firstShop.enterNewShop();
+
+      // isFirstShopVisit should still be false (不应该被重置为true)
+      expect(firstShop.isFirstShopVisit).toBe(false);
+      expect(firstShop.isFirstShopVisit).toBe(isFirstVisitBefore);
+
+      // 验证新商店生成后，isFirstShopVisit仍然是false
+      // 这意味着后续商店不会再有"首次访问"的特殊逻辑
+      expect(firstShop.isFirstShopVisit).toBe(false);
     });
 
     it('should reset reroll count on enterNewShop', () => {

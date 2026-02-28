@@ -914,10 +914,10 @@ export class GameState implements GameStateInterface {
     // 获取玩家已有的小丑牌ID，避免商店生成重复的小丑牌
     const playerJokerIds = this.jokerSlots.getJokers().map(j => j.id);
     const allowDuplicates = this.hasShowman();
-    
+
     // 重置混沌小丑的免费刷新状态
     this.jokerSlots.resetChaosClownFreeReroll();
-    
+
     if (this.shop) {
       logger.info('[GameState.completeBlind] 进入新商店轮次，刷新商店商品');
       this.shop.enterNewShop(playerJokerIds, allowDuplicates);
