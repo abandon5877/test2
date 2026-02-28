@@ -155,8 +155,15 @@ export function getBlindConfig(ante: number, type: BlindType): BlindConfig | und
 
 /**
  * 获取Boss盲注配置
+ * 支持无尽模式（ante > 8）
  */
 export function getBossBlindConfig(ante: number): BlindConfig | undefined {
+  // 无尽模式：动态生成盲注配置
+  if (ante > 8) {
+    const endlessConfigs = generateEndlessBlindConfig(ante);
+    return endlessConfigs.find(config => config.type === BlindType.BOSS_BLIND);
+  }
+  
   const configs = getBlindConfigs();
   return configs.find(config => config.ante === ante && config.type === BlindType.BOSS_BLIND);
 }
