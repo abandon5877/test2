@@ -142,8 +142,18 @@ describe('Shop System', () => {
     });
 
     it('should reset first visit flag on enterNewShop', () => {
+      // Before enterNewShop, isFirstShopVisit should be false (from previous refresh)
+      expect(shop.isFirstShopVisit).toBe(false);
+      
       shop.enterNewShop();
-      expect(shop.isFirstShopVisit).toBe(true); // Will be set to false after refresh
+      // After enterNewShop, isFirstShopVisit should be false because refresh() sets it to false
+      // But the first visit logic should have been applied (generating fixed buffoon pack)
+      expect(shop.isFirstShopVisit).toBe(false);
+      
+      // Verify that the fixed buffoon pack was generated on first visit
+      const packs = shop.getPacks();
+      const hasBuffoonPack = packs.some(p => (p.item as any).id === 'pack_buffoon_normal');
+      expect(hasBuffoonPack).toBe(true);
     });
 
     it('should reset reroll count on enterNewShop', () => {

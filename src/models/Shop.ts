@@ -123,8 +123,8 @@ export class Shop {
     logger.info('[Shop.enterNewShop] 进入新商店', { playerJokerCount: playerJokerIds.length, allowDuplicates });
     this.rerollCount = 0;
     this.rerollCost = this.baseRerollCost;
-    this.refresh(playerJokerIds, allowDuplicates);
     this.isFirstShopVisit = true;
+    this.refresh(playerJokerIds, allowDuplicates);
     logger.info('[Shop.enterNewShop] 完成');
   }
 
