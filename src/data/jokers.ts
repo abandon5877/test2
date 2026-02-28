@@ -2764,21 +2764,21 @@ export const JOKERS: Joker[] = [
     }
   }),
 
-  // To the Moon - 每$5利息+$1
+  // To the Moon - 每$5资金+$1利息
   new Joker({
     id: 'to_the_moon',
     name: '登月',
-    description: '每$5利息上限+$1利息',
+    description: '回合结束时，每有$5资金，额外获得$1利息',
     rarity: JokerRarity.UNCOMMON,
     cost: 5,
     trigger: JokerTrigger.END_OF_ROUND,
     effect: (context: JokerEffectContext): JokerEffectResult => {
-      const interestCap = context.gameState?.interestCap || 20;
-      const extraInterest = Math.floor(interestCap / 5);
+      const money = context.gameState?.money || 0;
+      const extraInterest = Math.floor(money / 5);
       if (extraInterest > 0) {
         return {
           moneyBonus: extraInterest,
-          message: `登月: $${interestCap}利息上限 +$${extraInterest}`
+          message: `登月: $${money}资金 +$${extraInterest}利息`
         };
       }
       return {};

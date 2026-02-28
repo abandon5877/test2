@@ -1392,7 +1392,16 @@ export class GameState implements GameStateInterface {
   }
 
   getInterestCap(): number {
-    return 20 + this.jokerSlots.getInterestCapBonus();
+    // 官方规则：默认利息上限$5，种子资金$10，种子资金+$20
+    const vouchersUsed = this.shop?.getVouchersUsed() || [];
+
+    if (vouchersUsed.includes('voucher_money_tree')) {
+      return 20;  // 种子资金+：$20
+    }
+    if (vouchersUsed.includes('voucher_seed_money')) {
+      return 10;  // 种子资金：$10
+    }
+    return 5;  // 默认：$5
   }
 
   /**
