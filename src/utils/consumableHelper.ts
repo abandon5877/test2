@@ -4,6 +4,7 @@ import type { Joker } from '../models/Joker';
 import { JokerEdition, JokerRarity } from '../types/joker';
 import { getRandomJoker, getRandomJokerByRarity } from '../data/jokers';
 import { getConsumableById } from '../data/consumables';
+import { JokerSystem } from '../systems/JokerSystem';
 
 export interface ConsumableCallbacks {
   onToast?: (message: string, type: 'success' | 'warning' | 'error') => void;
@@ -150,13 +151,16 @@ export class ConsumableHelper {
       const canioJoker = this.gameState.jokers.find(j => j.id === 'canio');
       let destroyedFaceCardCount = 0;
 
+      // 获取当前小丑牌列表，用于判断是否为"人头牌"（考虑幻想性错觉效果）
+      const jokers = this.gameState.jokers;
+
       for (const card of result.destroyedCards) {
         const index = handCards.findIndex(c => c === card);
         if (index !== -1) {
           indicesToRemove.push(index);
         }
-        // 统计人头牌数量
-        if (card.isFaceCard) {
+        // 统计人头牌数量（使用JokerSystem.isFaceCard考虑幻想性错觉效果）
+        if (JokerSystem.isFaceCard(card, jokers)) {
           destroyedFaceCardCount++;
         }
       }
