@@ -29,4 +29,7 @@ dist-ssr
 # Project documentation (exclude all md files except README)
 *.md
 !README.md
-debug-shop.js
+
+# Debug scripts
+debug/
+*.debug.js

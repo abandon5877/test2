@@ -265,8 +265,15 @@ export function getEndlessBossType(ante: number): BossType {
  */
 export function generateEndlessBlindConfig(ante: number): BlindConfig[] {
   const targetScore = calculateEndlessTargetScore(ante);
-  const bossType = getEndlessBossType(ante);
   const isFinisher = ante % 8 === 0;
+  
+  // 检查是否已经有分配的 Boss，避免每次调用都重新随机
+  let bossType = currentBossAssignments.get(ante);
+  if (!bossType) {
+    // 如果没有分配，随机选择一个并保存
+    bossType = getEndlessBossType(ante);
+    currentBossAssignments.set(ante, bossType);
+  }
   
   // 小盲注: 1x 基础分数
   const smallBlind: BlindConfig = {
