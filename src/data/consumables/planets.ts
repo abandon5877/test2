@@ -104,8 +104,9 @@ export function getPlanetCardByHandType(handType: PokerHandType): PlanetData | u
  */
 export function getPlanetConsumableByHandType(handType: PokerHandType): Consumable | undefined {
   const planetData = PLANET_CARDS.find(card => card.handType === handType);
+
   if (!planetData) return undefined;
-  
+
   return new Consumable({
     id: planetData.id,
     name: planetData.name,

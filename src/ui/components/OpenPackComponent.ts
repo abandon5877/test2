@@ -4,16 +4,12 @@ import { CardComponent } from './CardComponent';
 import { Card } from '../../models/Card';
 import { Joker } from '../../models/Joker';
 import { Consumable } from '../../models/Consumable';
-import { getRandomJokers } from '../../data/jokers';
-import { getRandomConsumables } from '../../data/consumables';
 import { JOKER_RARITY_NAMES } from '../../types/joker';
 import { CONSUMABLE_TYPE_NAMES } from '../../types/consumable';
 import { Toast } from './Toast';
-import { Suit, Rank } from '../../types/card';
 import { JokerDetailModal } from './JokerDetailModal';
 import { ConsumableDetailModal } from './ConsumableDetailModal';
-import { generatePlayingCardModifiers } from '../../data/probabilities';
-import { getPlanetConsumableByHandType } from '../../data/consumables/planets';
+import { generatePackContents, generateRandomPlayingCard } from '../../utils/packGenerator';
 
 export interface OpenPackCallbacks {
   onClose: () => void;
@@ -69,86 +65,13 @@ export class OpenPackComponent {
 
   /**
    * 生成卡包内容
+   * 使用 packGenerator 模块统一处理
    */
   private generatePackContents(): (Card | Joker | Consumable)[] {
-    const contents: (Card | Joker | Consumable)[] = [];
-
-    // 获取已使用的优惠券
-    const vouchersUsed = this.gameState.getVouchersUsed ? this.gameState.getVouchersUsed() : [];
-
-    switch (this.pack.type) {
-      case 'standard':
-        for (let i = 0; i < this.pack.choices; i++) {
-          contents.push(this.generateRandomPlayingCard());
-        }
-        break;
-
-      case 'arcana':
-        contents.push(...getRandomConsumables(this.pack.choices, 'tarot'));
-        break;
-
-      case 'celestial':
-        // 检查是否有望远镜优惠券
-        const hasTelescope = vouchersUsed.includes('voucher_telescope');
-        // 使用全局牌型统计（不会随新底注重置）
-        const mostPlayedHand = hasTelescope ? this.gameState.getMostPlayedHandGlobal() : null;
-        
-        if (hasTelescope && mostPlayedHand) {
-          // 有望远镜且有最常打出的牌型：包含该牌型对应的星球牌
-          const targetPlanet = getPlanetConsumableByHandType(mostPlayedHand);
-          
-          if (targetPlanet) {
-            // 第一张是目标星球牌，其余随机
-            contents.push(targetPlanet);
-            if (this.pack.choices > 1) {
-              const randomPlanets = getRandomConsumables(this.pack.choices - 1, 'planet')
-                .filter(p => p.id !== targetPlanet.id); // 避免重复
-              contents.push(...randomPlanets);
-            }
-          } else {
-            // 找不到对应星球牌，全部随机
-            contents.push(...getRandomConsumables(this.pack.choices, 'planet'));
-          }
-        } else {
-          // 没有望远镜或没有最常打出的牌型：全部随机
-          contents.push(...getRandomConsumables(this.pack.choices, 'planet'));
-        }
-        break;
-
-      case 'buffoon':
-        // 获取玩家已有的小丑牌ID和商店中正在售卖的小丑牌ID，避免卡包开出重复的小丑牌
-        const playerJokerIds = this.gameState.jokerSlots.getJokers().map(j => j.id);
-        const shopJokerIds = this.gameState.shop?.getJokers().map(item => (item.item as Joker).id) || [];
-        const existingJokerIds = [...new Set([...playerJokerIds, ...shopJokerIds])];
-        contents.push(...getRandomJokers(this.pack.choices, vouchersUsed, existingJokerIds));
-        break;
-
-      case 'spectral':
-        contents.push(...getRandomConsumables(this.pack.choices, 'spectral'));
-        break;
-    }
-
-    return contents;
-  }
-
-  /**
-   * 生成随机游戏牌
-   * 应用增强、版本、蜡封概率
-   */
-  private generateRandomPlayingCard(): Card {
-    const suits = [Suit.Spades, Suit.Hearts, Suit.Diamonds, Suit.Clubs];
-    const ranks = [Rank.Two, Rank.Three, Rank.Four, Rank.Five, Rank.Six, Rank.Seven, Rank.Eight, Rank.Nine, Rank.Ten, Rank.Jack, Rank.Queen, Rank.King, Rank.Ace];
-
-    const randomSuit = suits[Math.floor(Math.random() * suits.length)];
-    const randomRank = ranks[Math.floor(Math.random() * ranks.length)];
-
-    // 获取已使用的优惠券（从游戏状态）
-    const vouchersUsed = this.gameState.getVouchersUsed ? this.gameState.getVouchersUsed() : [];
-
-    // 生成增强、版本、蜡封
-    const { enhancement, edition, seal } = generatePlayingCardModifiers(vouchersUsed);
-
-    return new Card(randomSuit, randomRank, enhancement, seal, edition);
+    return generatePackContents(this.pack, this.gameState, {
+      applyHallucination: true,
+      showToast: true
+    });
   }
 
   /**

@@ -19,6 +19,7 @@ import { getRandomJokers, getRandomJoker, getRandomJokerByRarity } from './data/
 import { getRandomConsumables, getConsumableById } from './data/consumables';
 import { JokerEdition, JokerRarity } from './types/joker';
 import { ProbabilitySystem, PROBABILITIES } from './systems/ProbabilitySystem';
+import { generatePackContents } from './utils/packGenerator';
 
 class Game {
   private gameState: GameState;
@@ -440,14 +441,6 @@ class Game {
    * 处理购买卡包 - 显示开包界面（内嵌在商店商品区域）
    */
   private handleBuyPack(pack: BoosterPack): void {
-    console.log('[Game.handleBuyPack] 开始处理卡包购买', {
-      packId: pack.id,
-      packName: pack.name,
-      packType: pack.type,
-      choices: pack.choices,
-      selectCount: pack.selectCount
-    });
-
     // 生成卡包内容并保存到游戏状态，避免刷新后重新随机
     const revealedCards = this.generatePackContents(pack);
     this.gameState.currentPack = {
@@ -456,7 +449,6 @@ class Game {
     };
     // 立即保存，确保卡包内容被记录
     Storage.autoSave(this.gameState);
-    console.log('[Game.handleBuyPack] 卡包内容已生成并保存');
 
     // 获取商店中间区域作为开包界面的容器
     const shopCenterPanel = document.getElementById('shop-center-panel');
@@ -466,10 +458,8 @@ class Game {
     }
 
     // 创建开包界面（内嵌模式）
-    console.log('[Game.handleBuyPack] 创建 OpenPackComponent（内嵌模式）');
     new OpenPackComponent(shopCenterPanel, this.gameState, pack, {
       onClose: () => {
-        console.log('[Game.handleBuyPack] 开包界面关闭回调');
         // 清除当前卡包状态
         this.gameState.currentPack = null;
         Storage.autoSave(this.gameState);
@@ -479,11 +469,6 @@ class Game {
         }
       },
       onCardSelected: (card, action) => {
-        console.log('[Game.handleBuyPack] 卡牌选择回调', {
-          cardType: card.constructor.name,
-          cardName: (card as any).name || (card as any).toString(),
-          action: action
-        });
         // 处理选中的卡牌
         this.handlePackCardSelected(card, action);
 
@@ -499,7 +484,6 @@ class Game {
         }
       },
       onSkip: () => {
-        console.log('[Game.handleBuyPack] 跳过开包回调');
         // 清除当前卡包状态
         this.gameState.currentPack = null;
         // 跳过开包，自动保存（卡包已被消耗）
@@ -510,62 +494,17 @@ class Game {
         }
       }
     }, revealedCards, true); // 使用内嵌模式
-    console.log('[Game.handleBuyPack] OpenPackComponent 创建完成（内嵌模式）');
   }
 
   /**
    * 生成卡包内容
+   * 使用 packGenerator 模块统一处理
    */
   private generatePackContents(pack: BoosterPack): (Card | Joker | Consumable)[] {
-    const contents: (Card | Joker | Consumable)[] = [];
-
-    switch (pack.type) {
-      case 'standard':
-        const suits = [Suit.Spades, Suit.Hearts, Suit.Diamonds, Suit.Clubs];
-        const ranks = [Rank.Two, Rank.Three, Rank.Four, Rank.Five, Rank.Six, Rank.Seven, Rank.Eight, Rank.Nine, Rank.Ten, Rank.Jack, Rank.Queen, Rank.King, Rank.Ace];
-        for (let i = 0; i < pack.choices; i++) {
-          const randomSuit = suits[Math.floor(Math.random() * suits.length)];
-          const randomRank = ranks[Math.floor(Math.random() * ranks.length)];
-          contents.push(new Card(randomSuit, randomRank));
-        }
-        break;
-
-      case 'arcana':
-        contents.push(...getRandomConsumables(pack.choices, 'tarot'));
-        break;
-
-      case 'celestial':
-        contents.push(...getRandomConsumables(pack.choices, 'planet'));
-        break;
-
-      case 'buffoon':
-        // 获取玩家已有的小丑牌ID，避免卡包开出重复的小丑牌
-        const existingJokerIds = this.gameState.jokerSlots.getJokers().map(j => j.id);
-        contents.push(...getRandomJokers(pack.choices, [], existingJokerIds));
-        break;
-
-      case 'spectral':
-        contents.push(...getRandomConsumables(pack.choices, 'spectral'));
-        break;
-    }
-
-    // 处理Hallucination（幻觉）效果：开包时有50%概率生成一张塔罗牌
-    const hasHallucination = this.gameState.jokerSlots.getActiveJokers().some(j => j.id === 'hallucination');
-    if (hasHallucination) {
-      // 更新Oops! All 6s数量
-      const oopsCount = this.gameState.jokerSlots.getActiveJokers().filter(j => j.id === 'oops_all_6s').length;
-      ProbabilitySystem.setOopsAll6sCount(oopsCount);
-
-      if (ProbabilitySystem.check(PROBABILITIES.HALLUCINATION)) {
-        const tarotCards = getRandomConsumables(1, 'tarot');
-        if (tarotCards.length > 0) {
-          contents.push(tarotCards[0]);
-          Toast.info('幻觉: 生成了一张塔罗牌！');
-        }
-      }
-    }
-
-    return contents;
+    return generatePackContents(pack, this.gameState, {
+      applyHallucination: true,
+      showToast: true
+    });
   }
 
   /**
@@ -1187,5 +1126,8 @@ class Game {
 
 // 启动游戏
 document.addEventListener('DOMContentLoaded', () => {
-  new Game();
+  const game = new Game();
+  // 将游戏实例暴露到全局，便于调试
+  (window as any).game = game;
+  console.log('[Game] 游戏实例已暴露到 window.game，可在控制台使用');
 });
