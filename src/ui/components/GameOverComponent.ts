@@ -1,4 +1,5 @@
 import { GameState } from '../../models/GameState';
+import { formatNumber } from '../../utils/numberFormat';
 
 export interface GameOverCallbacks {
   onRestart: () => void;
@@ -158,7 +159,7 @@ export class GameOverComponent {
 
     // 添加统计项
     const statItems = [
-      { label: '最终分数', value: this.stats.finalScore.toLocaleString(), icon: '🏆' },
+      { label: '最终分数', value: formatNumber(this.stats.finalScore), icon: '🏆' },
       { label: '最高底注', value: `底注 ${this.stats.highestAnte}`, icon: '📈' },
       { label: '进行回合', value: `${this.stats.roundsPlayed} 回合`, icon: '🎮' },
       { label: '出牌次数', value: `${this.stats.handsPlayed} 次`, icon: '🃏' },

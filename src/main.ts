@@ -20,6 +20,7 @@ import { getRandomConsumables, getConsumableById } from './data/consumables';
 import { JokerEdition, JokerRarity } from './types/joker';
 import { ProbabilitySystem, PROBABILITIES } from './systems/ProbabilitySystem';
 import { generatePackContents } from './utils/packGenerator';
+import { formatNumber } from './utils/numberFormat';
 
 class Game {
   private gameState: GameState;
@@ -33,27 +34,7 @@ class Game {
     this.showMainMenu();
   }
 
-  /**
-   * 格式化大数字显示
-   * K = 千, M = 百万, B = 十亿, T = 万亿
-   * 超过 1e15 使用科学计数法
-   */
-  private formatNumber(num: number): string {
-    if (num < 1000) {
-      return num.toString();
-    } else if (num < 1_000_000) {
-      return (num / 1000).toFixed(1) + 'K';
-    } else if (num < 1_000_000_000) {
-      return (num / 1_000_000).toFixed(1) + 'M';
-    } else if (num < 1_000_000_000_000) {
-      return (num / 1_000_000_000).toFixed(1) + 'B';
-    } else if (num < 1_000_000_000_000_000) {
-      return (num / 1_000_000_000_000).toFixed(1) + 'T';
-    } else {
-      // 科学计数法
-      return num.toExponential(2);
-    }
-  }
+
 
   /**
    * 显示主菜单 - 使用 vmin 实现真正的自适应布局
@@ -783,7 +764,7 @@ class Game {
     const score = document.createElement('p');
     score.style.fontSize = 'clamp(1.25rem, 4vw, 1.5rem)';  // 最小 20px, 动态 4vw, 最大 24px
     score.className = 'text-gray-300 mb-[1vh]';
-    score.textContent = `总得分: ${this.gameState.currentScore}`;
+    score.textContent = `总得分: ${formatNumber(this.gameState.currentScore)}`;
     this.container.appendChild(score);
 
     const ante = document.createElement('p');
@@ -851,7 +832,7 @@ class Game {
     const score = document.createElement('p');
     score.style.fontSize = 'clamp(1.5rem, 5vw, 2rem)';
     score.className = 'text-yellow-400 mb-[4vh]';
-    score.textContent = `最终得分: ${this.formatNumber(this.gameState.currentScore)}`;
+    score.textContent = `最终得分: ${formatNumber(this.gameState.currentScore)}`;
     this.container.appendChild(score);
 
     // 按钮容器

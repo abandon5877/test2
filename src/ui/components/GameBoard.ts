@@ -22,6 +22,7 @@ import { getRandomJoker } from '../../data/jokers';
 import { getConsumableById } from '../../data/consumables';
 import { JokerRarity, JokerEdition } from '../../types/joker';
 import { ConsumableHelper } from '../../utils/consumableHelper';
+import { formatNumber, formatInteger } from '../../utils/numberFormat';
 
 export interface GameBoardCallbacks {
   onPlayHand?: (scoreResult: ScoreResult) => void;
@@ -375,7 +376,7 @@ export class GameBoard {
     currentScoreSection.id = 'current-score-section';
     currentScoreSection.innerHTML = `
       <div class="text-gray-400 text-center" style="font-size: ${this.scaled(19)}">当前分数</div>
-      <div class="text-green-400 font-bold text-center" style="font-size: ${this.scaled(27)}" id="current-score">${this.gameState.roundScore}</div>
+      <div class="text-green-400 font-bold text-center" style="font-size: ${this.scaled(27)}" id="current-score">${formatNumber(this.gameState.roundScore)}</div>
     `;
     panel.appendChild(currentScoreSection);
 
@@ -385,7 +386,7 @@ export class GameBoard {
     targetScoreSection.id = 'target-score-section';
     targetScoreSection.innerHTML = `
       <div class="text-gray-400 text-center" style="font-size: ${this.scaled(19)}">目标分数</div>
-      <div class="text-yellow-400 font-bold text-center" style="font-size: ${this.scaled(23)}" id="target-score">${this.gameState.currentBlind?.targetScore || 0}</div>
+      <div class="text-yellow-400 font-bold text-center" style="font-size: ${this.scaled(23)}" id="target-score">${formatNumber(this.gameState.currentBlind?.targetScore || 0)}</div>
     `;
     panel.appendChild(targetScoreSection);
 
@@ -689,7 +690,7 @@ export class GameBoard {
 
       // 目标分数
       const targetScore = document.createElement('div');
-      targetScore.textContent = `目标分数: ${currentBlind.targetScore}`;
+      targetScore.textContent = `目标分数: ${formatNumber(currentBlind.targetScore)}`;
       targetScore.style.cssText = `
         font-size: ${this.scaled(16)};
         color: #9ca3af;
@@ -1092,13 +1093,13 @@ export class GameBoard {
     // 更新当前得分
     const currentScore = document.getElementById('current-score');
     if (currentScore) {
-      currentScore.textContent = String(this.gameState.roundScore);
+      currentScore.textContent = formatNumber(this.gameState.roundScore);
     }
 
     // 更新目标分数
     const targetScore = document.getElementById('target-score');
     if (targetScore) {
-      targetScore.textContent = String(this.gameState.currentBlind?.targetScore || 0);
+      targetScore.textContent = formatNumber(this.gameState.currentBlind?.targetScore || 0);
     }
 
     // 更新牌组剩余数量
@@ -1257,24 +1258,24 @@ export class GameBoard {
 
       // 右列第一行左边：筹码信息
       if (baseChipsEl) {
-        baseChipsEl.textContent = `${scoreResult.baseChips} 筹码`;
+        baseChipsEl.textContent = `${formatInteger(scoreResult.baseChips)} 筹码`;
       }
       if (chipBonusEl) {
         const cardChipBonus = scoreResult.chipBonus;
-        chipBonusEl.textContent = cardChipBonus > 0 ? `+ ${cardChipBonus}` : '';
+        chipBonusEl.textContent = cardChipBonus > 0 ? `+ ${formatInteger(cardChipBonus)}` : '';
       }
 
       // 右列第一行右边：倍率信息（显示数字+倍率，乘号在中间列）
       if (baseMultEl) {
-        baseMultEl.textContent = `${scoreResult.baseMultiplier} 倍率`;
+        baseMultEl.textContent = `${formatInteger(scoreResult.baseMultiplier)} 倍率`;
       }
       if (multBonusEl) {
-        multBonusEl.textContent = scoreResult.multBonus > 0 ? `+ ${scoreResult.multBonus}` : '';
+        multBonusEl.textContent = scoreResult.multBonus > 0 ? `+ ${formatInteger(scoreResult.multBonus)}` : '';
       }
 
       // 右列第二行：预计分数
       // 注意：预览时不计算概率触发类小丑牌的效果
-      totalScoreEl.textContent = `预计: ${scoreResult.totalChips} × ${scoreResult.totalMultiplier} = ${scoreResult.totalScore}`;
+      totalScoreEl.textContent = `预计: ${formatInteger(scoreResult.totalChips)} × ${formatInteger(scoreResult.totalMultiplier)} = ${formatNumber(scoreResult.totalScore)}`;
     } else {
       handTypeEl.textContent = '无效牌型';
       if (baseChipsEl) baseChipsEl.textContent = '-';
@@ -2055,7 +2056,7 @@ export class GameBoard {
     const scoreEl = document.getElementById('popup-score');
     const handTypeEl = document.getElementById('popup-hand-type');
     
-    if (scoreEl) scoreEl.textContent = scoreResult.totalScore.toString();
+    if (scoreEl) scoreEl.textContent = formatNumber(scoreResult.totalScore);
     if (handTypeEl) {
       const baseValue = HAND_BASE_VALUES[scoreResult.handType];
       handTypeEl.textContent = baseValue.displayName;

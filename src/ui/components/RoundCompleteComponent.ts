@@ -1,5 +1,6 @@
 import { GameState } from '../../models/GameState';
 import { BlindType } from '../../types/game';
+import { formatNumber } from '../../utils/numberFormat';
 
 export interface RoundCompleteCallbacks {
   onContinue: () => void;
@@ -139,7 +140,7 @@ export class RoundCompleteComponent {
     scoreSection.appendChild(scoreLabel);
 
     const scoreValue = document.createElement('span');
-    scoreValue.textContent = this.data.roundScore.toLocaleString();
+    scoreValue.textContent = formatNumber(this.data.roundScore);
     scoreValue.style.fontSize = this.scaled(32);
     scoreValue.style.fontWeight = 'bold';
     scoreValue.style.color = '#fbbf24';
@@ -161,7 +162,7 @@ export class RoundCompleteComponent {
     targetSection.appendChild(targetLabel);
 
     const targetValue = document.createElement('span');
-    targetValue.textContent = this.data.targetScore.toLocaleString();
+    targetValue.textContent = formatNumber(this.data.targetScore);
     targetValue.style.fontSize = this.scaled(20);
     targetValue.style.color = '#fff';
     targetSection.appendChild(targetValue);

@@ -1,6 +1,7 @@
 import { GameState } from '../../models/GameState';
 import { BlindType } from '../../types/game';
 import { Blind } from '../../models/Blind';
+import { formatNumber } from '../../utils/numberFormat';
 
 export interface BlindSelectCallbacks {
   onSelectBlind?: (blindType: BlindType) => void;
@@ -243,7 +244,7 @@ export class BlindSelect {
     targetEl.style.fontSize = 'clamp(20px, 4.5vw, 48px)';
     targetEl.style.lineHeight = '1.2';
     targetEl.style.marginBottom = '4px';
-    targetEl.textContent = blind.targetScore.toLocaleString();
+    targetEl.textContent = formatNumber(blind.targetScore);
 
     // 奖励
     const rewardEl = document.createElement('div');
