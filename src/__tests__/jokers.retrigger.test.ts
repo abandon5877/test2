@@ -44,9 +44,9 @@ describe('阶段4: 触发两次效果测试', () => {
 
       const result = ScoringSystem.calculate(cards, undefined, undefined, undefined, jokerSlots);
 
-      // 验证有触发两次标记的卡牌
-      const cardsWithRetrigger = result.cardDetails.filter(d => 
-        d.enhancements.includes('触发两次 (喜剧与悲剧)')
+      // 验证有触发两次标记的卡牌（新格式：触发2次、触发3次等）
+      const cardsWithRetrigger = result.cardDetails.filter(d =>
+        d.enhancements.some(e => e.includes('喜剧与悲剧'))
       );
       
       // 至少有一张脸牌触发了两次
@@ -114,9 +114,9 @@ describe('阶段4: 触发两次效果测试', () => {
 
       const result = ScoringSystem.calculate(cards, undefined, undefined, undefined, jokerSlots);
 
-      // 验证有触发两次标记的卡牌
-      const cardsWithRetrigger = result.cardDetails.filter(d => 
-        d.enhancements.includes('触发两次 (黑客)')
+      // 验证有触发两次标记的卡牌（新格式：触发2次、触发3次等）
+      const cardsWithRetrigger = result.cardDetails.filter(d =>
+        d.enhancements.some(e => e.includes('黑客'))
       );
       
       // 至少有一张5触发了两次
@@ -150,7 +150,7 @@ describe('阶段4: 触发两次效果测试', () => {
       // 验证5有触发两次标记
       const fiveDetails = result.cardDetails.filter(d => d.card.includes('5') && d.chipBonus > 0);
       expect(fiveDetails.length).toBeGreaterThanOrEqual(1);
-      expect(fiveDetails.some(d => d.enhancements.includes('触发两次 (黑客)'))).toBe(true);
+      expect(fiveDetails.some(d => d.enhancements.some(e => e.includes('黑客')))).toBe(true);
     });
   });
 
@@ -182,8 +182,8 @@ describe('阶段4: 触发两次效果测试', () => {
       // 获取计分牌详情
       const scoringCards = result.cardDetails.filter(d => d.chipBonus > 0);
       
-      // 验证第一张计分牌触发两次
-      expect(scoringCards[0].enhancements.includes('触发两次 (悬挂票)')).toBe(true);
+      // 验证第一张计分牌触发两次（新格式：触发2次、触发3次等）
+      expect(scoringCards[0].enhancements.some(e => e.includes('悬挂票'))).toBe(true);
     });
 
     it('即使第一张是脸牌也应该触发两次', () => {
@@ -210,9 +210,9 @@ describe('阶段4: 触发两次效果测试', () => {
 
       const result = ScoringSystem.calculate(cards, undefined, undefined, undefined, jokerSlots);
 
-      // 验证第一张计分牌（K）有触发两次标记
+      // 验证第一张计分牌（K）有触发两次标记（新格式：触发2次、触发3次等）
       const scoringCards = result.cardDetails.filter(d => d.chipBonus > 0);
-      expect(scoringCards[0].enhancements.includes('触发两次 (悬挂票)')).toBe(true);
+      expect(scoringCards[0].enhancements.some(e => e.includes('悬挂票'))).toBe(true);
     });
   });
 
@@ -256,15 +256,15 @@ describe('阶段4: 触发两次效果测试', () => {
 
       const result = ScoringSystem.calculate(cards, undefined, undefined, undefined, jokerSlots);
 
-      // 验证有脸牌触发两次标记
-      const faceCardsWithRetrigger = result.cardDetails.filter(d => 
-        d.enhancements.includes('触发两次 (喜剧与悲剧)')
+      // 验证有脸牌触发两次标记（新格式：触发2次、触发3次等）
+      const faceCardsWithRetrigger = result.cardDetails.filter(d =>
+        d.enhancements.some(e => e.includes('喜剧与悲剧'))
       );
       expect(faceCardsWithRetrigger.length).toBeGreaterThanOrEqual(1);
 
-      // 验证有5触发两次标记
-      const lowCardsWithRetrigger = result.cardDetails.filter(d => 
-        d.enhancements.includes('触发两次 (黑客)')
+      // 验证有5触发两次标记（新格式：触发2次、触发3次等）
+      const lowCardsWithRetrigger = result.cardDetails.filter(d =>
+        d.enhancements.some(e => e.includes('黑客'))
       );
       expect(lowCardsWithRetrigger.length).toBeGreaterThanOrEqual(1);
     });
@@ -306,9 +306,9 @@ describe('阶段4: 触发两次效果测试', () => {
 
       const result = ScoringSystem.calculate(cards, undefined, undefined, undefined, jokerSlots);
 
-      // 验证有触发两次标记（可能是悬挂票或喜剧与悲剧）
-      const cardsWithRetrigger = result.cardDetails.filter(d => 
-        d.enhancements.some(e => e.includes('触发两次'))
+      // 验证有触发两次标记（可能是悬挂票或喜剧与悲剧，新格式：触发2次、触发3次等）
+      const cardsWithRetrigger = result.cardDetails.filter(d =>
+        d.enhancements.some(e => e.includes('悬挂票') || e.includes('喜剧与悲剧'))
       );
       expect(cardsWithRetrigger.length).toBeGreaterThanOrEqual(1);
     });
@@ -339,10 +339,10 @@ describe('阶段4: 触发两次效果测试', () => {
 
       const result = ScoringSystem.calculate(cards, undefined, undefined, undefined, jokerSlots);
 
-      // 验证第一张牌有触发两次标记
+      // 验证第一张牌有触发两次标记（新格式：触发2次、触发3次等）
       const scoringCards = result.cardDetails.filter(d => d.chipBonus > 0);
-      expect(scoringCards[0].enhancements.includes('触发两次 (悬挂票)')).toBe(true);
-      
+      expect(scoringCards[0].enhancements.some(e => e.includes('悬挂票'))).toBe(true);
+
       // 验证Mult增强效果也被触发两次（multBonus应该大于4）
       expect(result.totalMultiplier).toBeGreaterThan(1);
     });

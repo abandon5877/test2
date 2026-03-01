@@ -130,7 +130,103 @@ export class ScoringSystem {
   }
 
   /**
-   * 检查是否有触发两次效果
+   * 计算包含蓝图/头脑风暴复制的触发两次效果数量
+   * 返回每种触发两次效果的实际数量（本体+复制）
+   */
+  private static calculateRetriggerCounts(jokers?: readonly JokerInterface[]): {
+    faceCardCount: number;   // sock_and_buskin: 脸牌触发次数
+    lowCardCount: number;    // hack: 2,3,4,5触发次数
+    firstCardCount: number;  // hanging_chad: 第一张牌触发次数
+    allCardCount: number;    // seltzer: 所有牌触发次数
+  } {
+    const jokerList = jokers ?? [];
+    let faceCardCount = 0;
+    let lowCardCount = 0;
+    let firstCardCount = 0;
+    let allCardCount = 0;
+
+    // 第一遍：计算本体数量
+    for (const joker of jokerList) {
+      switch (joker.id) {
+        case 'sock_and_buskin':
+          faceCardCount++;
+          break;
+        case 'hack':
+          lowCardCount++;
+          break;
+        case 'hanging_chad':
+          firstCardCount++;
+          break;
+        case 'seltzer':
+          // 苏打水：检查是否还有剩余次数
+          const handsRemaining = (joker.state?.handsRemaining ?? 10);
+          if (handsRemaining > 0) {
+            allCardCount++;
+          }
+          break;
+      }
+    }
+
+    // 第二遍：计算蓝图和头脑风暴的复制效果
+    for (let i = 0; i < jokerList.length; i++) {
+      const joker = jokerList[i];
+
+      // 处理蓝图：复制右侧小丑
+      if (joker.id === 'blueprint' && i < jokerList.length - 1) {
+        const rightJoker = jokerList[i + 1];
+        // 蓝图不能复制另一个蓝图或头脑风暴
+        if (rightJoker.id !== 'blueprint' && rightJoker.id !== 'brainstorm') {
+          switch (rightJoker.id) {
+            case 'sock_and_buskin':
+              faceCardCount++;
+              break;
+            case 'hack':
+              lowCardCount++;
+              break;
+            case 'hanging_chad':
+              firstCardCount++;
+              break;
+            case 'seltzer':
+              const handsRemaining = (rightJoker.state?.handsRemaining ?? 10);
+              if (handsRemaining > 0) {
+                allCardCount++;
+              }
+              break;
+          }
+        }
+      }
+
+      // 处理头脑风暴：复制最左侧小丑
+      if (joker.id === 'brainstorm' && i > 0) {
+        const leftmostJoker = jokerList[0];
+        // 头脑风暴不能复制另一个头脑风暴
+        if (leftmostJoker.id !== 'brainstorm') {
+          switch (leftmostJoker.id) {
+            case 'sock_and_buskin':
+              faceCardCount++;
+              break;
+            case 'hack':
+              lowCardCount++;
+              break;
+            case 'hanging_chad':
+              firstCardCount++;
+              break;
+            case 'seltzer':
+              const handsRemaining = (leftmostJoker.state?.handsRemaining ?? 10);
+              if (handsRemaining > 0) {
+                allCardCount++;
+              }
+              break;
+          }
+        }
+      }
+    }
+
+    return { faceCardCount, lowCardCount, firstCardCount, allCardCount };
+  }
+
+  /**
+   * 检查是否有触发两次效果（向后兼容）
    * 返回需要触发两次的卡牌条件
    */
   private static checkRetriggerEffects(jokers?: readonly JokerInterface[]): {
@@ -139,38 +235,60 @@ export class ScoringSystem {
     firstCard: boolean;      // hanging_chad: 第一张牌触发两次
     allCards: boolean;       // seltzer: 所有牌触发两次
   } {
-    const jokerList = jokers ?? [];
-    let faceCards = false;
-    let lowCards = false;
-    let firstCard = false;
-    let allCards = false;
-
-    for (const joker of jokerList) {
-      switch (joker.id) {
-        case 'sock_and_buskin':
-          faceCards = true;
-          break;
-        case 'hack':
-          lowCards = true;
-          break;
-        case 'hanging_chad':
-          firstCard = true;
-          break;
-        case 'seltzer':
-          // 苏打水：检查是否还有剩余次数
-          const handsRemaining = (joker.state?.handsRemaining ?? 10);
-          if (handsRemaining > 0) {
-            allCards = true;
-          }
-          break;
-      }
-    }
-
-    return { faceCards, lowCards, firstCard, allCards };
+    const counts = this.calculateRetriggerCounts(jokers);
+    return {
+      faceCards: counts.faceCardCount > 0,
+      lowCards: counts.lowCardCount > 0,
+      firstCard: counts.firstCardCount > 0,
+      allCards: counts.allCardCount > 0
+    };
   }
 
   /**
-   * 检查单张牌是否满足触发两次条件
+   * 计算单张牌的触发次数
+   * 返回该牌应该触发的次数（基础1次 + 重复触发次数）
+   */
+  private static calculateCardRetriggerCount(
+    card: Card,
+    index: number,
+    retriggerCounts: { faceCardCount: number; lowCardCount: number; firstCardCount: number; allCardCount: number },
+    allCardsAreFace = false
+  ): { retriggerCount: number; retriggerSource: string | null } {
+    const lowRanks = ['2', '3', '4', '5'];
+
+    // 基础触发次数为1
+    let retriggerCount = 1;
+    let retriggerSource: string | null = null;
+
+    // 苏打水：所有牌触发
+    if (retriggerCounts.allCardCount > 0) {
+      retriggerCount += retriggerCounts.allCardCount;
+      retriggerSource = 'seltzer';
+    }
+
+    // 悬挂票：第一张牌触发
+    if (retriggerCounts.firstCardCount > 0 && index === 0) {
+      retriggerCount += retriggerCounts.firstCardCount;
+      retriggerSource = 'hanging_chad';
+    }
+
+    // 喜与悲：脸牌触发
+    if (retriggerCounts.faceCardCount > 0 && (allCardsAreFace || card.isFaceCard)) {
+      retriggerCount += retriggerCounts.faceCardCount;
+      retriggerSource = 'sock_and_buskin';
+    }
+
+    // 黑客：2,3,4,5触发
+    if (retriggerCounts.lowCardCount > 0 && lowRanks.includes(card.rank)) {
+      retriggerCount += retriggerCounts.lowCardCount;
+      retriggerSource = 'hack';
+    }
+
+    return { retriggerCount, retriggerSource };
+  }
+
+  /**
+   * 检查单张牌是否满足触发两次条件（向后兼容）
    */
   private static shouldRetriggerCard(
     card: Card,
@@ -336,8 +454,10 @@ export class ScoringSystem {
 
     const cardDetails: CardScoreDetail[] = [];
 
-    // 检查触发两次效果
+    // 检查触发两次效果（向后兼容）
     const retriggerEffects = this.checkRetriggerEffects(jokersToCheck);
+    // 计算触发两次效果数量（包含蓝图/头脑风暴复制）
+    const retriggerCounts = this.calculateRetriggerCounts(jokersToCheck);
 
     // 检查幻想性错觉效果（所有牌视为人头牌）
     const allCardsAreFace = JokerSystem.hasPareidolia(jokersToCheck);
@@ -453,23 +573,29 @@ export class ScoringSystem {
           break;
       }
 
-      // 检查是否触发两次（小丑牌效果和Red Seal）
-      const shouldRetrigger = this.shouldRetriggerCard(card, i, retriggerEffects, allCardsAreFace);
+      // 计算触发次数（小丑牌效果和Red Seal）
+      const { retriggerCount: jokerRetriggerCount, retriggerSource } = this.calculateCardRetriggerCount(card, i, retriggerCounts, allCardsAreFace);
       // Red Seal也触发两次
       const hasRedSeal = card.seal === SealType.Red;
-      let retriggerCount = (shouldRetrigger || hasRedSeal) ? 2 : 1;
+      // 总触发次数 = 小丑牌触发次数 + Red Seal触发次数（如果有）
+      let retriggerCount = jokerRetriggerCount;
+      if (hasRedSeal) {
+        retriggerCount += 1; // Red Seal额外触发1次（总共2次）
+      }
 
       // 添加触发两次标记
-      if (shouldRetrigger || hasRedSeal) {
+      if (retriggerCount > 1 || hasRedSeal) {
         if (hasRedSeal) {
           enhancements.push('触发两次 (红色蜡封)');
         }
-        if (retriggerEffects.firstCard && i === 0) {
-          enhancements.push('触发两次 (悬挂票)');
-        } else if (retriggerEffects.faceCards && (allCardsAreFace || card.isFaceCard)) {
-          enhancements.push('触发两次 (喜剧与悲剧)');
-        } else if (retriggerEffects.lowCards) {
-          enhancements.push('触发两次 (黑客)');
+        if (retriggerSource === 'hanging_chad') {
+          enhancements.push(`触发${retriggerCount}次 (悬挂票)`);
+        } else if (retriggerSource === 'sock_and_buskin') {
+          enhancements.push(`触发${retriggerCount}次 (喜剧与悲剧)`);
+        } else if (retriggerSource === 'hack') {
+          enhancements.push(`触发${retriggerCount}次 (黑客)`);
+        } else if (retriggerSource === 'seltzer') {
+          enhancements.push(`触发${retriggerCount}次 (苏打水)`);
         }
       }
 

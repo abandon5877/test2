@@ -525,8 +525,56 @@ export class JokerSystem {
     if (targetJoker.id === 'brainstorm') {
       const targetIndex = jokers.indexOf(targetJoker);
       if (targetIndex !== -1) {
-        // 递归调用头脑风暴的复制逻辑
-        this.processCopyEffect(targetJoker, 'brainstorm', callbackName, context, accumulator, targetIndex, jokers, consumableSlots, isPreview, recursionDepth + 1);
+        // 获取头脑风暴的目标（最左侧小丑）
+        const brainstormTarget = CopyEffectHelper.getBrainstormTarget(targetIndex, jokers);
+        if (brainstormTarget) {
+          // 获取目标小丑的回调函数
+          const callback = brainstormTarget[callbackName] as ((context: JokerEffectContext) => JokerEffectResult) | undefined;
+          if (callback) {
+            // 构建嵌套效果消息前缀：蓝图复制 [头脑风暴复制 [目标]]
+            const effectPrefix = `蓝图复制 [头脑风暴复制 [${brainstormTarget.name}]]: `;
+            // 处理复制效果
+            let result = callback.call(brainstormTarget, context);
+            // 应用消耗牌槽位限制
+            if (consumableSlots && result) {
+              result = this.clampConsumableGeneration(result, consumableSlots);
+            }
+            // 累加各种奖励值
+            if (result.chipBonus) accumulator.chipBonus += result.chipBonus;
+            if (result.multBonus) accumulator.multBonus += result.multBonus;
+            if (result.multMultiplier) accumulator.multMultiplier *= result.multMultiplier;
+            if (result.moneyBonus) accumulator.moneyBonus += result.moneyBonus;
+            if (result.tarotBonus) accumulator.tarotBonus += result.tarotBonus;
+            if (result.jokerBonus) accumulator.jokerBonus += result.jokerBonus;
+            if (result.handBonus) accumulator.handBonus += result.handBonus;
+            if (result.freeReroll) accumulator.freeReroll = true;
+            if (result.discardReset) accumulator.discardReset = true;
+            if (result.heldCardRetrigger) accumulator.heldCardRetrigger += 1;
+            if (result.copyScoredCardToDeck) accumulator.copyScoredCardToDeck += 1;
+            if (result.destroyDiscardedCard) accumulator.destroyDiscardedCard = true;
+            if (result.upgradeHandType) accumulator.upgradeHandType = true;
+            // 处理特殊效果
+            if (result.copiedConsumableId) accumulator.copiedConsumableIds.push(result.copiedConsumableId);
+            // 添加效果消息
+            const hasEffect = result.chipBonus || result.multBonus || result.multMultiplier ||
+                              result.moneyBonus || result.tarotBonus || result.jokerBonus ||
+                              result.handBonus || result.message;
+            if (hasEffect) {
+              accumulator.effects.push({
+                jokerName: joker.name,
+                effect: effectPrefix + (result.message || '触发效果'),
+                chipBonus: result.chipBonus,
+                multBonus: result.multBonus,
+                multMultiplier: result.multMultiplier,
+                moneyBonus: result.moneyBonus
+              });
+            }
+            // 处理状态更新
+            if (result.stateUpdate && !isPreview) {
+              joker.updateState(result.stateUpdate);
+            }
+          }
+        }
       }
       return;
     }
@@ -586,6 +634,83 @@ export class JokerSystem {
     if (result.stateUpdate && !isPreview) {
       joker.updateState(result.stateUpdate);
     }
+  }
+
+  /**
+   * 处理trigger类型的复制效果（如ON_HAND_PLAYED, ON_SHOP_EXIT等）
+   * 用于复制使用trigger+effect而不是回调函数的小丑牌
+   * @param joker 复制小丑牌（蓝图或头脑风暴）
+   * @param copyType 复制类型
+   * @param triggerType 触发器类型
+   * @param context 效果上下文
+   * @param accumulator 结果累加器
+   * @param jokerIndex 当前小丑在槽位中的索引
+   * @param jokers 所有小丑牌数组
+   * @param consumableSlots 消耗牌槽位（可选）
+   * @param isPreview 是否为预览模式（预览时不更新状态）
+   * @param recursionDepth 递归深度
+   */
+  private static processCopyEffectForTrigger(
+    joker: JokerInterface,
+    copyType: CopyType,
+    triggerType: string,
+    context: JokerEffectContext,
+    accumulator: EffectAccumulator,
+    jokerIndex: number,
+    jokers: readonly JokerInterface[],
+    consumableSlots?: ConsumableSlots,
+    isPreview = false,
+    recursionDepth = 0
+  ): void {
+    // 限制递归深度，防止蓝图↔头脑风暴死循环
+    if (recursionDepth > 20) return;
+
+    // 获取目标小丑
+    const targetJoker = copyType === 'blueprint'
+      ? CopyEffectHelper.getBlueprintTarget(jokerIndex, jokers)
+      : CopyEffectHelper.getBrainstormTarget(jokerIndex, jokers);
+
+    if (!targetJoker) return;
+
+    // 修复：如果目标小丑是蓝图或头脑风暴，递归触发它们的复制逻辑
+    if (targetJoker.id === 'blueprint') {
+      const targetIndex = jokers.indexOf(targetJoker);
+      if (targetIndex !== -1) {
+        // 递归调用蓝图的复制逻辑
+        this.processCopyEffectForTrigger(targetJoker, 'blueprint', triggerType, context, accumulator, targetIndex, jokers, consumableSlots, isPreview, recursionDepth + 1);
+      }
+      return;
+    }
+
+    if (targetJoker.id === 'brainstorm') {
+      const targetIndex = jokers.indexOf(targetJoker);
+      if (targetIndex !== -1) {
+        // 获取头脑风暴的目标（最左侧小丑）
+        const brainstormTarget = CopyEffectHelper.getBrainstormTarget(targetIndex, jokers);
+        if (brainstormTarget && brainstormTarget.trigger === triggerType && brainstormTarget.effect) {
+          // 构建嵌套效果消息前缀：蓝图复制 [头脑风暴复制 [目标]]
+          const effectPrefix = `蓝图复制 [头脑风暴复制 [${brainstormTarget.name}]]: `;
+          this.processJokerEffect(joker, brainstormTarget.effect, context, accumulator, effectPrefix, consumableSlots, isPreview);
+        }
+      }
+      return;
+    }
+
+    // 检查目标小丑是否有匹配的trigger和effect
+    if (targetJoker.trigger !== triggerType || !targetJoker.effect) return;
+
+    // 预览模式下跳过概率触发类小丑牌的效果
+    if (isPreview && targetJoker.isProbability) {
+      return;
+    }
+
+    // 构建效果消息前缀
+    const effectPrefix = copyType === 'blueprint'
+      ? `蓝图复制 [${targetJoker.name}]: `
+      : `头脑风暴复制 [${targetJoker.name}]: `;
+
+    // 处理复制效果
+    this.processJokerEffect(joker, targetJoker.effect, context, accumulator, effectPrefix, consumableSlots, isPreview);
   }
 
   /**
@@ -1431,20 +1556,12 @@ export class JokerSystem {
 
       // 2. 处理蓝图的复制效果（复制右侧小丑）
       if (joker.id === 'blueprint') {
-        const targetJoker = CopyEffectHelper.getBlueprintTarget(i, jokers);
-        if (targetJoker && targetJoker.trigger === 'on_shop_exit' && targetJoker.effect) {
-          const effectPrefix = `蓝图复制 [${targetJoker.name}]: `;
-          this.processJokerEffect(joker, targetJoker.effect, context, accumulator, effectPrefix);
-        }
+        this.processCopyEffectForTrigger(joker, 'blueprint', 'on_shop_exit', context, accumulator, i, jokers, undefined, false);
       }
 
       // 3. 处理头脑风暴的复制效果（复制最左侧小丑）
       if (joker.id === 'brainstorm') {
-        const targetJoker = CopyEffectHelper.getBrainstormTarget(i, jokers);
-        if (targetJoker && targetJoker.trigger === 'on_shop_exit' && targetJoker.effect) {
-          const effectPrefix = `头脑风暴复制 [${targetJoker.name}]: `;
-          this.processJokerEffect(joker, targetJoker.effect, context, accumulator, effectPrefix);
-        }
+        this.processCopyEffectForTrigger(joker, 'brainstorm', 'on_shop_exit', context, accumulator, i, jokers, undefined, false);
       }
     }
 
@@ -1642,14 +1759,55 @@ export class JokerSystem {
       // 1. 处理小丑自身的 onHeld 效果
       this.processJokerEffect(joker, joker.onHeld, context, accumulator);
 
+      // 1b. 处理 ON_INDEPENDENT 触发器且返回 heldCardRetrigger 的小丑牌（如默剧演员）
+      // 注意：不是所有 ON_INDEPENDENT 触发器都在 processHeld 中处理
+      // 例如特技演员（返回 chipBonus）应该在 processIndependent 中处理
+      if (joker.trigger === 'on_independent' && joker.effect) {
+        const result = joker.effect(context);
+        if (result && result.heldCardRetrigger) {
+          this.processJokerEffect(joker, joker.effect, context, accumulator);
+        }
+      }
+
       // 2. 处理蓝图的复制效果
       if (joker.id === 'blueprint') {
         this.processCopyEffect(joker, 'blueprint', 'onHeld', context, accumulator, i, jokers);
+        // 复制 ON_INDEPENDENT 触发器中返回 heldCardRetrigger 的效果
+        const targetJoker = CopyEffectHelper.getBlueprintTarget(i, jokers);
+        if (targetJoker) {
+          if (targetJoker.id === 'brainstorm') {
+            // 目标是头脑风暴，检查头脑风暴的目标是否返回 heldCardRetrigger
+            const brainstormIndex = jokers.indexOf(targetJoker);
+            const brainstormTarget = CopyEffectHelper.getBrainstormTarget(brainstormIndex, jokers);
+            if (brainstormTarget && brainstormTarget.trigger === 'on_independent' && brainstormTarget.effect) {
+              const result = brainstormTarget.effect(context);
+              if (result && result.heldCardRetrigger) {
+                // 蓝图间接复制默剧演员的效果
+                const effectPrefix = `蓝图复制 [头脑风暴复制 [${brainstormTarget.name}]]: `;
+                this.processJokerEffect(joker, brainstormTarget.effect, context, accumulator, effectPrefix);
+              }
+            }
+          } else if (targetJoker.trigger === 'on_independent' && targetJoker.effect) {
+            // 直接目标是 ON_INDEPENDENT 触发器（且不是头脑风暴）
+            const result = targetJoker.effect(context);
+            if (result && result.heldCardRetrigger) {
+              this.processCopyEffectForTrigger(joker, 'blueprint', 'on_independent', context, accumulator, i, jokers);
+            }
+          }
+        }
       }
 
       // 3. 处理头脑风暴的复制效果
       if (joker.id === 'brainstorm') {
         this.processCopyEffect(joker, 'brainstorm', 'onHeld', context, accumulator, i, jokers);
+        // 复制 ON_INDEPENDENT 触发器中返回 heldCardRetrigger 的效果
+        const targetJoker = CopyEffectHelper.getBrainstormTarget(i, jokers);
+        if (targetJoker && targetJoker.trigger === 'on_independent' && targetJoker.effect) {
+          const result = targetJoker.effect(context);
+          if (result && result.heldCardRetrigger) {
+            this.processCopyEffectForTrigger(joker, 'brainstorm', 'on_independent', context, accumulator, i, jokers);
+          }
+        }
       }
     }
 

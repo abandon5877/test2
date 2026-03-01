@@ -87,10 +87,13 @@ export class CopyEffectHelper {
 
     const rightJoker = jokers[blueprintIndex + 1];
 
-    // 不能复制另一个蓝图或头脑风暴
-    if (rightJoker.id === 'blueprint' || rightJoker.id === 'brainstorm') {
+    // 不能复制另一个蓝图
+    if (rightJoker.id === 'blueprint') {
       return null;
     }
+
+    // 允许复制头脑风暴，这样蓝图+头脑风暴可以形成复制链
+    // 但需要在调用处特殊处理
 
     // 检查是否可复制
     if (!this.isCopyable(rightJoker)) {
