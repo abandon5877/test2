@@ -352,11 +352,12 @@ export class GameState implements GameStateInterface {
       // 重置Boss重掷次数（与advanceBlindPositionAfterComplete保持一致）
       this.bossSelectionState.resetBossRerollCount();
       logger.info('New ante started (via skip), boss reroll count reset', { ante: this.ante });
+      // 修复：当通关盲注8后（ante变为9），自动启用无尽模式，让玩家可以继续这个存档
       if (this.ante > 8 && !this.isEndlessMode) {
-        this.phase = GamePhase.GAME_OVER;
-      } else {
-        this.phase = GamePhase.SHOP;
+        this.isEndlessMode = true;
+        logger.info('Endless mode activated after skipping ante 8 boss', { ante: this.ante });
       }
+      this.phase = GamePhase.SHOP;
     }
   }
 
@@ -947,8 +948,10 @@ export class GameState implements GameStateInterface {
       // 重置Boss重掷次数
       this.bossSelectionState.resetBossRerollCount();
       logger.info('New ante started, boss reroll count reset', { ante: this.ante });
+      // 修复：当通关盲注8后（ante变为9），自动启用无尽模式，让玩家可以继续这个存档
       if (this.ante > 8 && !this.isEndlessMode) {
-        this.phase = GamePhase.GAME_OVER;
+        this.isEndlessMode = true;
+        logger.info('Endless mode activated after completing ante 8', { ante: this.ante });
       }
     }
   }

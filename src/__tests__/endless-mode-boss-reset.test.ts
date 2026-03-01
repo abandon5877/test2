@@ -165,19 +165,41 @@ describe('无尽模式Boss盲注重置测试', () => {
   });
 
   describe('非无尽模式测试', () => {
-    it('非无尽模式底注9后应结束游戏', () => {
+    it('通关盲注8后应自动启用无尽模式', () => {
       (gameState as any).isEndlessMode = false;
 
       // 模拟在底注8的Boss盲注阶段
       gameState.ante = 8;
       (gameState as any).currentBlindPosition = BlindType.BOSS_BLIND;
 
+      // 完成Boss盲注（通关盲注8）
+      (gameState as any).advanceBlindPositionAfterComplete();
+
+      // 验证已进入底注9
+      expect(gameState.ante).toBe(9);
+      // 验证无尽模式已自动启用（修复：通关后自动启用无尽模式，让玩家可以继续）
+      expect((gameState as any).isEndlessMode).toBe(true);
+      // 验证游戏没有结束
+      expect((gameState as any).phase).not.toBe(GamePhase.GAME_OVER);
+    });
+
+    it('跳过盲注8的Boss后应自动启用无尽模式', () => {
+      (gameState as any).isEndlessMode = false;
+
+      // 模拟在底注8的Boss盲注阶段
+      gameState.ante = 8;
+      (gameState as any).currentBlindPosition = BlindType.BOSS_BLIND;
+      (gameState as any).phase = GamePhase.PLAYING;
+
       // 跳过Boss盲注
       (gameState as any).advanceBlindPosition();
 
-      // 验证游戏已结束（非无尽模式底注>8）
+      // 验证已进入底注9
       expect(gameState.ante).toBe(9);
-      expect((gameState as any).phase).toBe(GamePhase.GAME_OVER);
+      // 验证无尽模式已自动启用
+      expect((gameState as any).isEndlessMode).toBe(true);
+      // 验证游戏没有结束，而是进入商店
+      expect((gameState as any).phase).toBe(GamePhase.SHOP);
     });
   });
 });

@@ -1001,11 +1001,15 @@ class Game {
    * 处理进入下一关
    */
   private handleNextRound(): void {
+    // 检查是否刚刚通关盲注8（ante变为9且无尽模式刚被激活）
+    // 注意：completeBlind已经调用了advanceBlindPositionAfterComplete，ante已经是9
+    const justCompletedAnte8 = this.gameState.ante === 9 && this.gameState.isEndlessMode;
+
     this.gameState.exitShop();
     Storage.autoSave(this.gameState); // 修复: 退出商店后立即存档
-    
-    // 检查是否完成底注8（通关）- 只在非无尽模式下显示通关界面
-    if (this.gameState.ante === 8 && !this.gameState.isEndlessMode) {
+
+    // 如果是刚刚通关盲注8，显示通关界面
+    if (justCompletedAnte8) {
       // 显示通关界面
       this.showGameComplete();
     } else {
