@@ -52,6 +52,7 @@ export class Shop {
   private rerollCount: number;
   private vouchersUsed: string[];
   isFirstShopVisit: boolean;
+  private extraSlots: number; // 通过优惠券增加的额外槽位数量
 
   constructor() {
     logger.info('[Shop] 构造函数开始');
@@ -62,12 +63,14 @@ export class Shop {
     this.rerollCount = 0;
     this.vouchersUsed = [];
     this.isFirstShopVisit = true;
+    this.extraSlots = 0;
     logger.info('[Shop] 初始状态', {
       rerollCost: this.rerollCost,
       baseRerollCost: this.baseRerollCost,
       itemIdCounter: this.itemIdCounter,
       rerollCount: this.rerollCount,
-      isFirstShopVisit: this.isFirstShopVisit
+      isFirstShopVisit: this.isFirstShopVisit,
+      extraSlots: this.extraSlots
     });
     this.refresh();
     logger.info('[Shop] 构造函数完成，商品数量:', this.items.length);
@@ -79,16 +82,18 @@ export class Shop {
       baseRerollCost: this.baseRerollCost,
       rerollCount: this.rerollCount,
       playerJokerCount: playerJokerIds.length,
-      allowDuplicates
+      allowDuplicates,
+      extraSlots: this.extraSlots
     });
 
     this.items = [];
     this.itemIdCounter = 0;
     logger.info('[Shop.refresh] 清空商品，itemIdCounter重置为0');
 
-    // 2张随机卡片
-    logger.info('[Shop.refresh] 生成2张随机卡片');
-    this.generateRandomCards(2, playerJokerIds, allowDuplicates);
+    // 2张随机卡片 + 额外槽位
+    const randomCardCount = 2 + this.extraSlots;
+    logger.info('[Shop.refresh] 生成' + randomCardCount + '张随机卡片（基础2张+额外' + this.extraSlots + '张）');
+    this.generateRandomCards(randomCardCount, playerJokerIds, allowDuplicates);
 
     // 2个补充包
     if (this.isFirstShopVisit) {
@@ -134,15 +139,18 @@ export class Shop {
       baseRerollCost: this.baseRerollCost,
       playerJokerCount: playerJokerIds.length,
       allowDuplicates,
-      isFreeReroll
+      isFreeReroll,
+      extraSlots: this.extraSlots
     });
 
     this.items = [];
     this.itemIdCounter = 0;
     logger.info('[Shop.rerollShop] 清空商品，itemIdCounter重置为0');
 
-    // 重新生成2张随机卡片
-    this.generateRandomCards(2, playerJokerIds, allowDuplicates);
+    // 重新生成2张随机卡片 + 额外槽位
+    const randomCardCount = 2 + this.extraSlots;
+    logger.info('[Shop.rerollShop] 重新生成' + randomCardCount + '张随机卡片（基础2张+额外' + this.extraSlots + '张）');
+    this.generateRandomCards(randomCardCount, playerJokerIds, allowDuplicates);
 
     // 重新生成2个补充包
     this.generateBoosterPacks(2);
@@ -438,9 +446,15 @@ export class Shop {
     const oldBaseRerollCost = this.baseRerollCost;
     switch (voucherId) {
       case 'voucher_overstock':
+        this.extraSlots += 1;
+        logger.info(`[Shop.applyVoucher] 库存过剩: 额外槽位+1，当前额外槽位:`, this.extraSlots);
+        // 立即在当前商店添加一个额外商品
         this.addExtraSlot(playerJokerIds, allowDuplicates);
         break;
       case 'voucher_overstock_plus':
+        this.extraSlots += 2;
+        logger.info(`[Shop.applyVoucher] 库存过剩+: 额外槽位+2，当前额外槽位:`, this.extraSlots);
+        // 立即在当前商店添加两个额外商品
         this.addExtraSlot(playerJokerIds, allowDuplicates);
         this.addExtraSlot(playerJokerIds, allowDuplicates);
         this.refreshItemPrices();
@@ -464,7 +478,7 @@ export class Shop {
       this.rerollCost = this.baseRerollCost + this.rerollCount;
       logger.info(`[Shop.applyVoucher] baseRerollCost 变化:`, { old: oldBaseRerollCost, new: this.baseRerollCost, newRerollCost: this.rerollCost });
     }
-    logger.info(`[Shop.applyVoucher] 完成，当前已使用优惠券:`, this.vouchersUsed);
+    logger.info(`[Shop.applyVoucher] 完成，当前已使用优惠券:`, this.vouchersUsed, `额外槽位:`, this.extraSlots);
   }
 
   private refreshItemPrices(): void {
@@ -485,6 +499,10 @@ export class Shop {
 
   getVouchersUsed(): string[] {
     return [...this.vouchersUsed];
+  }
+
+  getExtraSlots(): number {
+    return this.extraSlots;
   }
 
   private addExtraSlot(playerJokerIds: string[] = [], allowDuplicates: boolean = false): void {

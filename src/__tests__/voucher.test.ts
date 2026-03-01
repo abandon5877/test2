@@ -157,15 +157,65 @@ describe('折扣券系统测试', () => {
       it('Overstock应该添加1个额外槽位', () => {
         const initialItemCount = shop.items.length;
         shop.applyVoucher('voucher_overstock');
-        
+
         expect(shop.items.length).toBe(initialItemCount + 1);
       });
 
       it('Overstock Plus应该添加2个额外槽位', () => {
         const initialItemCount = shop.items.length;
         shop.applyVoucher('voucher_overstock_plus');
-        
+
         expect(shop.items.length).toBe(initialItemCount + 2);
+      });
+
+      it('Overstock的额外槽位应该在商店刷新后保留', () => {
+        shop.applyVoucher('voucher_overstock');
+        expect(shop.getExtraSlots()).toBe(1);
+
+        // 刷新商店
+        shop.refresh();
+
+        // 刷新后应该有基础5个 + 1个额外 = 6个商品
+        expect(shop.items.length).toBe(6);
+        expect(shop.getExtraSlots()).toBe(1);
+      });
+
+      it('Overstock Plus的额外槽位应该在商店刷新后保留', () => {
+        shop.applyVoucher('voucher_overstock_plus');
+        expect(shop.getExtraSlots()).toBe(2);
+
+        // 刷新商店
+        shop.refresh();
+
+        // 刷新后应该有基础5个 + 2个额外 = 7个商品
+        expect(shop.items.length).toBe(7);
+        expect(shop.getExtraSlots()).toBe(2);
+      });
+
+      it('Overstock的额外槽位应该在reroll后保留', () => {
+        shop.applyVoucher('voucher_overstock');
+        expect(shop.getExtraSlots()).toBe(1);
+
+        // 重新roll商店
+        shop.rerollShop();
+
+        // reroll后应该有基础5个 + 1个额外 = 6个商品
+        expect(shop.items.length).toBe(6);
+        expect(shop.getExtraSlots()).toBe(1);
+      });
+
+      it('购买Overstock后再购买Overstock Plus应该累计槽位', () => {
+        shop.applyVoucher('voucher_overstock');
+        expect(shop.getExtraSlots()).toBe(1);
+
+        shop.applyVoucher('voucher_overstock_plus');
+        expect(shop.getExtraSlots()).toBe(3); // 1 + 2
+
+        // 刷新商店
+        shop.refresh();
+
+        // 刷新后应该有基础5个 + 3个额外 = 8个商品
+        expect(shop.items.length).toBe(8);
       });
     });
 
