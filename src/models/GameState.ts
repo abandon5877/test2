@@ -1496,7 +1496,7 @@ export class GameState implements GameStateInterface {
     let extraHandSize = 0;
     for (const joker of this.jokers) {
       if (joker.effect) {
-        const result = joker.effect({});
+        const result = joker.effect({ jokerState: joker.state });
         extraHandSize += result.handSizeBonus || 0;
       }
     }
