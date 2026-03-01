@@ -31,9 +31,15 @@ describe('蓝图+头脑风暴复制链测试 - 其他类型小丑牌', () => {
         jokerSlots,
         cards,
         PokerHandType.OnePair,
-        [],
         0,
         0,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
         new ConsumableSlots(2)
       );
 
@@ -74,9 +80,15 @@ describe('蓝图+头脑风暴复制链测试 - 其他类型小丑牌', () => {
         jokerSlots,
         cards,
         PokerHandType.OnePair,
-        [],
         0,
         0,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
         new ConsumableSlots(2)
       );
 
@@ -101,8 +113,8 @@ describe('蓝图+头脑风暴复制链测试 - 其他类型小丑牌', () => {
 
       // 创建手牌（包含黄金牌）
       const heldCards = [
-        new Card(Suit.Clubs, Rank.Ten, { enhancement: CardEnhancement.Gold }),
-        new Card(Suit.Spades, Rank.Nine, { enhancement: CardEnhancement.Gold }),
+        new Card(Suit.Clubs, Rank.Ten, CardEnhancement.Gold),
+        new Card(Suit.Spades, Rank.Nine, CardEnhancement.Gold),
       ];
 
       const result = JokerSystem.processHeld(jokerSlots, heldCards);
@@ -126,7 +138,7 @@ describe('蓝图+头脑风暴复制链测试 - 其他类型小丑牌', () => {
       jokerSlots.addJoker(brainstorm);
 
       const heldCards = [
-        new Card(Suit.Clubs, Rank.Ten, { enhancement: CardEnhancement.Gold }),
+        new Card(Suit.Clubs, Rank.Ten, CardEnhancement.Gold),
       ];
 
       const result = JokerSystem.processHeld(jokerSlots, heldCards);
@@ -223,9 +235,15 @@ describe('蓝图+头脑风暴复制链测试 - 其他类型小丑牌', () => {
         jokerSlots,
         cards,
         PokerHandType.OnePair,
-        [],
         0,
         0,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
         new ConsumableSlots(2)
       );
 
